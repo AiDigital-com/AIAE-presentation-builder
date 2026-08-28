@@ -7,6 +7,7 @@ import com.google.api.services.slides.v1.model.SheetsChart;
 import com.google.api.services.slides.v1.model.Size;
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -45,6 +46,54 @@ class TacticChartLocatorTest {
 
 		// When-Then: the first one wins, so the pass still renders one chart instead of failing the tactic
 		assertThat(locator.chartsBySource(slide).get("book_shared").objectId()).isEqualTo("el_first");
+	}
+
+	@Test
+	void indexSlide_shouldMergeTheChartsOneEomTacticCarriesAcrossItsMasterCopiesTest() {
+		// Given: one EOM tactic's two copies — the first carries the pacing chart, the second the pie
+		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming());
+		Map<Integer, Map<String, ChartElementRef>> byTactic = new LinkedHashMap<>();
+
+		// When:
+		locator.indexSlide(byTactic, new Page().setObjectId("eom_m0_t1")
+				.setPageElements(List.of(chartElement("el_daily", "book_daily", 10.0))), 1);
+		locator.indexSlide(byTactic, new Page().setObjectId("eom_m1_t1")
+				.setPageElements(List.of(chartElement("el_dist", "book_dist", 20.0))), 1);
+
+		// Then: the tactic ends up with both, so neither chart pass has to guess which copy to look on
+		assertThat(byTactic.get(1).keySet()).containsExactly("book_daily", "book_dist");
+		assertThat(byTactic.get(1).get("book_dist").objectId()).isEqualTo("el_dist");
+	}
+
+	@Test
+	void indexSlide_shouldKeepAnEntryForATacticCopyThatCarriesNoChartTest() {
+		// Given: a tactic copy drawn without any chart on it — the EOM channel slide
+		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming());
+		Map<Integer, Map<String, ChartElementRef>> byTactic = new LinkedHashMap<>();
+
+		// When:
+		locator.indexSlide(byTactic, new Page().setObjectId("eom_m0_t1")
+				.setPageElements(List.of(new PageElement().setObjectId("el_text"))), 1);
+
+		// Then: the tactic is still listed, empty. An empty overall map means "legacy deck, use the
+		// configured slot ids", and on this deck those ids name objects that do not exist — the 400 that
+		// wiped out every chart of every tactic
+		assertThat(byTactic).containsOnlyKeys(1);
+		assertThat(byTactic.get(1)).isEmpty();
+	}
+
+	@Test
+	void tacticNumberOf_shouldRecognizeAnEomTacticCopyOfAnyMasterTest() {
+		// Given: an EOM deck, whose tactic copies are named per master ordinal rather than tct_<n>
+		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming());
+
+		// When-Then: every master's copy resolves to its tactic, and the same range check applies — without
+		// this the scan finds nothing on an EOM deck and the chart step falls back to the EOC template's
+		// configured object ids, which do not exist there
+		assertThat(locator.tacticNumberOf("eom_m0_t2", 3)).isEqualTo(2);
+		assertThat(locator.tacticNumberOf("eom_m1_t2", 3)).isEqualTo(2);
+		assertThat(locator.tacticNumberOf("eom_m1_t4", 3)).isNull();
+		assertThat(locator.tacticNumberOf("eom_m1_tx", 3)).isNull();
 	}
 
 	@Test

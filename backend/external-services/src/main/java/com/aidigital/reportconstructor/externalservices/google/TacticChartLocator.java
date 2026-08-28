@@ -46,6 +46,8 @@ public class TacticChartLocator {
 	 *
 	 * <p>Returns an empty map for a deck built on the legacy 28-slot template (it carries no duplicated
 	 * tactic slides), which is the caller's signal to fall back to the configured per-slot chart object ids.
+	 * A deck whose tactic copies carry no chart at all still returns an entry per tactic, so that fallback
+	 * stays reserved for the legacy template it describes.
 	 *
 	 * @param slides         the authenticated Slides client
 	 * @param presentationId the deck to scan
@@ -63,16 +65,38 @@ public class TacticChartLocator {
 				return byTactic;
 			}
 			for (Page slide : deck.getSlides()) {
-				Integer tacticNum = tacticNumberOf(slide.getObjectId(), tacticCount);
-				if (tacticNum == null || slide.getPageElements() == null) {
-					continue;
-				}
-				byTactic.put(tacticNum, chartsBySource(slide));
+				indexSlide(byTactic, slide, tacticCount);
 			}
 		} catch (IOException ex) {
 			errors.add("Tactic charts: could not read presentation layout — " + ex.getMessage());
 		}
 		return byTactic;
+	}
+
+	/**
+	 * Adds one slide's charts to the per-tactic index, if that slide is a tactic copy at all.
+	 *
+	 * <p>The entry is created for every tactic copy, chart or no chart: the map being non-empty is what
+	 * tells the caller this is a master-model deck, and falling back to the configured per-slot ids on such
+	 * a deck deletes objects that only exist in the legacy template.
+	 *
+	 * <p>Charts are merged rather than replaced, the first one winning as within a slide: an EOM tactic owns
+	 * one copy per master slide, so its charts can be spread over more than one of them.
+	 *
+	 * @param byTactic    the accumulating index, tactic number &rarr; charts by source workbook
+	 * @param slide       the slide to index
+	 * @param tacticCount number of active tactics; copies above it are ignored
+	 */
+	void indexSlide(Map<Integer, Map<String, ChartElementRef>> byTactic, Page slide, int tacticCount) {
+		Integer tacticNum = tacticNumberOf(slide.getObjectId(), tacticCount);
+		if (tacticNum == null) {
+			return;
+		}
+		Map<String, ChartElementRef> charts = byTactic.computeIfAbsent(tacticNum, key -> new LinkedHashMap<>());
+		if (slide.getPageElements() == null) {
+			return;
+		}
+		chartsBySource(slide).forEach(charts::putIfAbsent);
 	}
 
 	/**
@@ -99,8 +123,9 @@ public class TacticChartLocator {
 
 	/**
 	 * Reads the tactic number back out of a duplicated tactic slide's object id, i.e. the inverse of
-	 * {@link BreakdownSlideNaming#tacticSlideId(int)}. Any other slide id — a template slide, a breakdown
-	 * copy — and any number outside the active range yields {@code null}.
+	 * {@link BreakdownSlideNaming#tacticSlideId(int)} for an EOC deck and of
+	 * {@link BreakdownSlideNaming#eomTacticSlideId(int, int)} for an EOM one. Any other slide id — a
+	 * template slide, a breakdown copy — and any number outside the active range yields {@code null}.
 	 *
 	 * @param slideObjectId the slide's object id (may be {@code null})
 	 * @param tacticCount   number of active tactics
@@ -115,6 +140,7 @@ public class TacticChartLocator {
 				return n;
 			}
 		}
-		return null;
+		Integer eomTacticNum = naming.eomTacticNumberOf(slideObjectId);
+		return eomTacticNum != null && eomTacticNum >= 1 && eomTacticNum <= tacticCount ? eomTacticNum : null;
 	}
 }

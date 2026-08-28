@@ -258,7 +258,11 @@ public class TacticChartBuilder {
 			ChartTarget target = resolveTarget(tacticCharts, transforms,
 					templates.getDistSlideObjectIds().get(n), n, templateId, templates.distChartId());
 			if (target == null) {
-				errors.add("Distribution Tactic " + n + ": no slide chart object id configured");
+				// Worded like the combo-chart miss above, and naming the workbook: on a master-model deck the
+				// placeholder is found by the workbook its chart links to, so "not configured" would send the
+				// reader to the config when the answer is on the slide.
+				errors.add("Distribution Tactic " + n + ": no slide chart placeholder found (neither a "
+						+ "configured object id nor a chart linked to " + templateId + " on the tactic slide)");
 				continue;
 			}
 			try {

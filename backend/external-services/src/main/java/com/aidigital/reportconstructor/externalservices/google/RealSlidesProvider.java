@@ -864,19 +864,6 @@ public class RealSlidesProvider implements SlidesProvider {
 	}
 
 	/**
-	 * Deterministic object id of a tactic's copy of one EOM master slide. An EOM tactic gets one copy per
-	 * master (the EOC-style tactic slide and the EOM channel slide), so the id carries both the master's
-	 * ordinal in the template and the tactic number.
-	 *
-	 * @param masterOrdinal 0-based position of the master among the deck's tactic masters
-	 * @param tacticNum     the 1-based tactic number
-	 * @return the copy's object id
-	 */
-	String eomTacticSlideId(int masterOrdinal, int tacticNum) {
-		return "eom_m" + masterOrdinal + "_t" + tacticNum;
-	}
-
-	/**
 	 * Trims the EOM dashboards down to the tactics the campaign actually has.
 	 *
 	 * <p>Two things are surplus. Whole slides: the pacing-dashboard and performance-vs-plan slides are each
@@ -1031,7 +1018,7 @@ public class RealSlidesProvider implements SlidesProvider {
 			String masterId = masterIds.get(ordinal);
 			Set<String> tokens = extractRenumberableTokens(pageById.get(masterId));
 			for (int n = tacticCount; n >= 1; n--) {
-				String copyId = eomTacticSlideId(ordinal, n);
+				String copyId = breakdownSlideNaming.eomTacticSlideId(ordinal, n);
 				requests.add(new Request().setDuplicateObject(new DuplicateObjectRequest()
 						.setObjectId(masterId)
 						.setObjectIds(Map.of(masterId, copyId))));
@@ -1044,7 +1031,7 @@ public class RealSlidesProvider implements SlidesProvider {
 		for (int n = 1; n <= tacticCount; n++) {
 			List<String> block = new ArrayList<>(masterIds.size());
 			for (int ordinal = 0; ordinal < masterIds.size(); ordinal++) {
-				block.add(eomTacticSlideId(ordinal, n));
+				block.add(breakdownSlideNaming.eomTacticSlideId(ordinal, n));
 			}
 			requests.add(new Request().setUpdateSlidesPosition(new UpdateSlidesPositionRequest()
 					.setSlideObjectIds(block)
@@ -1116,7 +1103,7 @@ public class RealSlidesProvider implements SlidesProvider {
 		Map<Integer, String> anchors = new LinkedHashMap<>();
 		for (Integer tacticNum : enabledByTactic.keySet()) {
 			if (tacticNum != null) {
-				anchors.put(tacticNum, eomTacticSlideId(lastOrdinal, tacticNum));
+				anchors.put(tacticNum, breakdownSlideNaming.eomTacticSlideId(lastOrdinal, tacticNum));
 			}
 		}
 		return buildBreakdownRequests(slides, masterIds, enabledByTactic, breakdownValues, anchors,
