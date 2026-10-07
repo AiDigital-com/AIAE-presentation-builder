@@ -15,8 +15,8 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>db</artifactId>
-	<name>AIAE Presentation Builder - db</name>
+	<artifactId>migrations</artifactId>
+	<name>AIAE Presentation Builder - migrations</name>
 	<packaging>jar</packaging>
 
 	<dependencies>
@@ -31,7 +31,7 @@
 			<!-- Runs the changelog from the Argo CD PreSync Job in the paired
 				 liquibase-* image:
 
-				   mvn -f backend/pom.xml -pl db liquibase:update \
+				   mvn -f backend/pom.xml -pl migrations liquibase:update \
 				       -Dliquibase.url=... -Dliquibase.username=... -Dliquibase.password=...
 
 				 No <executions>: the goal is only ever invoked explicitly and is

@@ -1,7 +1,7 @@
 ---
 description: Backend database, Liquibase, and persistence rules.
 paths:
-  - "backend/db/**/*"
+  - "backend/migrations/**/*"
   - "backend/domain/src/main/java/**/*.java"
   - "backend/domain/src/test/java/**/*.java"
   - "backend/service/src/main/java/**/*.java"
@@ -10,7 +10,7 @@ paths:
 # Backend Database Rules
 
 - PostgreSQL only.
-- New schema changes go through Liquibase under `backend/db/src/main/resources/db/changelog`.
+- New schema changes go through Liquibase under `backend/migrations/src/main/resources/db/changelog`.
 - Do not rewrite existing applied changelogs unless the user explicitly asks for it.
 - Database identifiers use Java `Long` and PostgreSQL `BIGINT`.
 - Text columns use PostgreSQL `TEXT`, not `VARCHAR`.

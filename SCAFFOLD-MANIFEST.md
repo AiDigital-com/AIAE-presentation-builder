@@ -23,7 +23,7 @@ replace only `PACKAGE_REPLACE_ME` and app placeholders.
 | `backend/pom.xml` | Java 21, Spring Boot 3.4, pluginManagement |
 | `backend/application/pom.xml` | `db` dep, openapi-generator, PostgreSQL driver |
 | `backend/service/pom.xml` | No web/security deps |
-| `backend/domain/pom.xml`, `backend/db/pom.xml` | Leaf modules |
+| `backend/domain/pom.xml`, `backend/migrations/pom.xml` | Leaf modules |
 | `backend/.../web/SpaFallbackController.java` | Deployment deep links |
 
 ## Frontend (copy from scaffold/frontend/)

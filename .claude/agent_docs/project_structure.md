@@ -29,7 +29,7 @@ Do not introduce `com.example`, `org.example`, `io.replit`, or a second package 
 - Leaf module.
 - No business orchestration, controllers, HTTP clients, or Liquibase changelogs.
 
-### `backend/db`
+### `backend/migrations`
 
 - Owns Liquibase changelogs and SQL resources only.
 - No services, controllers, or repositories.

@@ -39,7 +39,7 @@
 		 drop it from this list to fully remove the feature from the build. -->
 	<modules>
 		<module>domain</module>
-		<module>db</module>
+		<module>migrations</module>
 		<module>event-logging-to-db-feature</module>
 		<module>service</module>
 		<module>external-services</module>
@@ -106,7 +106,7 @@
 			</dependency>
 			<dependency>
 				<groupId>${project.groupId}</groupId>
-				<artifactId>db</artifactId>
+				<artifactId>migrations</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
