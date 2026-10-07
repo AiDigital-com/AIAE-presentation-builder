@@ -4,8 +4,12 @@ name: CI
 # builds images without running tests, exactly as the other AIAE applications
 # do, so this is the job that actually guards a revision before it ships.
 on:
+  # No branch filter: every branch, which is the point. An empty
+  # `branches-ignore: []` was here first and silently disabled the whole
+  # workflow — the schema requires at least one entry, so the file failed to
+  # parse, GitHub never registered it, and neither pushes nor pull requests
+  # produced a single check.
   push:
-    branches-ignore: []
   pull_request:
   workflow_dispatch:
 
