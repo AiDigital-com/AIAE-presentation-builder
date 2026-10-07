@@ -54,7 +54,7 @@
 		</dependency>
 		<dependency>
 			<groupId>${project.groupId}</groupId>
-			<artifactId>db</artifactId>
+			<artifactId>migrations</artifactId>
 		</dependency>
 
 		<!-- Web + security + AOP + actuator -->

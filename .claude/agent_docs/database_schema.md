@@ -3,7 +3,7 @@
 ## Backend database baseline
 
 - PostgreSQL only.
-- Schema changes go through Liquibase in `backend/db/src/main/resources/db/changelog`.
+- Schema changes go through Liquibase in `backend/migrations/src/main/resources/db/changelog`.
 - Add new changelog files; do not rewrite existing applied changelogs.
 
 ## Backend entity conventions
