@@ -25,4 +25,42 @@
 			<artifactId>liquibase-core</artifactId>
 		</dependency>
 	</dependencies>
+
+	<build>
+		<plugins>
+			<!-- Runs the changelog from the Argo CD PreSync Job in the paired
+				 liquibase-* image:
+
+				   mvn -f backend/pom.xml -pl db liquibase:update \
+				       -Dliquibase.url=... -Dliquibase.username=... -Dliquibase.password=...
+
+				 No <executions>: the goal is only ever invoked explicitly and is
+				 never bound to a lifecycle phase, so an ordinary `mvn package`
+				 never touches a database.
+
+				 changeLogFile is the CLASSPATH path, identical to
+				 spring.liquibase.change-log in application.yml. Liquibase records
+				 applied changesets by (id, author, filename) where filename is
+				 that path. A filesystem path such as
+				 src/main/resources/db/changelog/db.changelog-master.xml would be
+				 recorded as a DIFFERENT filename, so every changeset would look
+				 unapplied and re-run against a populated schema. -->
+			<plugin>
+				<groupId>org.liquibase</groupId>
+				<artifactId>liquibase-maven-plugin</artifactId>
+				<configuration>
+					<changeLogFile>db/changelog/db.changelog-master.xml</changeLogFile>
+					<!-- Fail loudly instead of prompting for input in a Job that has no TTY. -->
+					<promptOnNonLocalDatabase>false</promptOnNonLocalDatabase>
+				</configuration>
+				<dependencies>
+					<dependency>
+						<groupId>org.postgresql</groupId>
+						<artifactId>postgresql</artifactId>
+						<version>${postgresql.version}</version>
+					</dependency>
+				</dependencies>
+			</plugin>
+		</plugins>
+	</build>
 </project>

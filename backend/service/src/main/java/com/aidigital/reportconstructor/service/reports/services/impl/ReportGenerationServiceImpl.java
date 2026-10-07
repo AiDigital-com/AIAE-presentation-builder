@@ -3,6 +3,7 @@ package com.aidigital.reportconstructor.service.reports.services.impl;
 import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
+import com.aidigital.reportconstructor.service.reports.dto.BreakdownSectionBundle;
 import com.aidigital.reportconstructor.service.reports.dto.BreakdownSectionInputs;
 import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
 import com.aidigital.reportconstructor.service.reports.dto.BreakdownValues;
@@ -54,7 +55,6 @@ import com.aidigital.reportconstructor.service.reports.helpers.SheetCampaignRead
 import com.aidigital.reportconstructor.service.reports.helpers.SheetPlaceholderReader;
 import com.aidigital.reportconstructor.service.reports.helpers.TacticConclusionAssembler;
 import com.aidigital.reportconstructor.service.reports.dto.Tactic;
-import com.aidigital.reportconstructor.service.reports.engine.Pivot;
 import com.aidigital.reportconstructor.service.reports.helpers.SheetChartDataReader;
 import com.aidigital.reportconstructor.service.reports.helpers.TacticExtractionHelper;
 import com.aidigital.reportconstructor.service.reports.ports.ClaudeClient;
@@ -220,7 +220,8 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 */
 	@Override
 	@Async
-	public void run(Long jobId, GeneratePayload payload, String clerkUserId, String userEmail, GenerationTarget target) {
+	public void run(Long jobId, GeneratePayload payload, String clerkUserId, String userEmail,
+			GenerationTarget target) {
 		// Opened before any Claude work and read back in the finally below, so a run that fails half-way
 		// still reports the tokens it burned — those are billed either way, and a failed expensive run is
 		// exactly what the admin token dashboard exists to make visible.
@@ -319,22 +320,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 					payload.reportType(), flatReplacements.get(CLIENT_NAME_TOKEN), userEmail);
 
 			if (target == GenerationTarget.SHEET) {
-				jobProgress.markJobRunningAtStep(jobId, 6, "Building sheet");
-				String sheetUrl = sheetHelper.buildSheet(
-						String.valueOf(jobId), fileName, flatReplacements, payload.reportType(), userGoogleToken);
-				sheetHelper.trimUnusedTactics(sheetUrl, payload, userGoogleToken);
-				sheetHelper.clearUnselectedBreakdowns(sheetUrl, payload, userGoogleToken);
-
-				jobProgress.markJobRunningAtStep(jobId, 7, "Building pacing tables");
-				List<String> pacingWarnings = sheetHelper.writePacingTables(
-						sheetUrl, payload, data, flatReplacements, userGoogleToken);
-
-				jobProgress.recordArtifact(jobId, fileName, sheetUrl);
-				// The workbook now goes to the user, who fills it by hand — often over days, and rarely in
-				// the browser tab that is still open. Everything the slides step will need is stored on the
-				// job here so that tab is expendable: the report resumes from "My reports" at the review step.
-				jobProgress.recordResumeState(jobId, resumeState.serialize(resumeState.toState(payload, data)));
-				jobProgress.markJobDone(jobId, sheetUrl, warnings.serializeWarnings(pacingWarnings));
+				buildSheetArtifact(jobId, fileName, flatReplacements, payload, data, userGoogleToken);
 				return;
 			}
 
@@ -355,28 +341,8 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 			String slideUrl = slides.createDeck(
 					String.valueOf(jobId), fileName, flatReplacements, payload.reportType(), userGoogleToken);
 
-			// Main tactic slides from the single master, same as the sheet flow above; a no-op on the legacy
-			// 28-slot template, where the trim below removes the surplus slots instead.
-			List<String> tacticSlideWarnings =
-					chartHelper.addTacticSlides(
-							slideUrl, flatTacticCount, flatReplacements, payload.reportType(), userGoogleToken);
-			chartHelper.trimUnusedTactics(slideUrl, payload, userGoogleToken);
-			// Template master slides must never ship. This flow inserts no breakdowns, but it does duplicate the
-			// tactic master above, and the master itself would otherwise arrive full of raw {{tactic n …}} tokens.
-			chartHelper.deleteMasterSlides(slideUrl, payload.reportType(), userGoogleToken);
-			// EOC-only story slides the EOM deck inherited from the template it was copied from.
-			chartHelper.deleteReportTypeSlides(slideUrl, payload.reportType(), userGoogleToken);
-
-			jobProgress.markJobRunningAtStep(jobId, 7, "Building charts");
-			List<String> chartWarnings = chartHelper.buildCharts(
-					slideUrl, payload, data, flatReplacements, userGoogleToken);
-
-			List<String> deckWarnings = new ArrayList<>(tacticSlideWarnings);
-			deckWarnings.addAll(chartWarnings);
-			// Last pass over the finished deck: any token still standing had no value anywhere in the
-			// pipeline, and shipping its own name is worse than shipping a dash.
-			deckWarnings.addAll(
-					chartHelper.dashUnresolvedTokens(slideUrl, payload.reportType(), userGoogleToken));
+			List<String> deckWarnings = assembleDeck(
+					jobId, slideUrl, flatTacticCount, flatReplacements, payload, data, userGoogleToken);
 
 			jobProgress.recordArtifact(jobId, fileName, payload.sheetUrl());
 			recordSlideCount(jobId, slideUrl, userGoogleToken);
@@ -390,6 +356,80 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 			failureLog.clear();
 		}
 	}
+
+	/**
+	 * Builds the workbook half of a report and finishes the job on it.
+	 *
+	 * <p>The workbook then goes to the user, who fills it by hand — often over days, and rarely in the
+	 * browser tab that is still open. Everything the slides step will need is stored on the job here, so
+	 * that tab is expendable and the report resumes from "My reports" at the review step.
+	 *
+	 * @param jobId            the running job
+	 * @param fileName         the file name the artifact is created under
+	 * @param flatReplacements the resolved token map written into the workbook
+	 * @param payload          the generation request
+	 * @param data             the collected campaign figures
+	 * @param userGoogleToken  the caller's Google OAuth token, or null to use the service account
+	 */
+	void buildSheetArtifact(
+			Long jobId, String fileName, Map<String, String> flatReplacements,
+			GeneratePayload payload, CampaignData data, String userGoogleToken) {
+		jobProgress.markJobRunningAtStep(jobId, 6, "Building sheet");
+		String sheetUrl = sheetHelper.buildSheet(
+				String.valueOf(jobId), fileName, flatReplacements, payload.reportType(), userGoogleToken);
+		sheetHelper.trimUnusedTactics(sheetUrl, payload, userGoogleToken);
+		sheetHelper.clearUnselectedBreakdowns(sheetUrl, payload, userGoogleToken);
+
+		jobProgress.markJobRunningAtStep(jobId, 7, "Building pacing tables");
+		List<String> pacingWarnings = sheetHelper.writePacingTables(
+				sheetUrl, payload, data, flatReplacements, userGoogleToken);
+
+		jobProgress.recordArtifact(jobId, fileName, sheetUrl);
+		jobProgress.recordResumeState(jobId, resumeState.serialize(resumeState.toState(payload, data)));
+		jobProgress.markJobDone(jobId, sheetUrl, warnings.serializeWarnings(pacingWarnings));
+	}
+
+	/**
+	 * Fills an already-created deck: duplicates the tactic master, removes the slides that must never
+	 * ship, builds the charts, and dashes any token still standing.
+	 *
+	 * @param jobId            the running job, for progress reporting
+	 * @param slideUrl         the deck created from the template
+	 * @param flatTacticCount  how many tactic slots the campaign actually uses
+	 * @param flatReplacements the resolved token map
+	 * @param payload          the generation request
+	 * @param data             the collected campaign figures
+	 * @param userGoogleToken  the caller's Google OAuth token, or null to use the service account
+	 * @return every warning raised while assembling the deck, in the order it was raised
+	 */
+	List<String> assembleDeck(
+			Long jobId, String slideUrl, int flatTacticCount, Map<String, String> flatReplacements,
+			GeneratePayload payload, CampaignData data, String userGoogleToken) {
+		// Main tactic slides from the single master, same as the sheet flow; a no-op on the legacy
+		// 28-slot template, where the trim below removes the surplus slots instead.
+		List<String> tacticSlideWarnings =
+				chartHelper.addTacticSlides(
+						slideUrl, flatTacticCount, flatReplacements, payload.reportType(), userGoogleToken);
+		chartHelper.trimUnusedTactics(slideUrl, payload, userGoogleToken);
+		// Template master slides must never ship. This flow inserts no breakdowns, but it does duplicate
+		// the tactic master above, which would otherwise arrive full of raw {{tactic n …}} tokens.
+		chartHelper.deleteMasterSlides(slideUrl, payload.reportType(), userGoogleToken);
+		// EOC-only story slides the EOM deck inherited from the template it was copied from.
+		chartHelper.deleteReportTypeSlides(slideUrl, payload.reportType(), userGoogleToken);
+
+		jobProgress.markJobRunningAtStep(jobId, 7, "Building charts");
+		List<String> chartWarnings = chartHelper.buildCharts(
+				slideUrl, payload, data, flatReplacements, userGoogleToken);
+
+		List<String> deckWarnings = new ArrayList<>(tacticSlideWarnings);
+		deckWarnings.addAll(chartWarnings);
+		// Last pass over the finished deck: any token still standing had no value anywhere in the
+		// pipeline, and shipping its own name is worse than shipping a dash.
+		deckWarnings.addAll(
+				chartHelper.dashUnresolvedTokens(slideUrl, payload.reportType(), userGoogleToken));
+		return deckWarnings;
+	}
+
 
 	/**
 	 * Measures the finished deck and stamps its slide count onto the job, for the admin dashboard's
@@ -505,31 +545,12 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		// Google-Sheet reads with no Claude call, so they run concurrently on the shared virtual-thread
 		// executor; each helper catches its own failures, so one section failing cannot abort the others.
 		ClaudeUsageScope usageScope = usageTracker.current();
-		CompletableFuture<BreakdownSectionInputs<PublisherObservationInput>> pubF = CompletableFuture.supplyAsync(
-				usageTracker.inScope(usageScope, () -> publisherBreakdown.readPublisherInputs(
-						payload.sheetUrl(), payload.breakdownSelections(), prelim, userGoogleToken)),
-				applicationTaskExecutor);
-		CompletableFuture<BreakdownSectionInputs<CreativeTakeawayInput>> creF = CompletableFuture.supplyAsync(
-				usageTracker.inScope(usageScope, () -> creativeBreakdown.readCreativeInputs(
-						payload.sheetUrl(), payload.breakdownSelections(), prelim, userGoogleToken)),
-				applicationTaskExecutor);
-		CompletableFuture<BreakdownSectionInputs<GeoInsightInput>> geoF = CompletableFuture.supplyAsync(
-				usageTracker.inScope(usageScope, () -> geoBreakdown.readGeoInputs(
-						payload.sheetUrl(), payload.breakdownSelections(), prelim, userGoogleToken)),
-				applicationTaskExecutor);
-		CompletableFuture<BreakdownSectionInputs<AudienceInsightInput>> audF = CompletableFuture.supplyAsync(
-				usageTracker.inScope(usageScope, () -> audienceBreakdown.readAudienceInputs(
-						payload.sheetUrl(), payload.breakdownSelections(), prelim, userGoogleToken)),
-				applicationTaskExecutor);
-		CompletableFuture<BreakdownSectionInputs<DeviceInsightInput>> devF = CompletableFuture.supplyAsync(
-				usageTracker.inScope(usageScope, () -> deviceBreakdown.readDeviceInputs(
-						payload.sheetUrl(), payload.breakdownSelections(), prelim, userGoogleToken)),
-				applicationTaskExecutor);
-		BreakdownSectionInputs<PublisherObservationInput> pub = pubF.join();
-		BreakdownSectionInputs<CreativeTakeawayInput> cre = creF.join();
-		BreakdownSectionInputs<GeoInsightInput> geo = geoF.join();
-		BreakdownSectionInputs<AudienceInsightInput> aud = audF.join();
-		BreakdownSectionInputs<DeviceInsightInput> dev = devF.join();
+		BreakdownSectionBundle sections = readBreakdownSections(payload, prelim, usageScope, userGoogleToken);
+		BreakdownSectionInputs<PublisherObservationInput> pub = sections.publisher();
+		BreakdownSectionInputs<CreativeTakeawayInput> cre = sections.creative();
+		BreakdownSectionInputs<GeoInsightInput> geo = sections.geo();
+		BreakdownSectionInputs<AudienceInsightInput> aud = sections.audience();
+		BreakdownSectionInputs<DeviceInsightInput> dev = sections.device();
 
 		// Step 2 (Claude) — the per-tactic conclusions call, which writes each tactic's overview and nothing
 		// else. Every tactic on the reviewed sheet is included so its overview (and the whole downstream results
@@ -560,17 +581,8 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		breakdownValues.putAll(geo.dataValues());
 		breakdownValues.putAll(aud.dataValues());
 		breakdownValues.putAll(dev.dataValues());
-		List<String> jobWarnings = new ArrayList<>();
-		jobWarnings.addAll(publisherBreakdown.writePublisherObservations(breakdownValues, pub.tactics(),
-				pub.inputs().keySet(), bullets.publisher(), prelim));
-		jobWarnings.addAll(creativeBreakdown.writeCreativeTakeaways(breakdownValues, cre.tactics(),
-				cre.inputs().keySet(), bullets.creative(), prelim));
-		jobWarnings.addAll(geoBreakdown.writeGeoInsights(breakdownValues, geo.tactics(),
-				geo.inputs().keySet(), bullets.geo(), prelim));
-		jobWarnings.addAll(audienceBreakdown.writeAudienceInsights(breakdownValues, aud.tactics(),
-				aud.inputs().keySet(), bullets.audience(), prelim));
-		jobWarnings.addAll(deviceBreakdown.writeDeviceInsights(breakdownValues, dev.tactics(),
-				dev.inputs().keySet(), bullets.device(), prelim));
+		List<String> jobWarnings = new ArrayList<>(
+				writeBreakdownInsights(breakdownValues, pub, cre, geo, aud, dev, bullets, prelim));
 
 		// Step 3 — per-tactic "thoughts on tactic performance" for the tactics with more than two breakdowns
 		// (the same gate the thoughts slide uses). One call per tactic, all dispatched at once so they run in
@@ -591,38 +603,16 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		// from the per-tactic digests; the Step-2 overviews are merged back in for the tactic-overview slides.
 		List<TacticNarrativeDigest> digests =
 				conclusionAssembler.toCampaignDigests(conclusions, namesByTactic, thoughts, bullets);
-		// EOM decks drop the frequency slide entirely, so the frequency narrative ({{f_oppartunity}} /
-		// {{f_fact}} / {{f_storytelling}}) has nowhere to land: passing no frequencies keeps those three
-		// fields out of the prompt and out of the reply, instead of paying for copy that is deleted.
-		CampaignFrequencies resultsFrequencies =
-				EOM_REPORT_TYPE.equals(payload.reportType()) ? null : frequencies;
-		ClaudeResults campaign = live
-				? claude.batchCampaignResults(data, brief, resultsFrequencies, digests)
-				: claudeDefaults.emptyResults();
-		// A silent empty campaign result despite real per-tactic digests means Batch C degraded to the empty DTO
-		// (timeout / parse failure / non-200) — the results overview, performance thoughts and recommendations
-		// will all render as dashes. Surface it as a job warning so the blank sections are visible rather than
-		// looking like an intended empty report.
-		if (live && !digests.isEmpty() && isCampaignResultsEmpty(campaign)) {
-			log.warn("[report] job {} campaign results came back empty for {} tactic digest(s); "
-					+ "results overview / performance thoughts / recommendations will be blank", jobId, digests.size());
-			jobWarnings.add("Campaign-level results (results overview, performance thoughts, recommendations) came "
-					+ "back empty from Claude despite " + digests.size() + " tactic conclusion(s); those sections "
-					+ "will show dashes. Usually a Claude timeout or parse failure — re-running the report fixes it.");
-		}
-		ClaudeResults ccC = mergeTacticOverviews(campaign, conclusions);
+		ClaudeResults ccC = buildCampaignResults(
+				jobId, payload, data, claude, live, brief, frequencies, digests, conclusions, jobWarnings);
 
 		// Step 5 — final campaign narrative alignment: reconcile Batch A and the campaign results into one
 		// storyline faithful to the brief, informed by a read-only digest of the breakdown conclusions. Purely
 		// additive: on any failure the originals are returned, so the deck is never worse than before this ran.
-		if (live) {
-			List<String> breakdownDigest =
-					buildBreakdownDigest(List.of(new BreakdownValues(breakdownValues, List.of())));
-			ClaudeNarrative aligned = claude.batchAlignCampaign(ccA, ccC, breakdownDigest, brief, data.flightDates());
-			if (aligned != null) {
-				ccA = aligned.strategic();
-				ccC = aligned.results();
-			}
+		ClaudeNarrative aligned = alignCampaignNarrative(claude, live, ccA, ccC, breakdownValues, brief, data);
+		if (aligned != null) {
+			ccA = aligned.strategic();
+			ccC = aligned.results();
 		}
 
 		// Rebuild the narrative map from the aligned copy. The sheet overlay still wins for every numeric anchor,
@@ -639,6 +629,179 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		// map now carries, so the copy cannot contradict the figures it sits on.
 		fillPacingNarrative(claude, flatReplacements, tacticCount, payload.reportType(), live, usageScope, brief);
 
+		buildDeckFromSheet(
+				jobId, payload, userEmail, grid, flatReplacements, breakdownValues, tacticCount,
+				userGoogleToken, jobWarnings);
+	}
+
+	/**
+	 * Reconciles Batch A and the campaign results into one storyline faithful to the brief.
+	 *
+	 * <p>Purely additive: {@code null} is returned on any failure, and the caller keeps the originals,
+	 * so the deck is never worse than it was before this ran.
+	 *
+	 * @param claude          the Claude client
+	 * @param live            false when running against stubbed copy, in which case nothing is aligned
+	 * @param strategic       the strategic copy from Batch A
+	 * @param results         the campaign results
+	 * @param breakdownValues the breakdown tokens, read only, as context for the alignment
+	 * @param brief           free-text campaign brief the copy must stay faithful to
+	 * @param data            the collected campaign figures, for the flight dates
+	 * @return the aligned narrative, or {@code null} when nothing was aligned
+	 */
+	ClaudeNarrative alignCampaignNarrative(
+			ClaudeClient claude, boolean live, ClaudeStrategic strategic, ClaudeResults results,
+			Map<String, String> breakdownValues, String brief, CampaignData data) {
+		if (!live) {
+			return null;
+		}
+		List<String> breakdownDigest =
+				buildBreakdownDigest(List.of(new BreakdownValues(breakdownValues, List.of())));
+		return claude.batchAlignCampaign(strategic, results, breakdownDigest, brief, data.flightDates());
+	}
+
+
+	/**
+	 * Reads all five breakdown sections from the reviewed workbook at once.
+	 *
+	 * <p>These are pure Google-Sheet reads with no Claude call, so they run concurrently on the shared
+	 * virtual-thread executor. Each helper catches its own failures, so one section failing cannot
+	 * abort the others — it comes back empty and the deck ships without that breakdown's copy.
+	 *
+	 * @param payload         the generation request, carrying the sheet URL and the selections
+	 * @param prelim          the seed placeholder map the readers resolve tactic names against
+	 * @param usageScope      the Claude usage scope the async reads must stay inside
+	 * @param userGoogleToken the caller's Google OAuth token, or null to use the service account
+	 * @return all five sections, joined
+	 */
+	BreakdownSectionBundle readBreakdownSections(
+			GeneratePayload payload, Map<String, String> prelim, ClaudeUsageScope usageScope,
+			String userGoogleToken) {
+		CompletableFuture<BreakdownSectionInputs<PublisherObservationInput>> pubF = CompletableFuture.supplyAsync(
+				usageTracker.inScope(usageScope, () -> publisherBreakdown.readPublisherInputs(
+						payload.sheetUrl(), payload.breakdownSelections(), prelim, userGoogleToken)),
+				applicationTaskExecutor);
+		CompletableFuture<BreakdownSectionInputs<CreativeTakeawayInput>> creF = CompletableFuture.supplyAsync(
+				usageTracker.inScope(usageScope, () -> creativeBreakdown.readCreativeInputs(
+						payload.sheetUrl(), payload.breakdownSelections(), prelim, userGoogleToken)),
+				applicationTaskExecutor);
+		CompletableFuture<BreakdownSectionInputs<GeoInsightInput>> geoF = CompletableFuture.supplyAsync(
+				usageTracker.inScope(usageScope, () -> geoBreakdown.readGeoInputs(
+						payload.sheetUrl(), payload.breakdownSelections(), prelim, userGoogleToken)),
+				applicationTaskExecutor);
+		CompletableFuture<BreakdownSectionInputs<AudienceInsightInput>> audF = CompletableFuture.supplyAsync(
+				usageTracker.inScope(usageScope, () -> audienceBreakdown.readAudienceInputs(
+						payload.sheetUrl(), payload.breakdownSelections(), prelim, userGoogleToken)),
+				applicationTaskExecutor);
+		CompletableFuture<BreakdownSectionInputs<DeviceInsightInput>> devF = CompletableFuture.supplyAsync(
+				usageTracker.inScope(usageScope, () -> deviceBreakdown.readDeviceInputs(
+						payload.sheetUrl(), payload.breakdownSelections(), prelim, userGoogleToken)),
+				applicationTaskExecutor);
+		return new BreakdownSectionBundle(
+				pubF.join(), creF.join(), geoF.join(), audF.join(), devF.join());
+	}
+
+	/**
+	 * Produces the campaign-level results copy from the per-tactic digests.
+	 *
+	 * <p>An empty result despite real digests means Batch C degraded to the empty DTO — a timeout, a
+	 * parse failure, a non-200 — and the results overview, performance thoughts and recommendations
+	 * would all render as dashes. That is surfaced as a job warning rather than left to look like an
+	 * intentionally empty report.
+	 *
+	 * @param jobId       the running job, for the log line
+	 * @param payload     the generation request
+	 * @param data        the collected campaign figures
+	 * @param claude      the Claude client
+	 * @param live        false when running against stubbed copy
+	 * @param brief       free-text campaign brief the copy must stay faithful to
+	 * @param frequencies the campaign frequency figures
+	 * @param digests     the per-tactic narrative digests Batch C reasons over
+	 * @param conclusions the per-tactic conclusions whose overviews are merged back in
+	 * @param jobWarnings the accumulating job warnings, appended to in place
+	 * @return the campaign results with the per-tactic overviews merged in
+	 */
+	ClaudeResults buildCampaignResults(
+			Long jobId, GeneratePayload payload, CampaignData data, ClaudeClient claude, boolean live,
+			String brief, CampaignFrequencies frequencies, List<TacticNarrativeDigest> digests,
+			List<TacticConclusion> conclusions, List<String> jobWarnings) {
+		// EOM decks drop the frequency slide entirely, so the frequency narrative ({{f_oppartunity}} /
+		// {{f_fact}} / {{f_storytelling}}) has nowhere to land: passing no frequencies keeps those three
+		// fields out of the prompt and out of the reply, instead of paying for copy that is deleted.
+		CampaignFrequencies resultsFrequencies =
+				EOM_REPORT_TYPE.equals(payload.reportType()) ? null : frequencies;
+		ClaudeResults campaign = live
+				? claude.batchCampaignResults(data, brief, resultsFrequencies, digests)
+				: claudeDefaults.emptyResults();
+		if (live && !digests.isEmpty() && isCampaignResultsEmpty(campaign)) {
+			log.warn("[report] job {} campaign results came back empty for {} tactic digest(s); "
+					+ "results overview / performance thoughts / recommendations will be blank", jobId, digests.size());
+			jobWarnings.add("Campaign-level results (results overview, performance thoughts, recommendations) came "
+					+ "back empty from Claude despite " + digests.size() + " tactic conclusion(s); those sections "
+					+ "will show dashes. Usually a Claude timeout or parse failure — re-running the report fixes it.");
+		}
+		return mergeTacticOverviews(campaign, conclusions);
+	}
+
+
+	/**
+	 * Writes every breakdown's Claude copy into the breakdown token map.
+	 *
+	 * @param breakdownValues the accumulating breakdown token map
+	 * @param pub             the publisher breakdown's tactics and inputs
+	 * @param cre             the creative breakdown's tactics and inputs
+	 * @param geo             the geo breakdown's tactics and inputs
+	 * @param aud             the audience breakdown's tactics and inputs
+	 * @param dev             the device breakdown's tactics and inputs
+	 * @param bullets         Claude's per-breakdown replies
+	 * @param prelim          the resolved placeholder map, source of the tactic names in warnings
+	 * @return every warning the five writers raised, in breakdown order
+	 */
+	List<String> writeBreakdownInsights(
+			Map<String, String> breakdownValues,
+			BreakdownSectionInputs<PublisherObservationInput> pub,
+			BreakdownSectionInputs<CreativeTakeawayInput> cre,
+			BreakdownSectionInputs<GeoInsightInput> geo,
+			BreakdownSectionInputs<AudienceInsightInput> aud,
+			BreakdownSectionInputs<DeviceInsightInput> dev,
+			BreakdownBullets bullets, Map<String, String> prelim) {
+		List<String> jobWarnings = new ArrayList<>();
+		jobWarnings.addAll(publisherBreakdown.writePublisherObservations(breakdownValues, pub.tactics(),
+				pub.inputs().keySet(), bullets.publisher(), prelim));
+		jobWarnings.addAll(creativeBreakdown.writeCreativeTakeaways(breakdownValues, cre.tactics(),
+				cre.inputs().keySet(), bullets.creative(), prelim));
+		jobWarnings.addAll(geoBreakdown.writeGeoInsights(breakdownValues, geo.tactics(),
+				geo.inputs().keySet(), bullets.geo(), prelim));
+		jobWarnings.addAll(audienceBreakdown.writeAudienceInsights(breakdownValues, aud.tactics(),
+				aud.inputs().keySet(), bullets.audience(), prelim));
+		jobWarnings.addAll(deviceBreakdown.writeDeviceInsights(breakdownValues, dev.tactics(),
+				dev.inputs().keySet(), bullets.device(), prelim));
+		return jobWarnings;
+	}
+
+
+	/**
+	 * Builds and finishes the deck for the Slides-from-Sheet flow.
+	 *
+	 * <p>The order here is load-bearing: tactic slides are duplicated from the master before the
+	 * breakdowns, which anchor their own copies after each tactic's main slide, and before the trim,
+	 * which would otherwise have tactic slides left to delete. The masters are removed only once every
+	 * copy has finished duplicating from them.
+	 *
+	 * @param jobId            the running job
+	 * @param payload          the generation request
+	 * @param userEmail        the caller, used to name the file
+	 * @param grid             the reviewed workbook's first tab, read for the charts
+	 * @param flatReplacements the resolved token map
+	 * @param breakdownValues  the breakdown slides' own tokens
+	 * @param tacticCount      how many tactic slots the report covers
+	 * @param userGoogleToken  the caller's Google OAuth token, or null to use the service account
+	 * @param jobWarnings      the accumulating job warnings, appended to in place
+	 */
+	void buildDeckFromSheet(
+			Long jobId, GeneratePayload payload, String userEmail, List<List<String>> grid,
+			Map<String, String> flatReplacements, Map<String, String> breakdownValues, int tacticCount,
+			String userGoogleToken, List<String> jobWarnings) {
 		jobProgress.markJobRunningAtStep(jobId, 6, "Building slide deck");
 		String fileName = fileNamer.buildFileName(
 				payload.reportType(), flatReplacements.get(CLIENT_NAME_TOKEN), userEmail);

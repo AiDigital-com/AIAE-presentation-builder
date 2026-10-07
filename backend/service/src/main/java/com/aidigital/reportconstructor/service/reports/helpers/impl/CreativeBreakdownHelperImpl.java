@@ -140,18 +140,19 @@ public class CreativeBreakdownHelperImpl implements CreativeBreakdownHelper {
 	}
 
 	/**
-	 * Asks Claude for the takeaway bullets of every tactic whose block carries data, and writes them.
-	 * Tactics with a blank block are never sent — there is nothing to observe and the copy would be
-	 * invented — and their bullets are blanked instead, as are those of a tactic Claude returned nothing
-	 * for.
+	 * Writes Claude's takeaway bullets into the token map, one set per tactic. The
+	 * call itself happens earlier; this only places what came back. A tactic with a blank block was
+	 * never sent — there is nothing to observe and the copy would be invented — and one that was sent
+	 * but answered with nothing gets blanks plus a warning, because on the slide the two look alike.
 	 *
 	 * @param values           the accumulating token → value map
-	 * @param tacticNums       the tactics that enabled the Creative analysis breakdown
-	 * @param tables           each tactic's creative block
-	 * @param flatReplacements the deck's resolved placeholder map, source of the tactic names and KPI types
-	 * @param brief            free-text campaign brief passed to Claude for industry context
-	 * @return one warning per tactic that had creative data but came back without takeaways; empty when
-	 * every tactic Claude was asked about answered
+	 * @param tactics          every tactic whose creative block is being written
+	 * @param sentTactics      the subset actually sent to Claude; a tactic outside it was
+	 *                         skipped for having no data, which is not a failure worth warning about
+	 * @param takeaways        Claude's reply per tactic, already parsed; absent or short entries render blank
+	 * @param flatReplacements the deck's resolved placeholder map, source of the tactic names
+	 * @return one warning per tactic that was sent but came back without copy; empty when every
+	 *         tactic Claude was asked about answered
 	 */
 	@Override
 	public List<String> writeCreativeTakeaways(

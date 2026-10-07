@@ -134,6 +134,7 @@ public interface SlidesProvider {
 	 * are deleted, so a deck without masters (or one already cleaned) degrades to a safe no-op.
 	 *
 	 * @param presentationId        the already-built deck to clean
+	 * @param reportType            the deck's report type, which decides the set of configured masters
 	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token; falls back to the
 	 *                              service account when blank
 	 */

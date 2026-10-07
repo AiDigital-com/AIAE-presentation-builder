@@ -1,0 +1,195 @@
+name: Rollback PROD
+
+# Restores a release that was already built and published. It deliberately does
+# NOT rebuild from an older commit: rebuilding produces different bytes from the
+# same source and would be a new, unverified artifact wearing an old version's
+# name.
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Exact application image tag to restore, e.g. 1.0.0-a1b2c3d4e5f6
+        required: true
+        type: string
+
+# Shared with the release workflow: a rollback must never run alongside a
+# release, or both would write the same GitOps files.
+concurrency:
+  group: aiae-presentation-builder-production-release
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ECR_REPOSITORY: aidigital.aiae-projects/presentation-builder-application
+
+jobs:
+  rollback:
+    name: Restore a previous PROD release
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: Guard - required environment configuration is present
+        run: |
+          set -euo pipefail
+          missing=()
+          for v in AWS_ROLE_TO_ASSUME AWS_REGION GITOPS_HELM_REPOSITORY \
+                   GITOPS_VERSIONS_REPOSITORY FRONTEND_BUCKET FRONTEND_DISTRIBUTION_ID; do
+            [ -n "${!v:-}" ] || missing+=("$v")
+          done
+          [ -n "${GITOPS_TOKEN:-}" ] || missing+=("GITOPS_TOKEN (secret)")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing GitHub environment configuration: ${missing[*]}"
+            exit 1
+          fi
+        env:
+          AWS_ROLE_TO_ASSUME: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          GITOPS_HELM_REPOSITORY: ${{ vars.GITOPS_HELM_REPOSITORY }}
+          GITOPS_VERSIONS_REPOSITORY: ${{ vars.GITOPS_VERSIONS_REPOSITORY }}
+          FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
+          FRONTEND_DISTRIBUTION_ID: ${{ vars.FRONTEND_DISTRIBUTION_ID }}
+          GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Assume AWS role via OIDC
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Verify the rollback target is complete
+        id: target
+        env:
+          FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
+          APP_TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$APP_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9a-f]{12}$ ]]; then
+            echo "::error::image_tag must look like X.Y.Z-<12 hex chars>, got '$APP_TAG'"
+            exit 1
+          fi
+          liquibase_tag="liquibase-${APP_TAG}"
+
+          # A rollback target is only valid when every piece of the release
+          # still exists. Restoring an application image without its paired
+          # migration image, or without the frontend bundle it expects, produces
+          # a deployment that has never been tested in that combination.
+          fail=0
+          aws ecr describe-images --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$APP_TAG" >/dev/null 2>&1 \
+            || { echo "::error::application image $APP_TAG is not in ECR"; fail=1; }
+          aws ecr describe-images --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$liquibase_tag" >/dev/null 2>&1 \
+            || { echo "::error::migration image $liquibase_tag is not in ECR"; fail=1; }
+          aws s3api head-object --bucket "$FRONTEND_BUCKET" \
+            --key "releases/${APP_TAG}/release.json" >/dev/null 2>&1 \
+            || { echo "::error::no release.json under releases/${APP_TAG}/ — that release never completed"; fail=1; }
+          aws s3api head-object --bucket "$FRONTEND_BUCKET" \
+            --key "releases/${APP_TAG}/index.html" >/dev/null 2>&1 \
+            || { echo "::error::no frontend bundle under releases/${APP_TAG}/"; fail=1; }
+          [ "$fail" -eq 0 ] || exit 1
+
+          echo "liquibase_tag=${liquibase_tag}" >> "$GITHUB_OUTPUT"
+          echo "deployment_revision=rollback-${APP_TAG}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+
+      - name: Report the database compatibility constraint
+        run: |
+          {
+            echo "### Rollback in progress"
+            echo ""
+            echo "> **The database is not rolled back.** Liquibase moves schema forward only."
+            echo "> This restores the application, migration and frontend artifacts of"
+            echo "> \`${{ inputs.image_tag }}\`, against whatever schema is live now."
+            echo ">"
+            echo "> That is safe only while the changesets applied since that release are"
+            echo "> backward compatible. If any of them dropped or renamed a column the"
+            echo "> restored version reads, this rollback will not fix the incident."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Restore the frontend from the release copy
+        env:
+          FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
+          FRONTEND_DISTRIBUTION_ID: ${{ vars.FRONTEND_DISTRIBUTION_ID }}
+          APP_TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          release_prefix="s3://${FRONTEND_BUCKET}/releases/${APP_TAG}"
+
+          # --exclude "releases/*" again: the live copy and the release archive
+          # share one bucket, and --delete would otherwise wipe every stored
+          # release, including the one being restored.
+          aws s3 sync "$release_prefix" "s3://${FRONTEND_BUCKET}" --delete \
+            --exclude "index.html" --exclude "releases/*" \
+            --cache-control "public,max-age=31536000,immutable"
+          aws s3 cp "${release_prefix}/index.html" "s3://${FRONTEND_BUCKET}/index.html" \
+            --cache-control "no-cache,must-revalidate"
+
+          aws cloudfront create-invalidation \
+            --distribution-id "${FRONTEND_DISTRIBUTION_ID}" \
+            --paths "/index.html" "/" >/dev/null
+
+      - name: Repin the restored image tags in AIAE-helm-versions
+        id: versions
+        env:
+          GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+          GITOPS_VERSIONS_REPOSITORY: ${{ vars.GITOPS_VERSIONS_REPOSITORY }}
+          APP_TAG: ${{ inputs.image_tag }}
+          LIQUIBASE_TAG: ${{ steps.target.outputs.liquibase_tag }}
+          DEPLOYMENT_REVISION: ${{ steps.target.outputs.deployment_revision }}
+        run: |
+          set -euo pipefail
+          cat > /tmp/write-versions.sh <<'MUTATE'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          mkdir -p aiae-presentation-builder-api
+          cat > aiae-presentation-builder-api/values.yaml <<EOF
+          image:
+            tag: "${APP_TAG}"
+            pullPolicy: IfNotPresent
+          liquibase:
+            image:
+              tag: "${LIQUIBASE_TAG}"
+              pullPolicy: IfNotPresent
+          deploymentRevision: ${DEPLOYMENT_REVISION}
+          EOF
+          MUTATE
+          chmod +x /tmp/write-versions.sh
+          sha="$(bash scripts/gitops-publish.sh "${GITOPS_VERSIONS_REPOSITORY}" main \
+            "[aiae-presentation-builder-api][rollback][${APP_TAG}]" /tmp/write-versions.sh)"
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Pin the versions revision on the AIAE-helm prod branch
+        env:
+          GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+          GITOPS_HELM_REPOSITORY: ${{ vars.GITOPS_HELM_REPOSITORY }}
+          VERSIONS_SHA: ${{ steps.versions.outputs.sha }}
+          APP_TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          cat > /tmp/pin-versions.sh <<'MUTATE'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          yq -i ".source.presentationBuilderVersionsRevision = \"${VERSIONS_SHA}\"" aiae/values.yaml
+          MUTATE
+          chmod +x /tmp/pin-versions.sh
+          bash scripts/gitops-publish.sh "${GITOPS_HELM_REPOSITORY}" prod \
+            "[aiae-presentation-builder-api][prod][rollback][${APP_TAG}]" /tmp/pin-versions.sh >/dev/null
+
+      - name: Summary
+        run: |
+          {
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Restored image | \`${{ inputs.image_tag }}\` |"
+            echo "| Restored migration image | \`${{ steps.target.outputs.liquibase_tag }}\` |"
+            echo "| Versions revision | \`${{ steps.versions.outputs.sha }}\` |"
+            echo ""
+            echo "Nothing was rebuilt — the existing artifacts were repinned."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -33,10 +33,16 @@ class MediaPlanTacticExtractorTest {
 
 	@Test
 	void extract_capturesGroupLabelAndRowContext() {
-		// Given: a plan with a section label above the tactic and targeting on the tactic row
+		// Given: a plan with a section label above the tactic and targeting on the tactic row.
+		// The label sits OUTSIDE the Media column, which is what makes it a label: a section row is
+		// recognised by an EMPTY Media cell plus text elsewhere (see MediaPlanTacticExtractorImpl's
+		// class javadoc, and extract_keepsTacticBlocksAfterProductSubtotalRows below, where "JARS"
+		// is laid out the same way). A non-empty Media cell means the row claims to be a tactic, and
+		// an unrecognised one is skipped rather than promoted to a group label — otherwise every
+		// sub-total and added-value row would become the context of the tactics beneath it.
 		List<List<String>> plan = List.of(
 				List.of("Media", "Comments", "Targeting"),
-				List.of("Grapevine Vintage Railroad", "", ""),
+				List.of("", "Grapevine Vintage Railroad", ""),
 				List.of("Google SEM", "Even-paced", "Keyword-based")
 		);
 

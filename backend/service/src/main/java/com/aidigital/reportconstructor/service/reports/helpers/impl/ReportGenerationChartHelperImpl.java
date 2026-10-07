@@ -77,7 +77,9 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 			return List.of("Charts skipped — could not determine presentation id from " + slideUrl);
 		}
 
-		int tacticCount = Math.clamp(effectiveTactics.effectiveTacticCount(payload.sheetRows(), payload.lineItemMapping()), 1, MAX_TACTICS);
+		int tacticCount = Math.clamp(
+				effectiveTactics.effectiveTacticCount(payload.sheetRows(), payload.lineItemMapping()),
+				1, MAX_TACTICS);
 		String campaignTitle = campaignTitle(flatReplacements);
 
 		Map<Integer, String> distNames = new LinkedHashMap<>();
@@ -132,7 +134,8 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 		// KPI types drive whether each block's single metric column is read as clicks or completions.
 		SheetChartData chartData = sheetChartData.read(grid, count, kpiTypes);
 
-		log.info("[charts] sheet flow: presentation={}, tactics={}, gridRows={}, dailyPivotSizes={}, monthlyPivotSizes={}",
+		log.info("[charts] sheet flow: presentation={}, tactics={}, gridRows={},"
+				+ " dailyPivotSizes={}, monthlyPivotSizes={}",
 				presentationId, count, grid == null ? 0 : grid.size(),
 				pivotSizes(chartData.dailyPivots()), pivotSizes(chartData.monthlyPivots()));
 
@@ -210,7 +213,9 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 
 	@Override
 	public void trimUnusedTactics(String slideUrl, GeneratePayload payload, String userGoogleToken) {
-		int tacticCount = Math.clamp(effectiveTactics.effectiveTacticCount(payload.sheetRows(), payload.lineItemMapping()), 1, MAX_TACTICS);
+		int tacticCount = Math.clamp(
+				effectiveTactics.effectiveTacticCount(payload.sheetRows(), payload.lineItemMapping()),
+				1, MAX_TACTICS);
 		trimUnusedTactics(slideUrl, tacticCount, payload.reportType(), userGoogleToken);
 	}
 
@@ -454,6 +459,12 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 		return jobs;
 	}
 
+	/**
+	 * Pulls the presentation id out of a Google Slides URL.
+	 *
+	 * @param slideUrl the deck URL
+	 * @return the presentation id, or {@code null} when the URL is null or carries no id
+	 */
 	String extractPresentationId(String slideUrl) {
 		if (slideUrl == null) {
 			return null;
@@ -462,6 +473,13 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 		return m.find() ? m.group(1) : null;
 	}
 
+	/**
+	 * Returns the first value that carries real content, treating an em dash as empty because that is
+	 * what the template leaves in a cell the user did not fill.
+	 *
+	 * @param values the candidates in priority order
+	 * @return the first trimmed non-blank value, or an empty string when every candidate is blank
+	 */
 	String firstNonBlank(String... values) {
 		for (String v : values) {
 			if (v != null && !v.isBlank() && !"—".equals(v.trim())) {

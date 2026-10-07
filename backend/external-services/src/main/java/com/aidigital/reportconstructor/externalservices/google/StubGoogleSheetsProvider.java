@@ -57,6 +57,12 @@ public class StubGoogleSheetsProvider implements GoogleSheetsProvider {
 		);
 	}
 
+	/**
+	 * Picks the fixture that stands in for a given tab.
+	 *
+	 * @param tab the tab name the caller asked for
+	 * @return the fixture rows for that tab, or the proposal fixture when the name is unknown
+	 */
 	List<List<String>> sampleRowsFor(String tab) {
 
 		return switch (tab) {
@@ -68,6 +74,11 @@ public class StubGoogleSheetsProvider implements GoogleSheetsProvider {
 		};
 	}
 
+	/**
+	 * Fixture standing in for the Media Plan / proposal tab.
+	 *
+	 * @return the proposal rows
+	 */
 	List<List<String>> proposalFixture() {
 
 		List<List<String>> rows = new ArrayList<>();
@@ -81,6 +92,11 @@ public class StubGoogleSheetsProvider implements GoogleSheetsProvider {
 		return rows;
 	}
 
+	/**
+	 * Fixture standing in for the BigQuery delivery export tab.
+	 *
+	 * @return the delivery rows
+	 */
 	List<List<String>> bigQueryFixture() {
 
 		List<List<String>> rows = new ArrayList<>();
@@ -96,6 +112,11 @@ public class StubGoogleSheetsProvider implements GoogleSheetsProvider {
 		return rows;
 	}
 
+	/**
+	 * Fixture standing in for the Audience &amp; Inventory tab.
+	 *
+	 * @return the audience rows
+	 */
 	List<List<String>> audienceFixture() {
 
 		return List.of(
@@ -105,6 +126,11 @@ public class StubGoogleSheetsProvider implements GoogleSheetsProvider {
 		);
 	}
 
+	/**
+	 * Fixture standing in for the Estimates tab, source of the planned KPIs.
+	 *
+	 * @return the estimates rows
+	 */
 	List<List<String>> estimatesFixture() {
 
 		return List.of(
@@ -114,6 +140,11 @@ public class StubGoogleSheetsProvider implements GoogleSheetsProvider {
 		);
 	}
 
+	/**
+	 * Fixture standing in for the Geo tab.
+	 *
+	 * @return the geo rows
+	 */
 	List<List<String>> geoFixture() {
 
 		return List.of(

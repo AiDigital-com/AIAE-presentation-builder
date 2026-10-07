@@ -1,0 +1,280 @@
+name: Deploy DEV
+
+# Triggered by a push to a numbered release branch, but the job only runs when
+# that branch equals the DEV_DEPLOY_BRANCH environment variable. Exactly one
+# branch may auto-deploy to the shared DEV environment; pushing 1.0.1 while
+# DEV_DEPLOY_BRANCH is 1.0.0 must be a no-op, not a surprise deployment.
+on:
+  push:
+    branches:
+      - "[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+
+# Serializes this application's own runs. It deliberately does NOT serialize
+# against other AIAE applications: GitHub concurrency groups cannot span
+# repositories. Cross-application safety on the shared GitOps branches comes
+# from the optimistic publication loop in scripts/gitops-publish.sh.
+concurrency:
+  group: aiae-presentation-builder-dev
+  cancel-in-progress: false
+
+permissions:
+  id-token: write   # required to mint the GitHub OIDC token
+  contents: read
+
+env:
+  ECR_REPOSITORY: aidigital.aiae-projects/presentation-builder-application
+  CHART_NAME: aiae-presentation-builder-api
+
+jobs:
+  deploy:
+    name: Build and deploy to DEV
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Guard - branch must be the configured DEV deploy branch
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_NAME}" != "${DEV_DEPLOY_BRANCH}" ]; then
+            echo "::notice::${GITHUB_REF_NAME} is not the DEV deploy branch (${DEV_DEPLOY_BRANCH}); nothing to do."
+            echo "skip=true" >> "$GITHUB_ENV"
+          fi
+        env:
+          DEV_DEPLOY_BRANCH: ${{ vars.DEV_DEPLOY_BRANCH }}
+
+      - name: Guard - required environment configuration is present
+        if: env.skip != 'true'
+        run: |
+          set -euo pipefail
+          missing=()
+          for v in AWS_ROLE_TO_ASSUME AWS_REGION APP_CONFIG_SECRET_NAME \
+                   GITOPS_HELM_REPOSITORY GITOPS_VERSIONS_REPOSITORY \
+                   DEV_DEPLOY_BRANCH FRONTEND_BUCKET FRONTEND_DISTRIBUTION_ID; do
+            [ -n "${!v:-}" ] || missing+=("$v")
+          done
+          [ -n "${GITOPS_TOKEN:-}" ] || missing+=("GITOPS_TOKEN (secret)")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing GitHub environment configuration: ${missing[*]}"
+            exit 1
+          fi
+        env:
+          AWS_ROLE_TO_ASSUME: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          APP_CONFIG_SECRET_NAME: ${{ vars.APP_CONFIG_SECRET_NAME }}
+          GITOPS_HELM_REPOSITORY: ${{ vars.GITOPS_HELM_REPOSITORY }}
+          GITOPS_VERSIONS_REPOSITORY: ${{ vars.GITOPS_VERSIONS_REPOSITORY }}
+          DEV_DEPLOY_BRANCH: ${{ vars.DEV_DEPLOY_BRANCH }}
+          FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
+          FRONTEND_DISTRIBUTION_ID: ${{ vars.FRONTEND_DISTRIBUTION_ID }}
+          GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+
+      - name: Checkout
+        if: env.skip != 'true'
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Resolve release identity
+        if: env.skip != 'true'
+        id: identity
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME}"
+          short_sha="${GITHUB_SHA:0:12}"
+          {
+            echo "version=${version}"
+            echo "short_sha=${short_sha}"
+            echo "app_tag=${version}-snapshot-${short_sha}"
+            echo "liquibase_tag=liquibase-${version}-snapshot-${short_sha}"
+            echo "deployment_revision=${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Assume AWS role via OIDC
+        if: env.skip != 'true'
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        if: env.skip != 'true'
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2
+
+      - name: Determine whether this commit was already published
+        if: env.skip != 'true'
+        id: existing
+        env:
+          APP_TAG: ${{ steps.identity.outputs.app_tag }}
+          LIQUIBASE_TAG: ${{ steps.identity.outputs.liquibase_tag }}
+        run: |
+          set -euo pipefail
+          # ECR tags are immutable, so a re-run for an already built commit must
+          # reuse the existing artifact rather than fail on PutImage. Both halves
+          # of the pair must exist; a lone application image is not a deployable
+          # release, because the schema it expects would never have been applied.
+          app_exists=false
+          liquibase_exists=false
+          aws ecr describe-images --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$APP_TAG" >/dev/null 2>&1 && app_exists=true
+          aws ecr describe-images --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$LIQUIBASE_TAG" >/dev/null 2>&1 && liquibase_exists=true
+          if [ "$app_exists" = true ] && [ "$liquibase_exists" = true ]; then
+            echo "::notice::Reusing existing immutable images for ${APP_TAG}"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        if: env.skip != 'true' && steps.existing.outputs.build == 'true'
+        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3
+
+      - name: Build and push the application image
+        if: env.skip != 'true' && steps.existing.outputs.build == 'true'
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.identity.outputs.app_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push the Liquibase migration image
+        if: env.skip != 'true' && steps.existing.outputs.build == 'true'
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6
+        with:
+          context: .
+          file: backend/Liquibase.Dockerfile
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.identity.outputs.liquibase_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Set up Node
+        if: env.skip != 'true'
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build the frontend
+        if: env.skip != 'true'
+        env:
+          APP_CONFIG_SECRET_NAME: ${{ vars.APP_CONFIG_SECRET_NAME }}
+        run: |
+          set -euo pipefail
+          # The Clerk publishable key is compiled into the bundle by
+          # vite.config.ts `define`, so it must be present at BUILD time. It is a
+          # public value once shipped to the browser; it is read from Secrets
+          # Manager only so the SPA and the running backend agree on the Clerk
+          # instance, not because it is a secret.
+          publishable_key="$(aws secretsmanager get-secret-value \
+            --secret-id "${APP_CONFIG_SECRET_NAME}" \
+            --query SecretString --output text | jq -r '.CLERK_PUBLISHABLE_KEY')"
+          [ -n "${publishable_key}" ] && [ "${publishable_key}" != "null" ] \
+            || { echo "::error::CLERK_PUBLISHABLE_KEY is absent from ${APP_CONFIG_SECRET_NAME}"; exit 1; }
+          cd frontend
+          npm ci
+          npm run generate:api
+          VITE_CLERK_PUBLISHABLE_KEY="${publishable_key}" npm run build
+          test -f dist/index.html || { echo "::error::frontend build produced no dist/index.html"; exit 1; }
+
+      - name: Publish the frontend to S3 and invalidate CloudFront
+        if: env.skip != 'true'
+        env:
+          FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
+          FRONTEND_DISTRIBUTION_ID: ${{ vars.FRONTEND_DISTRIBUTION_ID }}
+        run: |
+          set -euo pipefail
+          # Content-hashed assets are immutable and cached for a year; index.html
+          # must revalidate every request or the browser keeps loading the old
+          # bundle's asset names after a deploy. Assets are uploaded BEFORE
+          # index.html so the new index never references a not-yet-uploaded file.
+          aws s3 sync frontend/dist "s3://${FRONTEND_BUCKET}" \
+            --delete --exclude "index.html" \
+            --cache-control "public,max-age=31536000,immutable"
+          aws s3 cp frontend/dist/index.html "s3://${FRONTEND_BUCKET}/index.html" \
+            --cache-control "no-cache,must-revalidate"
+          aws cloudfront create-invalidation \
+            --distribution-id "${FRONTEND_DISTRIBUTION_ID}" \
+            --paths "/index.html" "/" >/dev/null
+
+      - name: Publish image tags to AIAE-helm-versions
+        if: env.skip != 'true'
+        id: versions
+        env:
+          GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+          GITOPS_VERSIONS_REPOSITORY: ${{ vars.GITOPS_VERSIONS_REPOSITORY }}
+          APP_TAG: ${{ steps.identity.outputs.app_tag }}
+          LIQUIBASE_TAG: ${{ steps.identity.outputs.liquibase_tag }}
+          DEPLOYMENT_REVISION: ${{ steps.identity.outputs.deployment_revision }}
+        run: |
+          set -euo pipefail
+          cat > /tmp/write-versions.sh <<'MUTATE'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          # Touches ONLY this application's file. Other applications' entries in
+          # the shared repository are never read, rewritten, or removed.
+          mkdir -p aiae-presentation-builder-api
+          cat > aiae-presentation-builder-api/values.yaml <<EOF
+          image:
+            tag: "${APP_TAG}"
+            pullPolicy: IfNotPresent
+          liquibase:
+            image:
+              tag: "${LIQUIBASE_TAG}"
+              pullPolicy: IfNotPresent
+          deploymentRevision: ${DEPLOYMENT_REVISION}
+          EOF
+          MUTATE
+          chmod +x /tmp/write-versions.sh
+          versions_sha="$(bash scripts/gitops-publish.sh \
+            "${GITOPS_VERSIONS_REPOSITORY}" main \
+            "[${CHART_NAME}][${APP_TAG}]" \
+            /tmp/write-versions.sh)"
+          echo "sha=${versions_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Pin the versions revision on the AIAE-helm dev branch
+        if: env.skip != 'true'
+        env:
+          GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+          GITOPS_HELM_REPOSITORY: ${{ vars.GITOPS_HELM_REPOSITORY }}
+          VERSIONS_SHA: ${{ steps.versions.outputs.sha }}
+          APP_TAG: ${{ steps.identity.outputs.app_tag }}
+        run: |
+          set -euo pipefail
+          cat > /tmp/pin-versions.sh <<'MUTATE'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          # Updates exactly one field. Rewriting the whole services map from a
+          # stale checkout is how one application reverts another's deployment.
+          # presentationBuilderVersionsRevision is this application's own pin:
+          # source.chartRevision is shared with Operational Hub and raising it
+          # would re-sync a live application that was never tested against it.
+          yq -i ".source.presentationBuilderVersionsRevision = \"${VERSIONS_SHA}\"" aiae/values.yaml
+          MUTATE
+          chmod +x /tmp/pin-versions.sh
+          bash scripts/gitops-publish.sh \
+            "${GITOPS_HELM_REPOSITORY}" dev \
+            "[${CHART_NAME}][dev][${APP_TAG}]" \
+            /tmp/pin-versions.sh >/dev/null
+
+      - name: Summary
+        if: env.skip != 'true'
+        run: |
+          {
+            echo "### DEV deployment published"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Source revision | \`${GITHUB_SHA}\` |"
+            echo "| Application image | \`${{ steps.identity.outputs.app_tag }}\` |"
+            echo "| Migration image | \`${{ steps.identity.outputs.liquibase_tag }}\` |"
+            echo "| Images rebuilt | ${{ steps.existing.outputs.build }} |"
+            echo "| Versions revision | \`${{ steps.versions.outputs.sha }}\` |"
+            echo "| Frontend | https://d1jhayzxfc8kbc.cloudfront.net |"
+            echo ""
+            echo "Argo CD reconciles from here; a green job is not yet a running deployment."
+          } >> "$GITHUB_STEP_SUMMARY"

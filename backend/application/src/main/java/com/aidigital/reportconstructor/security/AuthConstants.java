@@ -39,6 +39,15 @@ public final class AuthConstants {
 			"/sign-up",
 			"/sign-up/**",
 			"/actuator/health",
+			// The health GROUPS, not just /actuator/health. Kubernetes startup,
+			// readiness and liveness probes request /actuator/health/readiness
+			// and /actuator/health/liveness, and the ALB target group health
+			// check requests the readiness path. Those are sub-paths, so
+			// "/actuator/health" alone does not match them and they fall through
+			// to PROTECTED_PATHS' "/actuator/**", answering 401: probes never
+			// pass, the pod never turns Ready, and every rollout stalls. Replit
+			// never ran probes, which is why this went unnoticed there.
+			"/actuator/health/**",
 			"/actuator/prometheus",
 			"/api/v1/specs/**",
 			"/swagger-ui/**",

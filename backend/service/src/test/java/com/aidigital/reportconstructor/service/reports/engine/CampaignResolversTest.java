@@ -22,10 +22,12 @@ import static org.mockito.Mockito.spy;
 class CampaignResolversTest {
 
 	private CampaignResolvers resolvers;
+	private CampaignPacingResolvers pacingResolvers;
 
 	@BeforeEach
 	void setUp() {
 		resolvers = ReportsEngineTestSupport.campaignResolvers();
+		pacingResolvers = ReportsEngineTestSupport.campaignPacingResolvers();
 	}
 
 	@Test
@@ -593,7 +595,7 @@ class CampaignResolversTest {
 				Map.of(1, planImpsTactic(250_000d)), null);
 
 		// When:
-		Resolved r = resolvers.resolveTotalImpsPace(List.of(), List.of(), data);
+		Resolved r = pacingResolvers.resolveTotalImpsPace(List.of(), List.of(), data);
 
 		// Then:
 		assertThat(r.value()).isEqualTo("+2%");
@@ -609,7 +611,7 @@ class CampaignResolversTest {
 				Map.of(1, planImpsTactic(250_000d)), null);
 
 		// When:
-		Resolved r = resolvers.resolveTotalImpsPace(List.of(), List.of(), data);
+		Resolved r = pacingResolvers.resolveTotalImpsPace(List.of(), List.of(), data);
 
 		// Then: a shortfall reads as the share of plan delivered, never as a negative number
 		assertThat(r.value()).isEqualTo("98%");
@@ -624,7 +626,7 @@ class CampaignResolversTest {
 				Map.of(1, planImpsTactic(250_000d)), null);
 
 		// When:
-		Resolved r = resolvers.resolveTotalImpsPace(List.of(), List.of(), data);
+		Resolved r = pacingResolvers.resolveTotalImpsPace(List.of(), List.of(), data);
 
 		// Then:
 		assertThat(r.value()).isEqualTo("100%");

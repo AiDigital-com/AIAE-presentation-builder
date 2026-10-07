@@ -135,13 +135,15 @@ public class RealGoogleSheetsProvider implements GoogleSheetsProvider {
 				hint = asUser
 						? "Your Google account can't open this spreadsheet — make sure you're signed in with an " +
                           "account that has at least Viewer access, or check the link"
-						: "The report's Google service account can't open this spreadsheet — share it with the service" +
+						: "The report's Google service account can't open this spreadsheet — share it with the " +
+								"service" +
                           " account (Viewer access), or check the link";
 			} else {
 				hint = "Google Sheets request failed";
 			}
 			throw new AppException(ErrorReason.C000,
-					hint + (googleMsg != null && !googleMsg.isBlank() ? " (" + googleMsg + ")" : "") + " [HTTP " + code + "]");
+					hint + (googleMsg != null && !googleMsg.isBlank() ? " (" + googleMsg + ")" : "")
+							+ " [HTTP " + code + "]");
 		} catch (IOException ex) {
 			log.error("[sheets] fetch failed for {} tab={}", sheetId, tab, ex);
 			throw new AppException(ErrorReason.C000, "Google Sheets fetch failed: " + ex.getMessage());

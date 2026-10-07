@@ -182,7 +182,7 @@ describe("ReportConstructorPage — resuming a draft", () => {
         // Then: the deck cannot be generated without it, so it is asked for here — once the sheet
         // read has landed and confirmed the workbook really carries no brief
         expect(await screen.findByText(/this sheet has no campaign brief/i)).toBeTruthy();
-        const confirm = screen.getByRole("button", { name: /confirm/i }) as HTMLButtonElement;
+        const confirm = screen.getByRole("button", { name: "Confirm — it's correct" }) as HTMLButtonElement;
         expect(confirm.disabled).toBe(true);
 
         // When: the user types one
@@ -190,9 +190,11 @@ describe("ReportConstructorPage — resuming a draft", () => {
             target: { value: "Acme summer awareness push" },
         });
 
-        // Then: the gate lifts and the field stays put rather than vanishing mid-typing
-        expect((screen.getByRole("button", { name: /confirm/i }) as HTMLButtonElement).disabled).toBe(false);
-        expect(screen.getByText(/this sheet has no campaign brief/i)).toBeTruthy();
+        // Then: the gate lifts and the field stays put rather than vanishing mid-typing. The field
+        // is what must survive — the banner's heading deliberately stops saying the brief is
+        // missing once one has been typed, because at that point it no longer is.
+        expect((screen.getByRole("button", { name: "Confirm — it's correct" }) as HTMLButtonElement).disabled).toBe(false);
+        expect(screen.getByPlaceholderText(/describe the campaign/i)).toBeTruthy();
     });
 
     it("should not ask for a brief when the workbook supplied one test", async () => {
@@ -208,7 +210,7 @@ describe("ReportConstructorPage — resuming a draft", () => {
 
         // Then
         expect(screen.queryByText(/this sheet has no campaign brief/i)).toBeNull();
-        expect((screen.getByRole("button", { name: /confirm/i }) as HTMLButtonElement).disabled).toBe(false);
+        expect((screen.getByRole("button", { name: "Confirm — it's correct" }) as HTMLButtonElement).disabled).toBe(false);
     });
 
     it("should take the brief from the sheet when the draft was saved before it was filled test", async () => {
@@ -229,7 +231,7 @@ describe("ReportConstructorPage — resuming a draft", () => {
         // Then: the live cell — not the stale draft — decides, so nothing is asked for and Confirm opens
         expect(screen.queryByText(/this sheet has no campaign brief/i)).toBeNull();
         await waitFor(() =>
-            expect((screen.getByRole("button", { name: /confirm/i }) as HTMLButtonElement).disabled).toBe(
+            expect((screen.getByRole("button", { name: "Confirm — it's correct" }) as HTMLButtonElement).disabled).toBe(
                 false
             )
         );
@@ -282,7 +284,7 @@ describe("ReportConstructorPage — adopting a filled sheet", () => {
         // Given: the user opens the card and pastes a workbook link
         goToDataInputs();
         fireEvent.click(screen.getByRole("button", { name: /use my sheet/i }));
-        fireEvent.change(screen.getByPlaceholderText("https://docs.google.com/spreadsheets/…"), {
+        fireEvent.change(screen.getByLabelText("Link to the sheet you filled in yourself"), {
             target: { value: "https://docs.google.com/spreadsheets/d/abc/edit" },
         });
 
@@ -301,7 +303,7 @@ describe("ReportConstructorPage — adopting a filled sheet", () => {
         // Given: an adoption that succeeds
         goToDataInputs();
         fireEvent.click(screen.getByRole("button", { name: /use my sheet/i }));
-        fireEvent.change(screen.getByPlaceholderText("https://docs.google.com/spreadsheets/…"), {
+        fireEvent.change(screen.getByLabelText("Link to the sheet you filled in yourself"), {
             target: { value: "https://docs.google.com/spreadsheets/d/abc/edit" },
         });
         fireEvent.click(screen.getByRole("button", { name: /use this sheet/i }));
@@ -313,11 +315,11 @@ describe("ReportConstructorPage — adopting a filled sheet", () => {
         expect(navigate).toHaveBeenCalledWith("/reports/new?resume=77");
     });
 
-    it("should surface the server's reason when the sheet is rejected test", () => {
+    it("should surface the server's reason when the sheet is rejected test", async () => {
         // Given: a link the server will not accept
         goToDataInputs();
         fireEvent.click(screen.getByRole("button", { name: /use my sheet/i }));
-        fireEvent.change(screen.getByPlaceholderText("https://docs.google.com/spreadsheets/…"), {
+        fireEvent.change(screen.getByLabelText("Link to the sheet you filled in yourself"), {
             target: { value: "https://docs.google.com/spreadsheets/d/abc/edit" },
         });
         fireEvent.click(screen.getByRole("button", { name: /use this sheet/i }));
@@ -327,8 +329,11 @@ describe("ReportConstructorPage — adopting a filled sheet", () => {
             new Error("That sheet doesn't look like a report workbook — no tactics found on its first tab")
         );
 
-        // Then: the user reads that, not a generic failure, and stays on the form
-        expect(screen.getByText(/no tactics found/i)).toBeTruthy();
+        // Then: the user reads that, not a generic failure, and stays on the form. Awaited because
+        // the reason arrives as a toast, and onError is invoked straight off the captured mutation
+        // options rather than through an event, so React has not flushed that state by the time a
+        // synchronous query would run.
+        expect(await screen.findByText(/no tactics found/i)).toBeTruthy();
         expect(navigate).not.toHaveBeenCalled();
     });
 
@@ -336,7 +341,7 @@ describe("ReportConstructorPage — adopting a filled sheet", () => {
         // Given: a pasted link to something else
         goToDataInputs();
         fireEvent.click(screen.getByRole("button", { name: /use my sheet/i }));
-        fireEvent.change(screen.getByPlaceholderText("https://docs.google.com/spreadsheets/…"), {
+        fireEvent.change(screen.getByLabelText("Link to the sheet you filled in yourself"), {
             target: { value: "https://example.com/my-report" },
         });
 

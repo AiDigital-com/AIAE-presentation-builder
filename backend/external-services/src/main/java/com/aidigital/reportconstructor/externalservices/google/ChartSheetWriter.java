@@ -189,10 +189,12 @@ public class ChartSheetWriter {
 		if (noCdCols) {
 			int sid = sheetIdForTab(sheets, spreadsheetId, tabName);
 			List<com.google.api.services.sheets.v4.model.Request> del = List.of(
-					new com.google.api.services.sheets.v4.model.Request().setDeleteDimension(new DeleteDimensionRequest()
-							.setRange(new DimensionRange().setSheetId(sid).setDimension("COLUMNS").setStartIndex(3).setEndIndex(4))),
-					new com.google.api.services.sheets.v4.model.Request().setDeleteDimension(new DeleteDimensionRequest()
-							.setRange(new DimensionRange().setSheetId(sid).setDimension("COLUMNS").setStartIndex(2).setEndIndex(3)))
+					new com.google.api.services.sheets.v4.model.Request().setDeleteDimension(
+							new DeleteDimensionRequest().setRange(new DimensionRange().setSheetId(sid)
+									.setDimension("COLUMNS").setStartIndex(3).setEndIndex(4))),
+					new com.google.api.services.sheets.v4.model.Request().setDeleteDimension(
+							new DeleteDimensionRequest().setRange(new DimensionRange().setSheetId(sid)
+									.setDimension("COLUMNS").setStartIndex(2).setEndIndex(3)))
 			);
 			sheets.spreadsheets().batchUpdate(spreadsheetId,
 					new BatchUpdateSpreadsheetRequest().setRequests(del)).execute();
@@ -420,6 +422,15 @@ public class ChartSheetWriter {
 		return vr.getValues() == null ? List.of() : vr.getValues();
 	}
 
+	/**
+	 * Resolves a tab's numeric sheet id, which the batchUpdate requests address it by.
+	 *
+	 * @param sheets        the Sheets client
+	 * @param spreadsheetId the workbook
+	 * @param tabName       the tab's visible title
+	 * @return the tab's sheet id, or {@code -1} when the workbook has no such tab
+	 * @throws IOException when the metadata request fails
+	 */
 	int sheetIdForTab(Sheets sheets, String spreadsheetId, String tabName) throws IOException {
 		Spreadsheet ss = sheets.spreadsheets().get(spreadsheetId)
 				.setIncludeGridData(false)

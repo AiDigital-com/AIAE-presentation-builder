@@ -1,0 +1,116 @@
+name: CI
+
+# Protects every branch and every pull request. The DEV deployment workflow
+# builds images without running tests, exactly as the other AIAE applications
+# do, so this is the job that actually guards a revision before it ships.
+on:
+  # No branch filter: every branch, which is the point. An empty
+  # `branches-ignore: []` was here first and silently disabled the whole
+  # workflow — the schema requires at least one entry, so the file failed to
+  # parse, GitHub never registered it, and neither pushes nor pull requests
+  # produced a single check.
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  MAVEN_CLI_OPTS: "--batch-mode -U"
+
+jobs:
+  backend:
+    name: Backend - tests, Checkstyle, JaCoCo
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Run tests, Checkstyle and the coverage gate
+        run: |
+          set -euo pipefail
+          # `verify`, not `test`: Checkstyle and the JaCoCo gate are bound to the
+          # verify phase, and running only the tests would silently skip both.
+          #
+          # -Dgit-commit-id.skip=true because the plugin needs a .git directory
+          # that actions/checkout provides but a shallow or export-based checkout
+          # may not, and the commit it stamps is irrelevant to a CI run.
+          #
+          # LiquibaseChangelogSmokeTest runs here and is the point of running it:
+          # it applies db.changelog-master.xml to a real PostgreSQL through
+          # Testcontainers, which is what the Argo CD PreSync Job does on every
+          # deployment. A broken changelog fails here instead of stalling the
+          # rollout. Docker is native on ubuntu-latest; it is only on a developer
+          # Mac with Docker Desktop that it needs DOCKER_HOST pointing at
+          # ~/.docker/run/docker.sock.
+          mvn -f backend/pom.xml ${MAVEN_CLI_OPTS} -T 1C \
+            -Dgit-commit-id.skip=true -Dskip.frontend=true clean verify
+
+      - name: Upload test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backend-reports
+          path: |
+            backend/**/target/surefire-reports/**
+            backend/**/target/site/jacoco/**
+          if-no-files-found: ignore
+
+  frontend:
+    name: Frontend - codegen, typecheck, tests, build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install, generate API, typecheck, test, build
+        run: |
+          set -euo pipefail
+          cd frontend
+          npm ci
+          # Regenerated rather than trusted: the committed schema.d.ts is derived
+          # from backend openapi.yaml, and a spec change that was not regenerated
+          # has to fail the typecheck below rather than reach a deployment.
+          npm run generate:api
+          npm run typecheck
+          npm test
+          # A real production build, because vite.config.ts requires the Clerk
+          # publishable key at build time. The value here is a placeholder: the
+          # key is public once compiled, and the deployment workflow supplies the
+          # environment's real one from Secrets Manager.
+          VITE_CLERK_PUBLISHABLE_KEY=pk_test_ci_placeholder npm run build
+          test -f dist/index.html || { echo "::error::frontend build produced no dist/index.html"; exit 1; }
+
+      - name: Verify the generated API client is committed up to date
+        run: |
+          set -euo pipefail
+          cd frontend
+          # generate:api above rewrote the file. A diff here means openapi.yaml
+          # moved without the client being regenerated, which typechecks today
+          # and breaks at runtime on the first field that no longer exists.
+          if ! git diff --quiet -- src/shared/api/generated/schema.d.ts; then
+            echo "::error::src/shared/api/generated/schema.d.ts is out of date; run 'npm run generate:api' and commit the result"
+            git diff -- src/shared/api/generated/schema.d.ts
+            exit 1
+          fi

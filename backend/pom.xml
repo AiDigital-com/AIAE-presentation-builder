@@ -68,7 +68,19 @@
 		<!-- Quality gates -->
 		<jacoco.version>0.8.12</jacoco.version>
 		<checkstyle.version>10.21.0</checkstyle.version>
-		<!-- JaCoCo gate. Phased — see testing-policy.md. -->
+		<!-- JaCoCo gate. This is the target every module is held to, and domain and
+			 event-logging-to-db-feature already meet it. Three modules do not, and each
+			 declares its own floor in its own pom with the number it actually sits at —
+			 a ratchet, so their coverage cannot slide, rather than a blanket relaxation
+			 that would also stop protecting the two modules that are fine.
+
+			 Those declarations are the debt list. Deleting one means that module now
+			 meets this gate; lowering one should be as visible as it was to add it.
+
+			 Until October 2026 this and the -Phandoff profile both read 0.80/0.70, which
+			 made the profile a no-op and meant `mvn verify` had never passed on this
+			 project. (testing-policy.md, named by the previous comment here, does not
+			 exist in this repository.) -->
 		<jacoco.line.coverage>0.80</jacoco.line.coverage>
 		<jacoco.branch.coverage>0.70</jacoco.branch.coverage>
 
@@ -416,16 +428,21 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 			</plugin>
-			<plugin>
-				<groupId>io.github.git-commit-id</groupId>
-				<artifactId>git-commit-id-maven-plugin</artifactId>
-			</plugin>
+			<!-- git-commit-id is deliberately NOT here. Declared in <build><plugins>
+				 it ran for every module and wrote a git.properties into each one, so
+				 the executable jar ended up carrying seven copies — one in
+				 BOOT-INF/classes and one inside each module jar in BOOT-INF/lib —
+				 and which one GitVersionServiceImpl read depended on classpath
+				 order. It is bound in application/pom.xml instead, the module whose
+				 classes directory becomes BOOT-INF/classes. Configuration stays in
+				 this file's pluginManagement above. -->
 		</plugins>
 	</build>
 
-	<!-- Phased testing — see testing-policy.md.
-		 Default = Phase 1/2 gate (0.00 -> ratcheted up over sprints).
-		 -Phandoff = Phase 3 strict gates: >=0.80 line, >=0.70 branch. -->
+	<!-- Kept for compatibility with the handoff checklist. It sets the same numbers
+		 <properties> above already carries, so it changes nothing today; a module that
+		 declares its own floor overrides both, which is why the floor lives in that
+		 module's pom where it is visible rather than here. -->
 	<profiles>
 		<profile>
 			<id>handoff</id>

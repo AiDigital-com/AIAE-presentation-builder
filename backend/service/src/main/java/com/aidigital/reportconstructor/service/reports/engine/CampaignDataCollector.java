@@ -9,6 +9,8 @@ import com.aidigital.reportconstructor.service.reports.dto.Tactic;
 import com.aidigital.reportconstructor.service.reports.dto.Totals;
 import com.aidigital.reportconstructor.service.reports.dto.WindowMetrics;
 import com.aidigital.reportconstructor.service.reports.dto.PlanTactic;
+import com.aidigital.reportconstructor.service.reports.model.CampaignAggregate;
+import com.aidigital.reportconstructor.service.reports.model.DeliveryColumns;
 import com.aidigital.reportconstructor.service.reports.helpers.EffectiveTacticsHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.SheetRowHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.TacticExtractionHelper;
@@ -72,20 +74,6 @@ public class CampaignDataCollector {
 
 	/** Max tactics the report template carries — the per-tactic scan is bounded to this. */
 	private static final int MAX_TACTICS = 28;
-
-	/**
-	 * Mutable per-key accumulator (channel or line-item).
-	 */
-	private static final class Agg {
-
-		double spend;
-		double imps;
-		double clicks;
-		double completions;
-		double weekdayImps;
-		double weekendImps;
-		boolean hasCompletions;
-	}
 
 	/**
 	 * Collects campaign totals and per-tactic metrics from the raw grids.
@@ -167,8 +155,9 @@ public class CampaignDataCollector {
 		// ── 5. Estimates tab → planned KPIs by tactic ─────────────────────────
 		Map<String, Deque<double[]>> estimatesByTactic = parseEstimates(estimatesRows);
 		// double[] layout: {spend, imps, ctr, vcr, maxFreq, clicks, views, weeklyFreq, reach}; NaN = null. Keyed by
-		// tactic name to a FIFO queue, because a media plan repeats a channel name across several line items (e.g. "Meta" four times) with
-		// different plan figures each; the queue keeps every line item's own numbers in media-plan order.
+		// tactic name to a FIFO queue, because a media plan repeats a channel name across
+		// several line items (e.g. "Meta" four times) with different plan figures each;
+		// the queue keeps every line item's own numbers in media-plan order.
 
 		// ── 6. Tactics & channel mapping ──────────────────────────────────────
 		// Slot N is the Nth tactic of the *report*, which is the Nth surviving plan tactic: when the
@@ -176,27 +165,8 @@ public class CampaignDataCollector {
 		List<String> mediaTactics = tacticExtraction.extractTacticsFromMedia(sheetRows);
 		List<String> effectiveNames = names(effective);
 		int slots = lineItemMapping.isEmpty() ? MAX_TACTICS : Math.min(MAX_TACTICS, effectiveNames.size());
-		Map<Integer, String[]> tacticMap = new LinkedHashMap<>(); // N -> [name, channel|null]
-		for (int n = 1; n <= slots; n++) {
-			String name = coalesce(sheetUtils.findLabelValue(adjRows, "Tactic " + n + ":"),
-					coalesce(sheetUtils.findLabelValue(sheetRows, "Tactic " + n + ":"),
-							n - 1 < effectiveNames.size() ? effectiveNames.get(n - 1) : null));
-			if (name == null) {
-				continue;
-			}
-			tacticMap.put(n, new String[]{name, tacticExtraction.getTacticChannelFilter(name)});
-		}
-
-		// Plan position → report slot, for the plan-side figures that are still laid out in
-		// media-plan order (the Estimates tab). Empty when nothing was matched.
-		Map<Integer, Integer> planToSlot = new LinkedHashMap<>();
-		for (LineItemMapping m : lineItemMapping) {
-			Integer slot = m.tacticNum();
-			Integer plan = m.planNumOrSlot();
-			if (slot != null && slot > 0 && plan != null && plan > 0) {
-				planToSlot.putIfAbsent(plan, slot);
-			}
-		}
+		Map<Integer, String[]> tacticMap = buildTacticMap(sheetRows, adjRows, effectiveNames, slots);
+		Map<Integer, Integer> planToSlot = buildPlanToSlot(lineItemMapping);
 
 		// Join line items to tactics by tactic_num carried in the mapping payload.
 		// The tactic NAME is never used for the join:
@@ -218,6 +188,164 @@ public class CampaignDataCollector {
 		}
 
 		// ── 6b. Column detection (window-independent, done once) ──────────────
+		DeliveryColumns columns = detectDeliveryColumns(adjRows);
+
+		// ── 6c/7/8: aggregate delivery rows over the flight window ─────────────
+		boolean isEom = "EOM".equals(reportType);
+		// EOM-only: an EOM report always covers exactly one reporting month, so the monthly budget
+		// entered at matching time IS this month's spend target — nothing to multiply it by. This
+		// figure is purely informational (e.g. "Month 4" labels); it plays no part in the plan math.
+		Integer eomMonthNumber = isEom && flightTs != null
+				? ratePlanCalculator.monthsSpanned(flightTs.start(), flightTs.end()) : null;
+		Integer eomFlightMonthsTotal = eomMonthNumber;
+		// The cover's "month N of M" counts against the whole booked flight, which outlives the reporting
+		// window: the media plan states it, and the raw-data range only stands in when the plan carries no
+		// dates at all.
+		FlightDates campaignFlightTs = isEom
+				? campaignFlight.resolveCampaignFlight(sheetRows, sheetUtils.detectDataDateRange(adjRows), flightTs)
+				: null;
+		String campaignFlightDates = campaignFlightTs == null ? null
+				: sheetUtils.formatFlightDates(campaignFlightTs.start(), campaignFlightTs.end());
+		Integer campaignMonthsTotal = campaignFlight.flightMonthsTotal(campaignFlightTs);
+		Integer campaignMonthNumber = campaignFlight.flightMonthNumber(campaignFlightTs, flightTs);
+		Map<Integer, double[]> estimatesPlan =
+				resolvePlanByTacticNum(tacticMap, mediaTactics, planToSlot, estimatesByTactic);
+		Map<Integer, double[]> planByTacticNum = isEom
+				? resolveEomPlanByTacticNum(lineItemMapping, estimatesPlan)
+				: estimatesPlan;
+
+		LocalDate flightStart = flightTs != null ? flightTs.start() : null;
+		LocalDate flightEnd = flightTs != null ? flightTs.end() : null;
+		// Restricting the campaign totals to the mapped line items is only safe once we can see that the
+		// export really does attribute delivery to them. If not a single row resolves to a mapped id —
+		// no id column, a naming format this parser does not recognise, an export from another
+		// campaign — the restriction would zero the whole report, so the totals fall back to counting
+		// every row, exactly as they did before matching could exclude anything.
+		boolean restrictTotals = !liToTacticNum.isEmpty()
+				&& hasMappedDelivery(
+						adjRows, columns.headerRow(), columns.lineItemId(), columns.level1Naming(), liToTacticNum);
+		if (!liToTacticNum.isEmpty() && !restrictTotals) {
+			log.warn("[collect] no delivery row resolves to a mapped line item ({} mapped ids) — campaign "
+					+ "totals fall back to the whole export", liToTacticNum.size());
+		}
+		WindowMetrics flightMetrics = aggregateWindow(
+				adjRows, columns, liToTacticNum, tacticMap, numToLiId, planByTacticNum,
+				flightStart, flightEnd, restrictTotals);
+		Totals totals = flightMetrics.totals();
+		Map<Integer, Tactic> tacticsData = flightMetrics.tactics();
+
+		// ── 9. Audience tab text (Batch A) ────────────────────────────────────
+		String audienceTabText = audienceTabText(audienceRows);
+
+		return new CampaignData(
+				client, campaign, geo, goal, flightDates, flightTs, budget, kpis, tacticsList,
+				audienceAge, audienceSegs,
+				totals,
+				tacticsData,
+				eomMonthNumber,
+				isEom ? eomFlightMonthsTotal : null,
+				campaignFlightDates,
+				campaignMonthNumber,
+				campaignMonthsTotal,
+				audienceTabText
+		);
+	}
+
+	/**
+	 * Resolves each report slot's tactic name and channel filter.
+	 *
+	 * <p>A name written into the Adjustments or Media Plan grid as {@code "Tactic N:"} wins over the
+	 * plan's own list, so a manual rename survives; a slot with no name anywhere is left out entirely
+	 * rather than carried as an empty tactic.
+	 *
+	 * @param sheetRows      Media Plan grid rows
+	 * @param adjRows        Adjustments grid rows, searched first
+	 * @param effectiveNames the tactics the report covers, in report order
+	 * @param slots          how many report slots to resolve
+	 * @return slot number to {@code [name, channel filter]}, in slot order
+	 */
+	Map<Integer, String[]> buildTacticMap(
+			List<List<String>> sheetRows, List<List<String>> adjRows, List<String> effectiveNames, int slots) {
+		Map<Integer, String[]> tacticMap = new LinkedHashMap<>(); // N -> [name, channel|null]
+		for (int n = 1; n <= slots; n++) {
+			String name = coalesce(sheetUtils.findLabelValue(adjRows, "Tactic " + n + ":"),
+					coalesce(sheetUtils.findLabelValue(sheetRows, "Tactic " + n + ":"),
+							n - 1 < effectiveNames.size() ? effectiveNames.get(n - 1) : null));
+			if (name == null) {
+				continue;
+			}
+			tacticMap.put(n, new String[]{name, tacticExtraction.getTacticChannelFilter(name)});
+		}
+		return tacticMap;
+	}
+
+	/**
+	 * Maps a plan row's position to the report slot it was matched to.
+	 *
+	 * <p>Needed because the plan-side figures on the Estimates tab are still laid out in media-plan
+	 * order, while the report renumbers its tactics 1..N once rows are dropped at matching time.
+	 *
+	 * @param lineItemMapping the confirmed matching payload
+	 * @return plan position to report slot; empty when nothing was matched
+	 */
+	Map<Integer, Integer> buildPlanToSlot(List<LineItemMapping> lineItemMapping) {
+		Map<Integer, Integer> planToSlot = new LinkedHashMap<>();
+		for (LineItemMapping m : lineItemMapping) {
+			Integer slot = m.tacticNum();
+			Integer plan = m.planNumOrSlot();
+			if (slot != null && slot > 0 && plan != null && plan > 0) {
+				planToSlot.putIfAbsent(plan, slot);
+			}
+		}
+		return planToSlot;
+	}
+
+
+	/**
+	 * Flattens the Audience tab into the plain text Claude's Batch A reads.
+	 *
+	 * <p>Each row becomes one pipe-separated line of its non-empty cells, so the column layout — which
+	 * varies between exports — does not have to be understood here. Capped at 200 rows: the tab is a
+	 * summary, and a longer one is a sign of raw data pasted in, which would only cost prompt budget.
+	 *
+	 * @param audienceRows the Audience tab's rows
+	 * @return the flattened text, empty when the tab carries nothing
+	 */
+	String audienceTabText(List<List<String>> audienceRows) {
+		List<String> audLines = new ArrayList<>();
+		int aLimit = Math.min(200, audienceRows.size());
+		for (int i = 0; i < aLimit; i++) {
+			List<String> row = audienceRows.get(i);
+			if (row == null) {
+				continue;
+			}
+			List<String> cells = new ArrayList<>();
+			for (String c : row) {
+				String t = c == null ? "" : c.trim();
+				if (!t.isEmpty()) {
+					cells.add(t);
+				}
+			}
+			if (!cells.isEmpty()) {
+				audLines.add(String.join(" | ", cells));
+			}
+		}
+		return String.join("\n", audLines);
+	}
+
+	/**
+	 * Finds the delivery export's header row and the index of every column read from it.
+	 *
+	 * <p>Scans for the first row carrying the required date/channel/cost/impressions set, because the
+	 * export often starts with title or filter rows that would otherwise be read as data. Optional
+	 * columns resolve to {@code -1}. The Level 1 naming column is looked up only when no line-item id
+	 * column exists, since it is a fallback for deriving one.
+	 *
+	 * @param adjRows the delivery export's rows
+	 * @return the resolved column indices; {@link DeliveryColumns#found()} is false when no header
+	 *         row qualified
+	 */
+	DeliveryColumns detectDeliveryColumns(List<List<String>> adjRows) {
 		int hIdx = -1;
 		int colDt = -1;
 		int colCh = -1;
@@ -272,7 +400,6 @@ public class CampaignDataCollector {
 				break;
 			}
 		}
-
 		int colL1Naming = -1;
 		if (colLi < 0 && hIdx >= 0) {
 			List<String> hdr = adjRows.get(hIdx);
@@ -283,83 +410,8 @@ public class CampaignDataCollector {
 				}
 			}
 		}
-
-		// ── 6c/7/8: aggregate delivery rows over the flight window ─────────────
-		boolean isEom = "EOM".equals(reportType);
-		// EOM-only: an EOM report always covers exactly one reporting month, so the monthly budget
-		// entered at matching time IS this month's spend target — nothing to multiply it by. This
-		// figure is purely informational (e.g. "Month 4" labels); it plays no part in the plan math.
-		Integer eomMonthNumber = isEom && flightTs != null
-				? ratePlanCalculator.monthsSpanned(flightTs.start(), flightTs.end()) : null;
-		Integer eomFlightMonthsTotal = eomMonthNumber;
-		// The cover's "month N of M" counts against the whole booked flight, which outlives the reporting
-		// window: the media plan states it, and the raw-data range only stands in when the plan carries no
-		// dates at all.
-		FlightDates campaignFlightTs = isEom
-				? campaignFlight.resolveCampaignFlight(sheetRows, sheetUtils.detectDataDateRange(adjRows), flightTs)
-				: null;
-		String campaignFlightDates = campaignFlightTs == null ? null
-				: sheetUtils.formatFlightDates(campaignFlightTs.start(), campaignFlightTs.end());
-		Integer campaignMonthsTotal = campaignFlight.flightMonthsTotal(campaignFlightTs);
-		Integer campaignMonthNumber = campaignFlight.flightMonthNumber(campaignFlightTs, flightTs);
-		Map<Integer, double[]> estimatesPlan =
-				resolvePlanByTacticNum(tacticMap, mediaTactics, planToSlot, estimatesByTactic);
-		Map<Integer, double[]> planByTacticNum = isEom
-				? resolveEomPlanByTacticNum(lineItemMapping, estimatesPlan)
-				: estimatesPlan;
-
-		LocalDate flightStart = flightTs != null ? flightTs.start() : null;
-		LocalDate flightEnd = flightTs != null ? flightTs.end() : null;
-		// Restricting the campaign totals to the mapped line items is only safe once we can see that the
-		// export really does attribute delivery to them. If not a single row resolves to a mapped id —
-		// no id column, a naming format this parser does not recognise, an export from another
-		// campaign — the restriction would zero the whole report, so the totals fall back to counting
-		// every row, exactly as they did before matching could exclude anything.
-		boolean restrictTotals = !liToTacticNum.isEmpty()
-				&& hasMappedDelivery(adjRows, hIdx, colLi, colL1Naming, liToTacticNum);
-		if (!liToTacticNum.isEmpty() && !restrictTotals) {
-			log.warn("[collect] no delivery row resolves to a mapped line item ({} mapped ids) — campaign "
-					+ "totals fall back to the whole export", liToTacticNum.size());
-		}
-		WindowMetrics flightMetrics = aggregateWindow(adjRows, hIdx, colDt, colCh, colCo, colIm, colCl, colCmp,
-				colDow, colLi, colCr, colL1Naming, liToTacticNum, tacticMap, numToLiId, planByTacticNum,
-				flightStart, flightEnd, restrictTotals);
-		Totals totals = flightMetrics.totals();
-		Map<Integer, Tactic> tacticsData = flightMetrics.tactics();
-
-		// ── 9. Audience tab text (Batch A) ────────────────────────────────────
-		List<String> audLines = new ArrayList<>();
-		int aLimit = Math.min(200, audienceRows.size());
-		for (int i = 0; i < aLimit; i++) {
-			List<String> row = audienceRows.get(i);
-			if (row == null) {
-				continue;
-			}
-			List<String> cells = new ArrayList<>();
-			for (String c : row) {
-				String t = c == null ? "" : c.trim();
-				if (!t.isEmpty()) {
-					cells.add(t);
-				}
-			}
-			if (!cells.isEmpty()) {
-				audLines.add(String.join(" | ", cells));
-			}
-		}
-		String audienceTabText = String.join("\n", audLines);
-
-		return new CampaignData(
-				client, campaign, geo, goal, flightDates, flightTs, budget, kpis, tacticsList,
-				audienceAge, audienceSegs,
-				totals,
-				tacticsData,
-				eomMonthNumber,
-				isEom ? eomFlightMonthsTotal : null,
-				campaignFlightDates,
-				campaignMonthNumber,
-				campaignMonthsTotal,
-				audienceTabText
-		);
+		return new DeliveryColumns(
+				hIdx, colDt, colCh, colCo, colIm, colCl, colCmp, colDow, colLi, colCr, colL1Naming);
 	}
 
 	/**
@@ -376,8 +428,8 @@ public class CampaignDataCollector {
 	 * @param planToSlot        media-plan position to report slot; empty when nothing was matched, in
 	 *                          which case the slots themselves are walked in order
 	 * @param estimatesByTactic Estimates-tab rows queued by lowercased tactic name
-	 * @return tactic number to its planned {@code {spend, imps, ctr, vcr, maxFreq, NaN, NaN, weeklyFreq, reach}} row, omitting tactics
-	 * with no matching Estimates row
+	 * @return tactic number to its planned {@code {spend, imps, ctr, vcr, maxFreq, NaN, NaN, weeklyFreq, reach}} row,
+	  *         omitting tactics with no matching Estimates row
 	 */
 	Map<Integer, double[]> resolvePlanByTacticNum(Map<Integer, String[]> tacticMap,
 	                                              List<String> planOrderNames,
@@ -453,11 +505,11 @@ public class CampaignDataCollector {
 	 *                                rateType/unitPrice/monthlyBudget
 	 * @param estimatesPlanByTacticNum tactic number to its Estimates-tab row, used only for the
 	 *                                CTR/VCR/max-frequency benchmarks (indices 2-4)
-	 * @return tactic number to its planned {@code {spend, imps, ctr, vcr, maxFreq, clicks, views, weeklyFreq, reach}} row.
-	 * All three unit figures are populated whenever they are derivable: the bought unit comes from the
-	 * rate and budget, the other two from it through the CTR/VCR benchmarks (see
-	 * {@link RatePlanCalculator#planTargets}), so the summary table's Impressions/Clicks/Completions Plan
-	 * columns all describe the same plan. Omits tactics with no mapping entry.
+	 * @return tactic number to its planned {@code {spend, imps, ctr, vcr, maxFreq, clicks, views, weeklyFreq, reach}}
+	  *         row. All three unit figures are populated whenever they are derivable: the bought unit comes from the
+	  *         rate and budget, the other two from it through the CTR/VCR benchmarks (see {@link
+	  *         RatePlanCalculator#planTargets}), so the summary table's Impressions/Clicks/Completions Plan columns
+	  *         all describe the same plan. Omits tactics with no mapping entry.
 	 */
 	Map<Integer, double[]> resolveEomPlanByTacticNum(
 			List<LineItemMapping> lineItemMapping, Map<Integer, double[]> estimatesPlanByTacticNum) {
@@ -584,17 +636,7 @@ public class CampaignDataCollector {
 	 * payloads) every row still counts, as before.
 	 *
 	 * @param adjRows         raw delivery rows
-	 * @param hIdx            header row index (-1 when no delivery header was found)
-	 * @param colDt           date column index
-	 * @param colCh           channel column index
-	 * @param colCo           cost column index
-	 * @param colIm           impressions column index
-	 * @param colCl           clicks column index (-1 when absent)
-	 * @param colCmp          completions column index (-1 when absent)
-	 * @param colDow          day-of-week column index (-1 when absent)
-	 * @param colLi           line-item id column index (-1 when absent)
-	 * @param colCr           creative column index (-1 when absent)
-	 * @param colL1Naming     "Level 1 Naming" fallback column index, used only when {@code colLi < 0}
+	 * @param columns         the export's resolved column layout, found once by the caller
 	 * @param liToTacticNum   line-item id to tactic-number mapping, gating which rows aggregate at all
 	 * @param tacticMap       tactic number to {@code [name, channel]} mapping
 	 * @param numToLiId       tactic number to its line-item id
@@ -606,17 +648,26 @@ public class CampaignDataCollector {
 	 * @return the window's campaign totals and per-tactic metrics
 	 */
 	WindowMetrics aggregateWindow(
-			List<List<String>> adjRows,
-			int hIdx, int colDt, int colCh, int colCo, int colIm, int colCl, int colCmp, int colDow, int colLi,
-			int colCr, int colL1Naming,
+			List<List<String>> adjRows, DeliveryColumns columns,
 			Map<String, Integer> liToTacticNum, Map<Integer, String[]> tacticMap, Map<Integer, String> numToLiId,
 			Map<Integer, double[]> planByTacticNum,
 			LocalDate windowStart, LocalDate windowEnd, boolean restrictTotals
 	) {
-		Agg totals = new Agg();
+		int hIdx = columns.headerRow();
+		int colDt = columns.date();
+		int colCh = columns.channel();
+		int colCo = columns.cost();
+		int colIm = columns.impressions();
+		int colCl = columns.clicks();
+		int colCmp = columns.completions();
+		int colDow = columns.dayOfWeek();
+		int colLi = columns.lineItemId();
+		int colCr = columns.creative();
+		int colL1Naming = columns.level1Naming();
+		CampaignAggregate totals = new CampaignAggregate();
 		double[] impsWithCompletions = {0.0};
-		Map<String, Agg> byChannel = new LinkedHashMap<>();
-		Map<String, Agg> byLineItemId = new LinkedHashMap<>();
+		Map<String, CampaignAggregate> byChannel = new LinkedHashMap<>();
+		Map<String, CampaignAggregate> byLineItemId = new LinkedHashMap<>();
 		Map<String, Map<String, double[]>> byCreative = new LinkedHashMap<>(); // liId -> creative -> {imps, clicks}
 
 		if (hIdx >= 0) {
@@ -660,53 +711,36 @@ public class CampaignDataCollector {
 						int d = (int) toFloat(dowVal);
 						isWeekend = d == 0 || d == 6 || d == 7;
 					} else {
-						isWeekend =
-								dowVal.equals("saturday") || dowVal.equals("sunday") || dowVal.equals("sat") || dowVal.equals("sun");
+						isWeekend = dowVal.equals("saturday") || dowVal.equals("sunday")
+								|| dowVal.equals("sat") || dowVal.equals("sun");
 					}
 				} else {
 					DayOfWeek dow = ts.getDayOfWeek();
 					isWeekend = dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY;
 				}
 
-				totals.spend += co;
-				totals.imps += im;
-				totals.clicks += cl;
+				totals.add(co, im, cl);
 				if (colCmp >= 0 && cmp > 0) {
-					totals.completions += cmp;
+					totals.addCompletions(cmp);
 					impsWithCompletions[0] += im;
-					totals.hasCompletions = true;
 				}
 
 				if (!chVal.isEmpty()) {
-					Agg a = byChannel.computeIfAbsent(chVal, k -> new Agg());
-					a.spend += co;
-					a.imps += im;
-					a.clicks += cl;
+					CampaignAggregate a = byChannel.computeIfAbsent(chVal, k -> new CampaignAggregate());
+					a.add(co, im, cl);
 					if (cmp > 0) {
-						a.completions += cmp;
-						a.hasCompletions = true;
+						a.addCompletions(cmp);
 					}
-					if (isWeekend) {
-						a.weekendImps += im;
-					} else {
-						a.weekdayImps += im;
-					}
+					a.addDayParted(im, isWeekend);
 				}
 
 				if (liId != null && liToTacticNum.containsKey(liId)) {
-					Agg a = byLineItemId.computeIfAbsent(liId, k -> new Agg());
-					a.spend += co;
-					a.imps += im;
-					a.clicks += cl;
+					CampaignAggregate a = byLineItemId.computeIfAbsent(liId, k -> new CampaignAggregate());
+					a.add(co, im, cl);
 					if (cmp > 0) {
-						a.completions += cmp;
-						a.hasCompletions = true;
+						a.addCompletions(cmp);
 					}
-					if (isWeekend) {
-						a.weekendImps += im;
-					} else {
-						a.weekdayImps += im;
-					}
+					a.addDayParted(im, isWeekend);
 
 					if (colCr >= 0) {
 						String crName = cellAt(row, colCr);
@@ -740,75 +774,105 @@ public class CampaignDataCollector {
 			}
 		}
 
-		Double totalCtr = totals.imps > 0 ? totals.clicks / totals.imps * 100 : null;
-		Double totalVcr = (totals.hasCompletions && impsWithCompletions[0] > 0)
-				? totals.completions / impsWithCompletions[0] * 100 : null;
+		Double totalCtr = totals.impressions() > 0 ? totals.clicks() / totals.impressions() * 100 : null;
+		Double totalVcr = (totals.hasCompletions() && impsWithCompletions[0] > 0)
+				? totals.completions() / impsWithCompletions[0] * 100 : null;
 
-		Map<Integer, Tactic> tacticsData = new LinkedHashMap<>();
-		for (Map.Entry<Integer, String[]> e : tacticMap.entrySet()) {
-			int n = e.getKey();
-			String name = e.getValue()[0];
-			String channel = e.getValue()[1];
-
-			String liIdForTactic = numToLiId.get(n);
-			Agg agg = null;
-			if (liIdForTactic != null && byLineItemId.containsKey(liIdForTactic)) {
-				agg = byLineItemId.get(liIdForTactic);
-			} else {
-				String ch = channel != null ? channel.trim().toLowerCase(Locale.ROOT) : null;
-				if (ch != null && byChannel.containsKey(ch)) {
-					agg = byChannel.get(ch);
-				}
-			}
-
-			double sp = agg != null ? agg.spend : 0.0;
-			double im = agg != null ? agg.imps : 0.0;
-			double cl = agg != null ? agg.clicks : 0.0;
-			double cmp = agg != null ? agg.completions : 0.0;
-			double wdi = agg != null ? agg.weekdayImps : 0.0;
-			double wei = agg != null ? agg.weekendImps : 0.0;
-
-			Double tCtr = im > 0 ? cl / im * 100 : null;
-			Double tVcr = (agg != null && agg.hasCompletions && im > 0) ? cmp / im * 100 : null;
-
-			double totalDayImps = wdi + wei;
-			Integer weekdaysPct = totalDayImps > 0 ? (int) Math.round(wdi / totalDayImps * 100) : null;
-			Integer weekendsPct = weekdaysPct != null ? 100 - weekdaysPct : null;
-
-			double[] plan = planByTacticNum.get(n);
-
-			String topName = liIdForTactic != null ? topCreativeName.get(liIdForTactic) : null;
-			double[] topCr = liIdForTactic != null ? topCreativeByLi.get(liIdForTactic) : null;
-
-			tacticsData.put(n, new Tactic(
-					name,
-					channel,
-					liIdForTactic,
-					sp, im, cl, cmp,
-					tCtr, tVcr,
-					weekdaysPct, weekendsPct,
-					plan != null ? nan(plan[0]) : null,
-					plan != null ? nan(plan[1]) : null,
-					plan != null ? nan(plan[2]) : null,
-					plan != null ? nan(plan[3]) : null,
-					plan != null ? nan(plan[4]) : null,
-					topName,
-					topCr != null ? topCr[0] : null,
-					topCr != null ? topCr[1] : null,
-					plan != null && plan.length > 5 ? nan(plan[5]) : null,
-					plan != null && plan.length > 6 ? nan(plan[6]) : null,
-					plan != null && plan.length > 7 ? nan(plan[7]) : null,
-					plan != null && plan.length > 8 ? nan(plan[8]) : null,
-					plan != null ? nan(planSlot(plan, 9)) : null,
-					plan != null ? nan(planSlot(plan, 10)) : null,
-					plan != null ? nan(planSlot(plan, 11)) : null
-			));
-		}
+		Map<Integer, Tactic> tacticsData = buildTactics(
+				tacticMap, numToLiId, byLineItemId, byChannel, planByTacticNum,
+				topCreativeName, topCreativeByLi);
 
 		return new WindowMetrics(
-				new Totals(totals.spend, totals.imps, totals.clicks, totals.completions, totalCtr, totalVcr),
+				new Totals(
+						totals.spend(), totals.impressions(), totals.clicks(), totals.completions(),
+						totalCtr, totalVcr),
 				tacticsData
 		);
+	}
+
+	/**
+	 * Builds one {@link Tactic} per mapped tactic from the per-key accumulators.
+	 *
+	 * <p>A tactic is matched to its line-item accumulator first and falls back to its channel's, so a
+	 * tactic whose line item carried no delivery still reports its channel's figures rather than zeros.
+	 * A tactic matching neither reports zeros and null rates, which is what an unmatched plan row is.
+	 *
+	 * @param tacticMap        tactic number to its name and channel
+	 * @param numToLiId        tactic number to the line-item id it was matched to
+	 * @param byLineItemId     accumulators keyed by line-item id
+	 * @param byChannel        accumulators keyed by lowercased channel
+	 * @param planByTacticNum  planned KPI slots per tactic
+	 * @param topCreativeName  best-delivering creative per line item
+	 * @param topCreativeByLi  that creative's impressions and clicks
+	 * @return the per-tactic metrics, in tactic-number order
+	 */
+	Map<Integer, Tactic> buildTactics(
+			Map<Integer, String[]> tacticMap, Map<Integer, String> numToLiId,
+			Map<String, CampaignAggregate> byLineItemId, Map<String, CampaignAggregate> byChannel,
+			Map<Integer, double[]> planByTacticNum, Map<String, String> topCreativeName,
+			Map<String, double[]> topCreativeByLi
+	) {
+		Map<Integer, Tactic> tacticsData = new LinkedHashMap<>();
+			for (Map.Entry<Integer, String[]> e : tacticMap.entrySet()) {
+				int n = e.getKey();
+				String name = e.getValue()[0];
+				String channel = e.getValue()[1];
+
+				String liIdForTactic = numToLiId.get(n);
+				CampaignAggregate agg = null;
+				if (liIdForTactic != null && byLineItemId.containsKey(liIdForTactic)) {
+					agg = byLineItemId.get(liIdForTactic);
+				} else {
+					String ch = channel != null ? channel.trim().toLowerCase(Locale.ROOT) : null;
+					if (ch != null && byChannel.containsKey(ch)) {
+						agg = byChannel.get(ch);
+					}
+				}
+
+				double sp = agg != null ? agg.spend() : 0.0;
+				double im = agg != null ? agg.impressions() : 0.0;
+				double cl = agg != null ? agg.clicks() : 0.0;
+				double cmp = agg != null ? agg.completions() : 0.0;
+				double wdi = agg != null ? agg.weekdayImpressions() : 0.0;
+				double wei = agg != null ? agg.weekendImpressions() : 0.0;
+
+				Double tCtr = im > 0 ? cl / im * 100 : null;
+				Double tVcr = (agg != null && agg.hasCompletions() && im > 0) ? cmp / im * 100 : null;
+
+				double totalDayImps = wdi + wei;
+				Integer weekdaysPct = totalDayImps > 0 ? (int) Math.round(wdi / totalDayImps * 100) : null;
+				Integer weekendsPct = weekdaysPct != null ? 100 - weekdaysPct : null;
+
+				double[] plan = planByTacticNum.get(n);
+
+				String topName = liIdForTactic != null ? topCreativeName.get(liIdForTactic) : null;
+				double[] topCr = liIdForTactic != null ? topCreativeByLi.get(liIdForTactic) : null;
+
+				tacticsData.put(n, new Tactic(
+						name,
+						channel,
+						liIdForTactic,
+						sp, im, cl, cmp,
+						tCtr, tVcr,
+						weekdaysPct, weekendsPct,
+						plan != null ? nan(plan[0]) : null,
+						plan != null ? nan(plan[1]) : null,
+						plan != null ? nan(plan[2]) : null,
+						plan != null ? nan(plan[3]) : null,
+						plan != null ? nan(plan[4]) : null,
+						topName,
+						topCr != null ? topCr[0] : null,
+						topCr != null ? topCr[1] : null,
+						plan != null && plan.length > 5 ? nan(plan[5]) : null,
+						plan != null && plan.length > 6 ? nan(plan[6]) : null,
+						plan != null && plan.length > 7 ? nan(plan[7]) : null,
+						plan != null && plan.length > 8 ? nan(plan[8]) : null,
+						plan != null ? nan(planSlot(plan, 9)) : null,
+						plan != null ? nan(planSlot(plan, 10)) : null,
+						plan != null ? nan(planSlot(plan, 11)) : null
+				));
+			}
+		return tacticsData;
 	}
 
 	/**
@@ -835,17 +899,17 @@ public class CampaignDataCollector {
 	// ── Estimates parser ──────────────────────────────────────────────────────
 
 	/**
-	 * Parses the Estimates tab into planned figures per tactic, preserving media-plan order. Each Media-column
-	 * name maps to a FIFO queue of
-	 * {@code {spend, imps, ctr, vcr, maxFreq, NaN, NaN, weeklyFreq, reach, flightSpend, flightImps, flightClicks}}
-	 * rows (NaN where blank), one entry per line item in top-to-bottom order. Slots 5/6 stay empty here so a plan
-	 * row keeps one shape across both report types: EOM fills them with its rate-derived Plan Units in
-	 * {@link #resolveEomPlanByTacticNum}. The last three slots repeat the tab's own cost/impressions/clicks
-	 * untouched, because an EOM report overwrites slots 0/1 with the reporting month's plan and the channel
-	 * slide's end-of-campaign column still needs the flight figures the plan was booked on. A name repeated across line items (e.g. "Meta" appearing several
-	 * times with different budgets) therefore keeps every occurrence's own numbers instead of collapsing to a
-	 * single row, so the tactic loop can assign the N-th occurrence its N-th planned line item.
-	 *
+	 * Parses the Estimates tab into planned figures per tactic, preserving media-plan order. Each Media-column name
+	  *         maps to a FIFO queue of {@code {spend, imps, ctr, vcr, maxFreq, NaN, NaN, weeklyFreq, reach,
+	  *         flightSpend, flightImps, flightClicks}} rows (NaN where blank), one entry per line item in
+	  *         top-to-bottom order. Slots 5/6 stay empty here so a plan row keeps one shape across both report types:
+	  *         EOM fills them with its rate-derived Plan Units in {@link #resolveEomPlanByTacticNum}. The last three
+	  *         slots repeat the tab's own cost/impressions/clicks untouched, because an EOM report overwrites slots
+	  *         0/1 with the reporting month's plan and the channel slide's end-of-campaign column still needs the
+	  *         flight figures the plan was booked on. A name repeated across line items (e.g. "Meta" appearing
+	  *         several times with different budgets) therefore keeps every occurrence's own numbers instead of
+	  *         collapsing to a single row, so the tactic loop can assign the N-th occurrence its N-th planned line
+	  *         item.
 	 * @param estimatesRows the Estimates tab grid (may be empty)
 	 * @return a map from lowercased tactic name to its ordered queue of planned-figure rows (never {@code null})
 	 */
@@ -982,6 +1046,12 @@ public class CampaignDataCollector {
 
 	/**
 	 * Cleans then parses a cell to a numeric, returning {@code NaN} when blank/non-numeric.
+	 *
+	 * @param raw        the cell's text as read from the sheet
+	 * @param col        the column index that text came from; negative means the sheet has no such
+	 *                   column, and the value is treated as absent without parsing
+	 * @param allowMinus whether a leading minus is kept rather than stripped as formatting
+	 * @return the parsed value, or {@code NaN} when the cell is missing, blank or non-numeric
 	 */
 	double parseNumericCell(String raw, int col, boolean allowMinus) {
 
@@ -1001,6 +1071,14 @@ public class CampaignDataCollector {
 
 	private static final Pattern LEADING_NUM = Pattern.compile("^[-+]?\\d*\\.?\\d+");
 
+	/**
+	 * Strips a sheet cell down to the characters a number may contain, so thousands separators and
+	 * currency symbols do not defeat parsing.
+	 *
+	 * @param raw        the cell text as read from the sheet
+	 * @param allowMinus whether a leading minus is kept rather than stripped with the other symbols
+	 * @return the digits-and-dot text, or an empty string when the input is null
+	 */
 	String cleanNum(String raw, boolean allowMinus) {
 
 		if (raw == null) {
@@ -1010,6 +1088,12 @@ public class CampaignDataCollector {
 		return s.replaceAll(allowMinus ? "[^0-9.\\-]" : "[^0-9.]", "");
 	}
 
+	/**
+	 * Parses the leading number out of an already-cleaned string.
+	 *
+	 * @param s the cleaned cell text
+	 * @return the parsed value, or {@code 0.0} when the input is null or carries no leading number
+	 */
 	double toFloat(String s) {
 
 		if (s == null) {
@@ -1058,6 +1142,13 @@ public class CampaignDataCollector {
 		return v == null ? "" : v.trim();
 	}
 
+	/**
+	 * Reads one cell by index, returning an empty string when the row is null or too short.
+	 *
+	 * @param row the sheet row
+	 * @param idx the zero-based column index
+	 * @return the cell text, or an empty string when the cell is absent
+	 */
 	String cellAt(List<String> row, int idx) {
 
 		if (row == null || idx < 0 || idx >= row.size()) {
@@ -1066,6 +1157,14 @@ public class CampaignDataCollector {
 		return cell(row, idx);
 	}
 
+	/**
+	 * Joins a row's first cells into one lowercase space-separated string, used to match a row by its
+	 * text without caring which column a label landed in.
+	 *
+	 * @param row the sheet row
+	 * @param n   how many leading cells to join; a row shorter than this contributes what it has
+	 * @return the joined lowercase text
+	 */
 	String joinLower(List<String> row, int n) {
 
 		StringBuilder sb = new StringBuilder();

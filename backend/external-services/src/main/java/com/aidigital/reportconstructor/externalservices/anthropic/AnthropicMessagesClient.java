@@ -508,16 +508,6 @@ public class AnthropicMessagesClient {
 	}
 
 	/**
-	 * Sends a prompt as a single user message to the Anthropic Messages API and returns the raw
-	 * parsed JSON response body, or {@code null} on a non-200 status or transport failure.
-	 *
-	 * @param prompt     the full user prompt sent as the single message to Claude
-	 * @param maxTokens  cap on tokens the model may generate in its reply
-	 * @param timeoutSec per-request HTTP timeout in seconds
-	 * @param label      short tag identifying this call in log messages
-	 * @return the full Messages API response as a JSON tree, or {@code null} on failure
-	 */
-	/**
 	 * Turns a caller's reply budget into the {@code max_tokens} actually sent, applying
 	 * {@link #outputTokenHeadroom}. Exposed so the truncation warnings report the budget the reply really
 	 * ran out of rather than the pre-headroom figure the caller asked for.
@@ -529,6 +519,16 @@ public class AnthropicMessagesClient {
 		return (int) Math.ceil(maxTokens * outputTokenHeadroom);
 	}
 
+	/**
+	 * Sends a prompt as a single user message to the Anthropic Messages API and returns the raw
+	 * parsed JSON response body, or {@code null} on a non-200 status or transport failure.
+	 *
+	 * @param prompt     the full user prompt sent as the single message to Claude
+	 * @param maxTokens  cap on tokens the model may generate in its reply
+	 * @param timeoutSec per-request HTTP timeout in seconds
+	 * @param label      short tag identifying this call in log messages
+	 * @return the full Messages API response as a JSON tree, or {@code null} on failure
+	 */
 	public JsonNode callRaw(String prompt, int maxTokens, int timeoutSec, String label) {
 		HttpRequest req;
 		try {

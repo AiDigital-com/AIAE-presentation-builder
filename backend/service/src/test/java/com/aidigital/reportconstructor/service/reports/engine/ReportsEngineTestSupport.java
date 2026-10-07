@@ -67,6 +67,10 @@ public final class ReportsEngineTestSupport {
 		return new CampaignResolvers(sheetRowHelper(), fmt(), tacticExtractionHelper(), ratePlanCalculator());
 	}
 
+	static CampaignPacingResolvers campaignPacingResolvers() {
+		return new CampaignPacingResolvers(sheetRowHelper(), fmt(), ratePlanCalculator(), campaignResolvers());
+	}
+
 	static TacticResolvers tacticResolvers() {
 		return new TacticResolvers(sheetRowHelper(), fmt(), tacticExtractionHelper(), campaignResolvers(),
 				ratePlanCalculator());
@@ -85,8 +89,8 @@ public final class ReportsEngineTestSupport {
 	}
 
 	public static PlaceholderSectionBuilderImpl placeholderSectionBuilder() {
-		return new PlaceholderSectionBuilderImpl(campaignResolvers(), tacticResolvers(), channelSlideResolvers(),
-				soWhatResolver(),
+		return new PlaceholderSectionBuilderImpl(campaignResolvers(), campaignPacingResolvers(), tacticResolvers(),
+				channelSlideResolvers(), soWhatResolver(),
 				funnelChannelResolver(), tacticExtractionHelper(), effectiveTacticsHelper());
 	}
 

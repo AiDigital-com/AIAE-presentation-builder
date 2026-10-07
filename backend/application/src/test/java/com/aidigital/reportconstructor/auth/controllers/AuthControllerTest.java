@@ -10,6 +10,7 @@ import com.aidigital.reportconstructor.security.CompanyEmailDomainAuthorizationM
 import com.aidigital.reportconstructor.security.CorsOriginPatternNormalizer;
 import com.aidigital.reportconstructor.security.SecurityConfig;
 import com.aidigital.reportconstructor.security.SecurityProperties;
+import com.aidigital.reportconstructor.service.admin.AdminAccessPolicy;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -47,6 +48,15 @@ class AuthControllerTest {
 
 	@MockitoBean
 	private JwtDecoder jwtDecoder;
+
+	// AuthController gained this collaborator when the admin dashboard landed, to compute the
+	// payload's admin flag server-side. A @WebMvcTest slice only loads the controller and what
+	// @Import names, so without it the context fails to start and every test here errors before
+	// it runs. Mocked rather than imported: the real policy reads the config allow-list and the
+	// managed-grant store, neither of which this slice is about. The default `false` is what the
+	// assertions below expect, since none of them is about an admin caller.
+	@MockitoBean
+	private AdminAccessPolicy adminAccessPolicy;
 
 	@Test
 	void shouldRejectUnauthenticatedRequestToAuthMeTest() throws Exception {

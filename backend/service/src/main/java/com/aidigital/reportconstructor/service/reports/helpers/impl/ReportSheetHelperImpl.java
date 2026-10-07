@@ -66,7 +66,9 @@ public class ReportSheetHelperImpl implements ReportSheetHelper {
 		if (spreadsheetId == null) {
 			return;
 		}
-		int tacticCount = Math.clamp(effectiveTactics.effectiveTacticCount(payload.sheetRows(), payload.lineItemMapping()), 1, MAX_TACTICS);
+		int tacticCount = Math.clamp(
+				effectiveTactics.effectiveTacticCount(payload.sheetRows(), payload.lineItemMapping()),
+				1, MAX_TACTICS);
 		try {
 			sheets.trimTactics(spreadsheetId, tacticCount, userGoogleToken);
 		} catch (RuntimeException ex) {
@@ -116,7 +118,9 @@ public class ReportSheetHelperImpl implements ReportSheetHelper {
 			return List.of("Pacing tables skipped — could not determine spreadsheet id from " + sheetUrl);
 		}
 
-		int tacticCount = Math.clamp(effectiveTactics.effectiveTacticCount(payload.sheetRows(), payload.lineItemMapping()), 1, MAX_TACTICS);
+		int tacticCount = Math.clamp(
+				effectiveTactics.effectiveTacticCount(payload.sheetRows(), payload.lineItemMapping()),
+				1, MAX_TACTICS);
 
 		Map<Integer, String> distNames = new LinkedHashMap<>();
 		Map<Integer, Double> distImps = new LinkedHashMap<>();

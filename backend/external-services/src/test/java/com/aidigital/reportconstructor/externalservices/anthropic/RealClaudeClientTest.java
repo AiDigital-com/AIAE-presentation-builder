@@ -66,6 +66,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -131,6 +132,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -184,6 +186,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -239,6 +242,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -299,6 +303,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -359,6 +364,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), failureLog,
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -396,6 +402,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		String brief = "Drive awareness for the Spring Launch.";
@@ -448,7 +455,8 @@ class RealClaudeClientTest {
 		ClaudeFailureScope failures = failureLog.begin();
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
-				new WorkbookGeoFilter(), new PromptTokenEstimator(), failureLog, new AnthropicProperties());
+				new WorkbookGeoFilter(), new PromptTokenEstimator(), failureLog,
+				new TacticThoughtsCompleteness(), new AnthropicProperties());
 
 		String brief = "Drive awareness for the Spring Launch.";
 		TacticThoughtsInput input = new TacticThoughtsInput(
@@ -504,6 +512,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		String brief = "Drive awareness for the Spring Launch.";
@@ -551,6 +560,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -634,6 +644,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -705,6 +716,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -743,6 +755,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		JsonNode node = json.readTree("""
@@ -768,6 +781,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		// When-Then: a null node and a non-object node both yield an empty map
@@ -785,6 +799,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		CampaignData data = new CampaignData(
@@ -848,6 +863,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		CampaignData data = new CampaignData(
@@ -910,6 +926,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		CampaignData data = new CampaignData(
@@ -962,6 +979,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		ClaudeStrategic strategic = new ClaudeStrategic(
@@ -1033,6 +1051,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		ClaudeStrategic strategic = new ClaudeStrategic(
@@ -1118,6 +1137,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		ClaudeStrategic strategic = new ClaudeStrategic(
@@ -1183,7 +1203,8 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, new ClaudeBatchPromptBuilder(normalizer, new Fmt()), normalizer,
 				compressionService, new ReportClaudeDefaults(), new WorkbookGeoFilter(),
-				new PromptTokenEstimator(), new ClaudeFailureLogImpl(), new AnthropicProperties());
+				new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(), new AnthropicProperties());
 
 		ClaudeStrategic strategic = new ClaudeStrategic(
 				"25-44", "Auto intenders", "Proposal.",
@@ -1220,6 +1241,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		ClaudeStrategic strategic = new ClaudeStrategic(
@@ -1259,6 +1281,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 		List<List<String>> workbook = List.of(
 				List.of("### TAB: Proposal ###"),
@@ -1285,6 +1308,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 		List<List<String>> workbook = new java.util.ArrayList<>();
 		for (int i = 0; i < 2000; i++) {
@@ -1307,6 +1331,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 		List<String> goals = List.of("Build awareness", "  ", "Drive site visits");
 		String expectedPrompt = promptBuilder.buildFunnelFromGoalsPrompt(goals).orElseThrow();
@@ -1330,6 +1355,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		// When:
@@ -1348,6 +1374,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 		String brief = "Acme wants awareness among auto intenders in Texas over Q1 on a $500,000 budget.";
 		String expectedPrompt = promptBuilder.buildBriefDigestPrompt(brief, 2000).orElseThrow();
@@ -1373,6 +1400,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 		String changeLog = "Shifted 20% of Display budget to CTV on Jul 3 after CTV VCR held above 95%.";
 		String expectedPrompt = promptBuilder.buildChangeLogDigestPrompt(changeLog, 1500).orElseThrow();
@@ -1398,6 +1426,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 		String changeLog = "Shifted budget mid-flight.";
 		String expectedPrompt = promptBuilder.buildChangeLogDigestPrompt(changeLog, 1500).orElseThrow();
@@ -1419,6 +1448,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 		String oversized = "Acme wants awareness among auto intenders. ".repeat(80);
 		String compact = "Acme wants awareness among auto intenders in Texas over Q1.";
@@ -1448,6 +1478,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 		String oversized = "Acme wants awareness among auto intenders. ".repeat(80);
 		String expectedPrompt = promptBuilder.buildBriefDigestPrompt(oversized, 2000).orElseThrow();
@@ -1468,6 +1499,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		Tactic display = new Tactic(
@@ -1539,6 +1571,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		Tactic display = new Tactic(
@@ -1591,6 +1624,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 
 		Tactic display = new Tactic(
@@ -1640,7 +1674,8 @@ class RealClaudeClientTest {
 		props.setBreakdownChunkSize(2);
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
-				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(), props);
+				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(), props);
 
 		Map<Integer, Tactic> tactics = new LinkedHashMap<>();
 		for (int n = 1; n <= 4; n++) {
@@ -1709,6 +1744,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 		TacticPacingInput input = new TacticPacingInput(1, "CTV", "VCR", List.of(
 				new TacticPacingMetric("Impressions", "1,575,000", "1,602,341", "102%", "6,300,000", "6,409,364")));
@@ -1752,6 +1788,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
 				new AnthropicProperties());
 		TacticPacingInput input = new TacticPacingInput(3, "Meta", null, List.of(
 				new TacticPacingMetric("Spend", "$8,000", "$7,200", "90%", "$32,000", "$28,800")));
@@ -1770,7 +1807,8 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, new ClaudeBatchPromptBuilder(normalizer, new Fmt()), normalizer,
 				compressionService, new ReportClaudeDefaults(), new WorkbookGeoFilter(),
-				new PromptTokenEstimator(), new ClaudeFailureLogImpl(), new AnthropicProperties());
+				new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(), new AnthropicProperties());
 
 		assertThat(client.tacticPacing(null, "brief")).isNull();
 		verifyNoInteractions(messagesClient);

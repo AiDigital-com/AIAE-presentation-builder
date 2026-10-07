@@ -17,7 +17,11 @@ public enum ReportJobStatus {
 		this.code = code;
 	}
 
-	/** Returns the lowercase string value written to the database. */
+	/**
+	 * Returns the lowercase string value written to the database.
+	 *
+	 * @return the persisted status code
+	 */
 	public String getCode() {
 		return code;
 	}
