@@ -1,20 +1,27 @@
 name: CI
 
-# Protects every branch and every pull request. The DEV deployment workflow
-# builds images without running tests, exactly as the other AIAE applications
-# do, so this is the job that actually guards a revision before it ships.
+# The gate on a revision before it ships: the DEV deployment workflow builds
+# images without running tests, exactly as the other AIAE applications do, so
+# nothing else checks it.
+#
+# Both triggers are scoped to the release branches, which is what stops a branch
+# with an open pull request being checked twice. An unfiltered `push:` alongside
+# `pull_request:` fires both for the same commit — the branch push and the pull
+# request — and every job appears twice.
+#
+# pull_request.branches filters on the TARGET branch, so a pull request into
+# 1.0.0 runs once; push then runs once more when it actually lands there.
 on:
-  # No branch filter: every branch, which is the point. An empty
-  # `branches-ignore: []` was here first and silently disabled the whole
-  # workflow — the schema requires at least one entry, so the file failed to
-  # parse, GitHub never registered it, and neither pushes nor pull requests
-  # produced a single check.
-  push:
   pull_request:
+    branches:
+      - '[0-9]+.[0-9]+.[0-9]+'
+  push:
+    branches:
+      - '[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
