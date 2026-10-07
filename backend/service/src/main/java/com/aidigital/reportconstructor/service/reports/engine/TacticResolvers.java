@@ -1550,7 +1550,7 @@ public class TacticResolvers {
 	 * @param n         one-based tactic index used to build the {@code "Tactic N reach proj:"} lookup label
 	 * @param sheetRows Media Plan grid rows searched for the labelled value
 	 * @param adjRows   manual Adjustments grid rows that take precedence over the sheet
-	 * @param data      campaign data providing the to-date actual impressions/frequency and the elapsed/total month counts
+	 * @param data campaign data providing the to-date actual impressions/frequency and the elapsed/total month counts
 	 * @return the resolved projection with its source tag, or a {@code not_found} placeholder when
 	 * unavailable
 	 */
@@ -1648,7 +1648,8 @@ public class TacticResolvers {
 	 * @param n         one-based tactic index used to build the {@code "Tactic N spend pace:"} lookup label
 	 * @param sheetRows Media Plan grid rows searched for the labelled value
 	 * @param adjRows   manual Adjustments grid rows that take precedence over the sheet
-	 * @param data      campaign data providing the plan inputs, the to-date actual spend and the elapsed/total month counts
+	 * @param data campaign data providing the plan inputs, the to-date actual spend and the elapsed/total month
+	  *         counts
 	 * @return the resolved pacing percentage with its source tag, or a {@code not_found} placeholder when
 	 * the goal or actual can't be computed
 	 */
@@ -1873,6 +1874,14 @@ public class TacticResolvers {
 		return t.planSpend() / t.planImps() * 1000;
 	}
 
+	/**
+	 * Reads one trimmed cell, treating a short row, a negative index and a null value alike as an
+	 * absent cell rather than as an error.
+	 *
+	 * @param row the sheet row, which may be null or shorter than the index
+	 * @param idx the zero-based column index
+	 * @return the trimmed cell text, or an empty string when the cell is absent
+	 */
 	String cell(List<String> row, int idx) {
 
 		if (row == null || idx < 0 || idx >= row.size() || row.get(idx) == null) {
@@ -1886,6 +1895,14 @@ public class TacticResolvers {
 		return cell(row, idx);
 	}
 
+	/**
+	 * Joins a row's first cells into one lowercase space-separated string, used to match a row by its
+	 * text without caring which column a label landed in.
+	 *
+	 * @param row the sheet row, which may be null
+	 * @param n   how many leading cells to join; a row shorter than this contributes what it has
+	 * @return the joined lowercase text, or an empty string when the row is null
+	 */
 	String joinLower(List<String> row, int n) {
 
 		if (row == null) {

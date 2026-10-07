@@ -179,9 +179,14 @@ function AdoptSheetCard({ adopting, onAdopt }: AdoptSheetCardProps) {
                 </div>
             </div>
             <div className="rc-connect">
+                {/* Three inputs on this step share the same placeholder, and the other two get
+                    their name from ConnectRow's label. This one had none at all, so a screen
+                    reader announced it as an unlabelled text field — and it was indistinguishable
+                    from the Media Plan and Elevate links to anything querying by placeholder. */}
                 <input
                     type="text"
                     className="rc-input"
+                    aria-label="Link to the sheet you filled in yourself"
                     placeholder="https://docs.google.com/spreadsheets/…"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}

@@ -11,6 +11,7 @@ import com.aidigital.reportconstructor.service.reports.dto.Placeholder;
 import com.aidigital.reportconstructor.service.reports.dto.PlanTactic;
 import com.aidigital.reportconstructor.service.reports.dto.TacticFunnelEntry;
 import com.aidigital.reportconstructor.service.reports.dto.PreviewSection;
+import com.aidigital.reportconstructor.service.reports.engine.CampaignPacingResolvers;
 import com.aidigital.reportconstructor.service.reports.engine.CampaignResolvers;
 import com.aidigital.reportconstructor.service.reports.engine.ChannelSlideResolvers;
 import com.aidigital.reportconstructor.service.reports.engine.Resolved;
@@ -42,6 +43,7 @@ public class PlaceholderSectionBuilderImpl implements PlaceholderSectionBuilder 
 	private static final String DASH = "—"; // —
 
 	private final CampaignResolvers campaignResolvers;
+	private final CampaignPacingResolvers campaignPacingResolvers;
 	private final TacticResolvers tacticResolvers;
 	private final ChannelSlideResolvers channelSlideResolvers;
 	private final SoWhatResolver soWhatResolver;
@@ -170,26 +172,7 @@ public class PlaceholderSectionBuilderImpl implements PlaceholderSectionBuilder 
 		boolean eomPeriod = "EOM".equals(reportType) && data != null
 				&& data.eomMonthNumber() != null && data.eomFlightMonthsTotal() != null;
 		if (eomPeriod) {
-			totals.put("{{total imps plan ctd}}", campaignResolvers.resolveTotalImpsPlanCtd(sheet, adj, data));
-			totals.put("{{total imps pace}}", campaignResolvers.resolveTotalImpsPace(sheet, adj, data));
-			totals.put("{{total_investment_plan_ctd}}",
-					campaignResolvers.resolveTotalInvestmentPlanCtd(sheet, adj, data));
-			totals.put("{{total_investment_pace}}", campaignResolvers.resolveTotalInvestmentPace(sheet, adj, data));
-			totals.put("{{campaign pace status}}", campaignResolvers.resolveCampaignPaceStatus(sheet, adj, data));
-			totals.put("{{eom_month_number}}", campaignResolvers.resolveEomMonthNumber(sheet, adj, data));
-			totals.put("{{eom_flight_months_total}}", campaignResolvers.resolveEomFlightMonthsTotal(sheet, adj, data));
-			totals.put("{{eom_report_month}}", campaignResolvers.resolveEomReportMonth(sheet, adj, data));
-			totals.put("{{eom_next_month_number}}", campaignResolvers.resolveEomNextMonthNumber(sheet, adj, data));
-			totals.put("{{eom_next_report_month}}", campaignResolvers.resolveEomNextReportMonth(sheet, adj, data));
-			// Cover slide of the EOM template: the reporting period spelled out, where that period sits in
-			// the booked flight, and the plan/fact impressions abbreviated for the headline figures.
-			totals.put("{{reporting month}}", campaignResolvers.resolveReportingMonth(sheet, adj, data));
-			totals.put("{{total mon no}}", campaignResolvers.resolveCampaignMonthsTotal(sheet, adj, data));
-			totals.put("{{mon no}}", campaignResolvers.resolveCampaignMonthNumber(sheet, adj, data));
-			totals.put("{{planned total impressions short}}",
-					campaignResolvers.resolveTotalPlannedImpsShort(sheet, adj, data));
-			totals.put("{{fact total impressions short}}",
-					campaignResolvers.resolveTotalFactImpsShort(sheet, adj, data));
+			putEomPacingTokens(totals, sheet, adj, data);
 		}
 		sections.add(buildPreviewSection("Summary Metrics", totals));
 
@@ -226,6 +209,46 @@ public class PlaceholderSectionBuilderImpl implements PlaceholderSectionBuilder 
 		sections.add(buildPreviewSection("Frequency Story", frequency));
 
 		return sections;
+	}
+
+	/**
+	 * Adds the EOM-only pacing and reporting-period tokens.
+	 *
+	 * <p>Kept out of the main token build because these only exist once the user entered the
+	 * flight-months total at matching time: an EOC report, or an EOM request without that figure, must
+	 * never pick them up — the deck would then show a month number for a campaign that has no months.
+	 *
+	 * @param totals the accumulating summary-metric token map
+	 * @param sheet  the report sheet's rows
+	 * @param adj    the Adjustments rows
+	 * @param data   the collected campaign figures
+	 */
+	void putEomPacingTokens(
+			Map<String, Resolved> totals, List<List<String>> sheet, List<List<String>> adj, CampaignData data) {
+			totals.put("{{total imps plan ctd}}", campaignPacingResolvers.resolveTotalImpsPlanCtd(sheet, adj, data));
+			totals.put("{{total imps pace}}", campaignPacingResolvers.resolveTotalImpsPace(sheet, adj, data));
+			totals.put("{{total_investment_plan_ctd}}",
+					campaignPacingResolvers.resolveTotalInvestmentPlanCtd(sheet, adj, data));
+			totals.put("{{total_investment_pace}}",
+					campaignPacingResolvers.resolveTotalInvestmentPace(sheet, adj, data));
+			totals.put("{{campaign pace status}}", campaignPacingResolvers.resolveCampaignPaceStatus(sheet, adj, data));
+			totals.put("{{eom_month_number}}", campaignPacingResolvers.resolveEomMonthNumber(sheet, adj, data));
+			totals.put("{{eom_flight_months_total}}",
+					campaignPacingResolvers.resolveEomFlightMonthsTotal(sheet, adj, data));
+			totals.put("{{eom_report_month}}", campaignPacingResolvers.resolveEomReportMonth(sheet, adj, data));
+			totals.put("{{eom_next_month_number}}",
+					campaignPacingResolvers.resolveEomNextMonthNumber(sheet, adj, data));
+			totals.put("{{eom_next_report_month}}",
+					campaignPacingResolvers.resolveEomNextReportMonth(sheet, adj, data));
+			// Cover slide of the EOM template: the reporting period spelled out, where that period sits in
+			// the booked flight, and the plan/fact impressions abbreviated for the headline figures.
+			totals.put("{{reporting month}}", campaignResolvers.resolveReportingMonth(sheet, adj, data));
+			totals.put("{{total mon no}}", campaignResolvers.resolveCampaignMonthsTotal(sheet, adj, data));
+			totals.put("{{mon no}}", campaignResolvers.resolveCampaignMonthNumber(sheet, adj, data));
+			totals.put("{{planned total impressions short}}",
+					campaignResolvers.resolveTotalPlannedImpsShort(sheet, adj, data));
+			totals.put("{{fact total impressions short}}",
+					campaignResolvers.resolveTotalFactImpsShort(sheet, adj, data));
 	}
 
 	/**
@@ -313,8 +336,8 @@ public class PlaceholderSectionBuilderImpl implements PlaceholderSectionBuilder 
 				data));
 		m.put("{{tactic " + n + " top creative imps}}", tacticResolvers.resolveTacticTopCreativeImps(n, sheet, adj,
 				data));
-		m.put("{{tactic " + n + " top creative clicks}}", tacticResolvers.resolveTacticTopCreativeClicks(n, sheet, adj
-				, data));
+		m.put("{{tactic " + n + " top creative clicks}}", tacticResolvers.resolveTacticTopCreativeClicks(
+				n, sheet, adj, data));
 		if (eomPeriod) {
 			m.putAll(buildTacticPacingSection(n, sheet, adj, data));
 		}
@@ -417,6 +440,16 @@ public class PlaceholderSectionBuilderImpl implements PlaceholderSectionBuilder 
 		return new Resolved("Tactic " + n + " " + part + ": (estimate off)", DASH, "adj");
 	}
 
+	/**
+	 * Resolves one tactic's display name, preferring a value the user wrote into the sheet over the
+	 * media plan's own tactic list, so a manual correction is never overwritten by the plan.
+	 *
+	 * @param n             the one-based tactic number
+	 * @param sheet         the report sheet's rows
+	 * @param adj           the adjacent/Elevate rows searched alongside the sheet
+	 * @param mediaTactics  tactic names taken from the media plan, used when the sheet carries none
+	 * @return the resolved name together with where it came from
+	 */
 	Resolved resolveTacticName(
 			int n, List<List<String>> sheet, List<List<String>> adj, List<String> mediaTactics
 	) {
@@ -482,6 +515,13 @@ public class PlaceholderSectionBuilderImpl implements PlaceholderSectionBuilder 
 		return resolved == null ? null : resolved.value();
 	}
 
+	/**
+	 * Turns resolved token entries into one preview section for the review screen.
+	 *
+	 * @param title   the section heading shown to the user
+	 * @param entries the section's tokens mapped to their resolved values
+	 * @return the section carrying one placeholder per entry, in map order
+	 */
 	PreviewSection buildPreviewSection(String title, Map<String, Resolved> entries) {
 		List<Placeholder> phs = new ArrayList<>();
 		for (Map.Entry<String, Resolved> e : entries.entrySet()) {

@@ -236,7 +236,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 */
 	private static final int TACTIC_THOUGHTS_SLOTS = TACTIC_THOUGHTS_COUNT + 1;
 
-	/** Compression key of the per-tactic story, alongside the four {@code <n>_thought_<i>} keys. */
+	/** Compression key of the per-tactic story, alongside the four {@code &lt;n&gt;_thought_&lt;i&gt;} keys. */
 	private static final String STORY_FIELD_KEY = "_story";
 	/** Short tag identifying the Step-3 per-tactic thoughts call in logs and on the report's failure card. */
 	private static final String THOUGHTS_LABEL = "BatchTacticThoughts";
@@ -356,6 +356,7 @@ public class RealClaudeClient implements ClaudeClient {
 	private final PromptTokenEstimator tokenEstimator;
 	/** Run-scoped sink the reasons rejected replies were thrown away go to, for the report's own card. */
 	private final ClaudeFailureLog failureLog;
+	private final TacticThoughtsCompleteness thoughtsCompleteness;
 	/** Tactics per Step-2 conclusions call; bound from config, clamped to at least 1. */
 	private final int breakdownChunkSize;
 	/** Extra attempts a per-section call makes on a contract failure; bound from config, clamped to ≥ 0. */
@@ -370,6 +371,7 @@ public class RealClaudeClient implements ClaudeClient {
 			WorkbookGeoFilter geoFilter,
 			PromptTokenEstimator tokenEstimator,
 			ClaudeFailureLog failureLog,
+			TacticThoughtsCompleteness thoughtsCompleteness,
 			AnthropicProperties anthropicProperties) {
 		this.messagesClient = messagesClient;
 		this.promptBuilder = promptBuilder;
@@ -379,6 +381,7 @@ public class RealClaudeClient implements ClaudeClient {
 		this.geoFilter = geoFilter;
 		this.tokenEstimator = tokenEstimator;
 		this.failureLog = failureLog;
+		this.thoughtsCompleteness = thoughtsCompleteness;
 		this.breakdownChunkSize = Math.max(1, anthropicProperties.getBreakdownChunkSize());
 		this.sectionRetries = Math.max(0, anthropicProperties.getSectionRetries());
 	}
@@ -404,7 +407,8 @@ public class RealClaudeClient implements ClaudeClient {
 			return List.of();
 		}
 		return runSection("CreativeSection", input.tacticNum(),
-				promptBuilder.buildCreativeSectionPrompt(input, data, brief, CREATIVE_TAKEAWAY_LIMIT, CREATIVE_RECO_LIMIT),
+				promptBuilder.buildCreativeSectionPrompt(
+						input, data, brief, CREATIVE_TAKEAWAY_LIMIT, CREATIVE_RECO_LIMIT),
 				CREATIVE_TAKEAWAY_COUNT,
 				i -> i == CREATIVE_TAKEAWAY_COUNT - 1 ? CREATIVE_RECO_LIMIT : CREATIVE_TAKEAWAY_LIMIT);
 	}
@@ -425,7 +429,8 @@ public class RealClaudeClient implements ClaudeClient {
 			return List.of();
 		}
 		return runSection("AudienceSection", input.tacticNum(),
-				promptBuilder.buildAudienceSectionPrompt(input, data, brief, AUDIENCE_TAKEAWAY_LIMIT, AUDIENCE_SHORT_LIMIT),
+				promptBuilder.buildAudienceSectionPrompt(
+						input, data, brief, AUDIENCE_TAKEAWAY_LIMIT, AUDIENCE_SHORT_LIMIT),
 				AUDIENCE_FIELD_COUNT, i -> i == 0 ? AUDIENCE_TAKEAWAY_LIMIT : AUDIENCE_SHORT_LIMIT);
 	}
 
@@ -1003,7 +1008,8 @@ public class RealClaudeClient implements ClaudeClient {
 				: firstNonBlank(normalizer.limitFFact(compressed.get("f_fact")), results.fFact());
 		String fStorytelling = rawFStorytelling == null
 				? results.fStorytelling()
-				: firstNonBlank(normalizer.limitFStorytelling(compressed.get("f_storytelling")), results.fStorytelling());
+				: firstNonBlank(
+						normalizer.limitFStorytelling(compressed.get("f_storytelling")), results.fStorytelling());
 
 		// The north-star fields and both sets of dashboard takeaways are carried through untouched: the
 		// alignment schema never asks for them, so re-deriving them here would blank the EOM slides the pass
@@ -1102,18 +1108,6 @@ public class RealClaudeClient implements ClaudeClient {
 	}
 
 	/**
-	 * Derives the output budget for the alignment call from the copy the draft actually carries.
-	 *
-	 * <p>Every field in the draft is re-emitted by the model, so each one is given an allowance sized off its
-	 * own character limit rather than a share of one flat cap — that is what keeps a deck with many tactic
-	 * groups from having its trailing overviews cut off and silently left un-aligned. The total is bounded by
-	 * {@link #ALIGN_MAX_TOKENS_CAP} so a pathological draft cannot ask for an unbounded reply.
-	 *
-	 * @param strategic the Batch A copy whose proposal and insights are being aligned; not null
-	 * @param results   the Batch C copy whose overviews, thoughts and frequency strings are being aligned; not null
-	 * @return tokens the alignment reply may use
-	 */
-	/**
 	 * The character budget of one thoughts-list slot during the alignment pass. Slots 0–3 are analytical
 	 * paragraphs; slot {@link #STORY_SLOT_INDEX} is the campaign story, which carries the larger
 	 * {@link #STORY_LIMIT}. Cutting the story to {@link #THOUGHT_LIMIT} here would let the alignment pass
@@ -1130,6 +1124,18 @@ public class RealClaudeClient implements ClaudeClient {
 		return index == STORY_SLOT_INDEX ? STORY_LIMIT : THOUGHT_LIMIT;
 	}
 
+	/**
+	 * Derives the output budget for the alignment call from the copy the draft actually carries.
+	 *
+	 * <p>Every field in the draft is re-emitted by the model, so each one is given an allowance sized off its
+	 * own character limit rather than a share of one flat cap — that is what keeps a deck with many tactic
+	 * groups from having its trailing overviews cut off and silently left un-aligned. The total is bounded by
+	 * {@link #ALIGN_MAX_TOKENS_CAP} so a pathological draft cannot ask for an unbounded reply.
+	 *
+	 * @param strategic the Batch A copy whose proposal and insights are being aligned; not null
+	 * @param results   the Batch C copy whose overviews, thoughts and frequency strings are being aligned; not null
+	 * @return tokens the alignment reply may use
+	 */
 	int alignMaxTokens(ClaudeStrategic strategic, ClaudeResults results) {
 		int budget = ALIGN_BASE_TOKENS;
 		if (strategic.proposalOverview() != null && !strategic.proposalOverview().isBlank()) {
@@ -1481,8 +1487,9 @@ public class RealClaudeClient implements ClaudeClient {
 
 	/**
 	 * Runs one tactic's thoughts call and retries once when the reply is not the full set of four thoughts plus
-	 * the closing story, rather than shipping a half-filled thoughts slide. When neither attempt is complete the fuller of the
-	 * two is still returned — a reply carrying three real thoughts beats blanking all four — and only a tactic
+	 * the closing story, rather than shipping a half-filled thoughts slide. When neither attempt is
+	 * complete the fuller of the two is still returned — a reply carrying three real thoughts beats
+	 * blanking all four — and only a tactic
 	 * whose both attempts produced nothing usable is dropped ({@code null}), so its tokens render blank rather
 	 * than invented.
 	 *
@@ -1492,16 +1499,16 @@ public class RealClaudeClient implements ClaudeClient {
 	 */
 	TacticThoughts tacticThoughtsResilient(TacticThoughtsInput input, String brief) {
 		TacticThoughts first = tacticThoughtsOne(input, brief);
-		if (isCompleteThoughts(first)) {
+		if (thoughtsCompleteness.isCompleteThoughts(first)) {
 			return first;
 		}
 		log.warn("[claude:{}] tactic {} came back {} — retrying once",
 				THOUGHTS_LABEL, input.tacticNum(), first == null ? "empty" : "incomplete");
 		TacticThoughts second = tacticThoughtsOne(input, brief);
-		if (isCompleteThoughts(second)) {
+		if (thoughtsCompleteness.isCompleteThoughts(second)) {
 			return second;
 		}
-		TacticThoughts best = fullerThoughts(first, second);
+		TacticThoughts best = thoughtsCompleteness.fullerThoughts(first, second);
 		if (best == null) {
 			rejectSection(THOUGHTS_LABEL, input.tacticNum(),
 					"no usable thoughts after 2 attempts; its slide fields ship blank");
@@ -1511,8 +1518,9 @@ public class RealClaudeClient implements ClaudeClient {
 
 	/**
 	 * Runs one tactic's thoughts call: build the prompt, parse the four thoughts and the closing story, compress
-	 * any over-budget ones, and normalize. A reply whose {@code thoughts} array is missing, is not an array, or holds nothing
-	 * but blanks is rejected outright ({@code null}) — a well-formed but empty array is exactly the shape that
+	 * any over-budget ones, and normalize. A reply whose {@code thoughts} array is missing, is not an
+	 * array, or holds nothing but blanks is rejected outright ({@code null}) — a well-formed but empty
+	 * array is exactly the shape that
 	 * used to pass as a success and blank the slide silently. A reply that fills some but not all four slots is
 	 * returned as-is for {@link #tacticThoughtsResilient} to retry on.
 	 *
@@ -1638,56 +1646,6 @@ public class RealClaudeClient implements ClaudeClient {
 	 */
 	String pacingKey(int tacticNum, String field) {
 		return tacticNum + "_pacing_" + field;
-	}
-
-	/**
-	 * Reports whether a thoughts reply filled every slot the slide carries, which is the only shape worth
-	 * accepting without a retry. Counted after normalization, so a thought that survived the call but was
-	 * dropped as blank by the length pass counts as missing.
-	 *
-	 * @param thoughts the parsed thoughts, or {@code null} when the call produced nothing usable
-	 * @return {@code true} when all {@link #TACTIC_THOUGHTS_SLOTS} slots are present and non-blank
-	 */
-	boolean isCompleteThoughts(TacticThoughts thoughts) {
-		return countThoughts(thoughts) == TACTIC_THOUGHTS_SLOTS;
-	}
-
-	/**
-	 * Counts the non-blank thoughts a reply carries, tolerating a {@code null} reply and the {@code null}
-	 * entries {@link ClaudeResponseNormalizer#normalizeC} leaves behind for blanks.
-	 *
-	 * @param thoughts the parsed thoughts, or {@code null}
-	 * @return how many slide-ready thoughts it holds
-	 */
-	int countThoughts(TacticThoughts thoughts) {
-		if (thoughts == null || thoughts.thoughts() == null) {
-			return 0;
-		}
-		int filled = 0;
-		for (String thought : thoughts.thoughts()) {
-			if (thought != null && !thought.isBlank()) {
-				filled++;
-			}
-		}
-		return filled;
-	}
-
-	/**
-	 * Picks the attempt that carries more slide-ready thoughts, so a partial reply is never thrown away in
-	 * favour of an emptier one. Ties go to the first attempt; {@code null} is returned only when neither
-	 * attempt carries a single thought.
-	 *
-	 * @param first  the first attempt's thoughts, or {@code null}
-	 * @param second the retry's thoughts, or {@code null}
-	 * @return the fuller of the two, or {@code null} when both are empty
-	 */
-	TacticThoughts fullerThoughts(TacticThoughts first, TacticThoughts second) {
-		int firstCount = countThoughts(first);
-		int secondCount = countThoughts(second);
-		if (firstCount == 0 && secondCount == 0) {
-			return null;
-		}
-		return secondCount > firstCount ? second : first;
 	}
 
 	@Override

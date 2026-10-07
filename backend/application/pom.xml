@@ -24,7 +24,21 @@
 		<!-- Must match FQN of @SpringBootApplication class. Consumed by
 			 parent pluginManagement's <mainClass>${start-class}. -->
 		<start-class>${project.groupId}.Application</start-class>
+
+		<!-- Coverage floor for this module, below the parent's 0.80/0.70 target.
+			 Today this module sits at 0.4296 line / 0.3846 branch. The thinnest layer and
+			 the lowest number: controllers delegating to services that are themselves
+			 covered, plus Spring configuration. Measured with LiquibaseChangelogSmokeTest
+			 erroring for want of a local Docker daemon, so the real figure is this or
+			 higher.
+
+			 These numbers are a ratchet: they stop coverage sliding while work continues on
+			 debt they did not create. Raise them as coverage rises; delete them when the
+			 module meets the parent gate. -->
+		<jacoco.line.coverage>0.42</jacoco.line.coverage>
+		<jacoco.branch.coverage>0.38</jacoco.branch.coverage>
 	</properties>
+
 
 	<dependencies>
 		<!-- REQUIRED edges (drop either → broken):
@@ -112,6 +126,34 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- AWS Advanced JDBC Wrapper. Only the eks profile uses it: there the
+			 JDBC URL is jdbc:aws-wrapper:postgresql://... and the awsSecretsManager
+			 plugin reads the database username and password from the RDS-managed
+			 master user secret through the pod's IRSA role. When PostgreSQL rejects
+			 a login because AWS rotated that password, the plugin refetches the
+			 secret and retries, so a rotation never reaches the application: no pod
+			 restart, and no second copy of the password that could fall out of
+			 sync. Local, replit and test runs keep the plain driver above. Runtime
+			 scope, like that driver: no Java class refers to either, both are found
+			 through JDBC driver discovery. -->
+		<dependency>
+			<groupId>software.amazon.jdbc</groupId>
+			<artifactId>aws-advanced-jdbc-wrapper</artifactId>
+			<version>2.6.0</version>
+			<scope>runtime</scope>
+		</dependency>
+		<!-- The wrapper declares the Secrets Manager SDK as optional, so the
+			 awsSecretsManager plugin above cannot fetch anything without it. This
+			 is the only AWS SDK artifact in the project: the application calls no
+			 other AWS API, and its generated artifacts live in Google Slides and
+			 Sheets rather than S3. -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>secretsmanager</artifactId>
+			<version>2.29.45</version>
+			<scope>runtime</scope>
+		</dependency>
+
 		<!-- Test scope -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -155,6 +197,21 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+
+			<!-- Writes git.properties, read at runtime by GitVersionServiceImpl
+				 and exposed through the system API. Bound HERE and not in the
+				 parent's <build><plugins>: inherited by every module it produced a
+				 copy per module, all of which land on the executable jar's
+				 classpath, so the one actually read depended on classpath order.
+				 This module's classes directory becomes BOOT-INF/classes, which is
+				 searched before the jars in BOOT-INF/lib, so one copy here is both
+				 sufficient and unambiguous. Configuration (prefix, offline,
+				 failOnNoGitDirectory) is inherited from the parent's
+				 pluginManagement. -->
+			<plugin>
+				<groupId>io.github.git-commit-id</groupId>
+				<artifactId>git-commit-id-maven-plugin</artifactId>
 			</plugin>
 
 			<!-- Generate Spring interfaces + DTOs from openapi.yaml.

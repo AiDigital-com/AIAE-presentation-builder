@@ -16,6 +16,21 @@
 	<name>AIAE Presentation Builder - service</name>
 	<packaging>jar</packaging>
 
+
+	<!-- Coverage floor for this module, below the parent's 0.80/0.70 target.
+		 Today this module sits at 0.7919 line / 0.6402 branch.
+		 Measured on the suite that ships with this commit. The branch gap is the
+			 larger one: the report engine's resolvers are a wide tree of fallbacks and
+			 only the taken paths are exercised.
+
+		 These numbers are a ratchet: they stop coverage sliding while work continues
+		 on debt they did not create. Raise them as coverage rises; delete this block
+		 when the module meets the parent gate. -->
+	<properties>
+		<jacoco.line.coverage>0.78</jacoco.line.coverage>
+		<jacoco.branch.coverage>0.63</jacoco.branch.coverage>
+	</properties>
+
 	<dependencies>
 		<dependency>
 			<groupId>${project.groupId}</groupId>

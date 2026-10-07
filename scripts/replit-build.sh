@@ -26,7 +26,18 @@ test -n "${VITE_CLERK_PUBLISHABLE_KEY:-}" || {
 npm run build
 cd ..
 
+# Vite now builds to frontend/dist, because AWS uploads that directory to S3 and
+# serves it from CloudFront. Replit still serves the SPA out of the Spring jar,
+# so copy the same artifact into the static directory the jar packages. One
+# build, two destinations — nothing is built twice and the two cannot drift.
+#
+# Delete this block together with the rest of the Replit deployment, once the
+# AWS PROD cutover is verified and this deployment is retired.
 STATIC_DIR="backend/application/src/main/resources/static"
+rm -rf "${STATIC_DIR}"
+mkdir -p "${STATIC_DIR}"
+cp -R frontend/dist/. "${STATIC_DIR}/"
+
 test -f "${STATIC_DIR}/index.html" || {
   echo "ERROR: frontend build did not produce ${STATIC_DIR}/index.html." >&2
   exit 1

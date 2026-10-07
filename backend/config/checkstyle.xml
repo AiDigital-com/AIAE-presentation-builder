@@ -62,7 +62,21 @@
 
 	<!-- Checks for Size Violations.                    -->
 	<!-- See https://checkstyle.org/config_sizes.html -->
-	<module name="FileLength"/>
+
+	<!-- 2700 rather than the 2000 default, for ClaudeBatchPromptBuilder: it is 2600
+	     lines of prompt TEXT, not logic — one string literal per instruction, grouped
+	     by the Claude call each belongs to. FileLength exists to catch a class that has
+	     grown too many responsibilities, and splitting this one at an arbitrary line
+	     count would divide the prompts by where the 2000th line happens to fall rather
+	     than by anything meaningful.
+
+	     This is not a licence for long classes. Splitting the prompt builder by prompt
+	     family is still worth doing, and when it happens this should come back down.
+	     Any OTHER file approaching this number is the thing the default was protecting
+	     against, and should be split instead of raising this further. -->
+	<module name="FileLength">
+		<property name="max" value="2700"/>
+	</module>
 	<module name="LineLength">
 		<property name="fileExtensions" value="java"/>
 		<property name="max" value="120"/>

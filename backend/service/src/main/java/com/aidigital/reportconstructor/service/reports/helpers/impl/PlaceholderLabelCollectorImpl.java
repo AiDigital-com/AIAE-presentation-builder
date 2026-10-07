@@ -25,6 +25,12 @@ public class PlaceholderLabelCollectorImpl implements PlaceholderLabelCollector 
 		);
 	}
 
+	/**
+	 * Collects the label chips shown on the review screen from the sheet's rows.
+	 *
+	 * @param rows the sheet rows, which may be null
+	 * @return the chips in row order; empty when there are no rows
+	 */
 	List<LabelChip> collectLabelChips(List<List<String>> rows) {
 		List<LabelChip> out = new ArrayList<>();
 		if (rows == null) {

@@ -360,6 +360,14 @@ public class LineItemMatcherServiceImpl implements LineItemMatcherService {
 		return lineItemNaming.extractLineItemId(naming);
 	}
 
+	/**
+	 * Finds the first header column satisfying the predicate, so a column can be located by its name
+	 * rather than by a fixed position.
+	 *
+	 * @param headers the header row
+	 * @param match   the predicate applied to each header, with a null header passed as empty
+	 * @return the zero-based column index, or {@code -1} when no header matches
+	 */
 	int indexOfHeader(List<String> headers, java.util.function.Predicate<String> match) {
 
 		for (int i = 0; i < headers.size(); i++) {
@@ -370,6 +378,13 @@ public class LineItemMatcherServiceImpl implements LineItemMatcherService {
 		return -1;
 	}
 
+	/**
+	 * Reads one cell by index, returning an empty string when the row is null or too short.
+	 *
+	 * @param row the sheet row
+	 * @param idx the zero-based column index
+	 * @return the cell text, or an empty string when the cell is absent
+	 */
 	String cell(List<String> row, int idx) {
 
 		if (idx < 0 || row == null || idx >= row.size()) {

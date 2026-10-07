@@ -53,7 +53,19 @@ export default defineConfig(({ mode }) => {
             },
         },
         build: {
-            outDir: "../backend/application/src/main/resources/static",
+            // Standalone artifact uploaded to S3 and served by CloudFront on AWS.
+            // This previously wrote straight into the Spring static directory so
+            // the Replit Reserved VM could serve the SPA from the jar. On AWS the
+            // SPA and the API are separate origins joined by one CloudFront
+            // distribution (default behaviour -> S3, /api/* and /actuator/* ->
+            // ALB), so the browser still sees a single origin and
+            // runtimeConfig.apiBaseUrl stays empty.
+            //
+            // Replit is still serving production from this branch, so
+            // scripts/replit-build.sh copies dist/ into the Spring static
+            // directory afterwards. Remove that copy only when the Replit
+            // deployment is retired.
+            outDir: "dist",
             emptyOutDir: true,
         },
         preview: {

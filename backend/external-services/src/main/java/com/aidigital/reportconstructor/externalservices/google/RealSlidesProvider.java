@@ -1552,6 +1552,9 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * Builds a Drive client authenticated as the signed-in user via their
 	 * short-lived Google OAuth access token (sourced from Clerk). The template
 	 * must be readable by that user for the copy to succeed.
+	 *
+	 * @param accessToken the caller's Google OAuth token, or null/blank for the service account
+	 * @return a Drive client bound to that identity
 	 */
 	Drive buildDrive(String accessToken) {
 
@@ -1560,6 +1563,13 @@ public class RealSlidesProvider implements SlidesProvider {
 				.build();
 	}
 
+	/**
+	 * Builds a Slides client for the signed-in user, or for the service account when the token is
+	 * blank.
+	 *
+	 * @param accessToken the caller's Google OAuth token, or null/blank for the service account
+	 * @return a Slides client bound to that identity
+	 */
 	Slides buildSlides(String accessToken) {
 
 		return new Slides.Builder(creds.transport(), creds.jsonFactory(), userInitializer(accessToken))

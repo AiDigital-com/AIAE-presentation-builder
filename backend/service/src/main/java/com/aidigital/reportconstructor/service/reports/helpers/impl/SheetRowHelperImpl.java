@@ -263,6 +263,13 @@ public class SheetRowHelperImpl implements SheetRowHelper {
 			flexible("M/d/yy"),
 	};
 
+	/**
+	 * Builds a case-insensitive, leniently-resolving formatter, because sheet dates arrive in whatever
+	 * casing and padding the author typed.
+	 *
+	 * @param pattern the date pattern to accept
+	 * @return a formatter for that pattern
+	 */
 	DateTimeFormatter flexible(String pattern) {
 		return new DateTimeFormatterBuilder()
 				.parseCaseInsensitive()

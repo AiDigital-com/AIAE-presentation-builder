@@ -11,7 +11,6 @@ import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageEventSer
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 
 /**
  * Default {@link AdminFailuresService}. Validates admin access, then clears failures severity-aware:

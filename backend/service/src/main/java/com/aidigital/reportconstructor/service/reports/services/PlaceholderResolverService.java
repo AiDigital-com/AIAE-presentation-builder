@@ -44,7 +44,8 @@ public interface PlaceholderResolverService {
 	 * @param ccC         Claude Batch C output (results copy)
 	 * @param primaryKpis   AI-generated primary-KPIs line, or {@code null} when a manual value is used instead
 	 * @param geoSummary    AI-generated geo summary, or {@code null} when the Geo tab is not used
-	 * @param funnelSummary AI-generated funnel-stage summary, or {@code null} when a manual/column value is used instead
+	 * @param funnelSummary AI-generated funnel-stage summary, or {@code null} when a manual/column value is used
+	  *         instead
 	 * @param briefDigest   Claude's condensed campaign brief filling {@code {{RFP info}}}, or {@code null} to fall
 	 *                      back to the raw brief from the payload
 	 * @param changeLogDigest Claude's condensed change log filling {@code {{change log}}}, or {@code null} to fall

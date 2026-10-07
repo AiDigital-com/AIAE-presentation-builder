@@ -15,7 +15,8 @@ public interface AdminManagementService {
 	 *
 	 * @param callerEmail email of the requesting admin
 	 * @return the current admins
-	 * @throws com.aidigital.reportconstructor.service.common.error.AppException {@code C004} when the caller is not an admin
+	 * @throws com.aidigital.reportconstructor.service.common.error.AppException
+	 *         {@code C004} when the caller is not an admin
 	 */
 	List<AdminEntry> listAdmins(String callerEmail);
 
@@ -25,8 +26,9 @@ public interface AdminManagementService {
 	 * @param callerEmail email of the requesting admin
 	 * @param email       email to grant admin access to
 	 * @return the admins after the grant
-	 * @throws com.aidigital.reportconstructor.service.common.error.AppException {@code C004} when the caller is not an
-	 *                                                                           admin, {@code C002} when the email is invalid
+	 * @throws com.aidigital.reportconstructor.service.common.error.AppException
+	 *         {@code C004} when the caller is not an admin, {@code C002} when the
+	 *         email is invalid
 	 */
 	List<AdminEntry> addAdmin(String callerEmail, String email);
 
@@ -36,10 +38,10 @@ public interface AdminManagementService {
 	 * @param callerEmail email of the requesting admin
 	 * @param email       email to revoke
 	 * @return the admins after the revoke
-	 * @throws com.aidigital.reportconstructor.service.common.error.AppException {@code C004} when the caller is not an
-	 *                                                                           admin, {@code C002} when trying to remove a
-	 *                                                                           config (root) admin, {@code C001} when no
-	 *                                                                           managed grant exists
+	 * @throws com.aidigital.reportconstructor.service.common.error.AppException
+	 *         {@code C004} when the caller is not an admin, {@code C002} when
+	 *         trying to remove a config (root) admin, {@code C001} when no managed
+	 *         grant exists
 	 */
 	List<AdminEntry> removeAdmin(String callerEmail, String email);
 }

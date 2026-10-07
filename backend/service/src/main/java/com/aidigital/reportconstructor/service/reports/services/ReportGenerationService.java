@@ -21,7 +21,8 @@ public interface ReportGenerationService {
 	 * @param userEmail    email of the triggering user, used to name the generated Drive artifact
 	 * @param payload      full generation request (brief, report type, sheet rows, mappings, geo rows, etc.)
 	 * @param target       artifact to build (SLIDES deck or SHEET workbook) from the resolved placeholders
-	 * @param mediaPlanUrl Media Plan source sheet URL the user connected, persisted for admin review; may be {@code null}
+	 * @param mediaPlanUrl Media Plan source sheet URL the user connected, persisted for admin review; may be {@code
+	  *         null}
 	 * @param elevateUrl   Elevate source sheet URL the user connected, persisted for admin review; may be {@code null}
 	 * @return the persisted, queued {@link ReportJobEntity} whose build runs asynchronously
 	 */

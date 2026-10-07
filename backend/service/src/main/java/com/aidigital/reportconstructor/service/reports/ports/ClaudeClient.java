@@ -75,7 +75,8 @@ public interface ClaudeClient {
 	 * @param data  parsed campaign data supplying the shared campaign context
 	 * @param input the tactic's geo input (name + KPI type + table)
 	 * @param brief free-text campaign brief the copy must stay faithful to
-	 * @return the five geo strings in slide order (four insights + one forward-looking reco), or an empty list on failure
+	 * @return the five geo strings in slide order (four insights + one forward-looking reco), or an empty list on
+	  *         failure
 	 */
 	List<String> geoSection(CampaignData data, GeoInsightInput input, String brief);
 
@@ -105,6 +106,10 @@ public interface ClaudeClient {
 
 	/**
 	 * Batch A — audience age/segments, proposal overview, 4 strategic insights.
+	 *
+	 * @param data  the collected campaign figures the copy must stay consistent with
+	 * @param brief free-text campaign brief the copy must stay faithful to
+	 * @return the parsed audience, proposal and strategic-insight copy
 	 */
 	ClaudeStrategic batchStrategic(CampaignData data, String brief);
 
@@ -125,6 +130,10 @@ public interface ClaudeClient {
 
 	/**
 	 * Batch B — per-tactic gender split + weekday/weekend peak windows.
+	 *
+	 * @param data  the collected campaign figures the copy must stay consistent with
+	 * @param brief free-text campaign brief the copy must stay faithful to
+	 * @return the per-tactic gender split and peak windows
 	 */
 	ClaudeTactical batchTactical(CampaignData data, String brief);
 
@@ -270,6 +279,9 @@ public interface ClaudeClient {
 
 	/**
 	 * Geo-tab → short ≤40-char comma-separated location string (or null).
+	 *
+	 * @param geoRows the Geo tab's rows as read from the sheet
+	 * @return the condensed location string, or {@code null} when the tab yields nothing usable
 	 */
 	String summarizeGeo(List<List<String>> geoRows);
 

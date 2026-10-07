@@ -65,6 +65,7 @@ public interface ReportGenerationChartHelper {
 	 *
 	 * @param slideUrl        URL of the generated Google Slides deck
 	 * @param tacticCount     number of active tactics (clamped 1..28)
+	 * @param reportType      the deck's report type, which decides which slides may be trimmed
 	 * @param userGoogleToken OAuth token for Google Slides API, or null when unavailable
 	 */
 	void trimUnusedTactics(String slideUrl, int tacticCount, String reportType, String userGoogleToken);

@@ -33,6 +33,7 @@ public class EomClaudeClientConfig {
 	 * @param geoFilter          shared workbook geo-row filter
 	 * @param tokenEstimator     shared prompt-size estimator
 	 * @param failureLog         shared run-scoped sink for rejected replies
+	 * @param thoughtsCompleteness decides whether a thoughts reply is complete enough to keep
 	 * @param anthropicProperties shared chunking/retry configuration
 	 * @return the client end-of-month runs send their prompts through
 	 */
@@ -46,9 +47,10 @@ public class EomClaudeClientConfig {
 			WorkbookGeoFilter geoFilter,
 			PromptTokenEstimator tokenEstimator,
 			ClaudeFailureLog failureLog,
+			TacticThoughtsCompleteness thoughtsCompleteness,
 			AnthropicProperties anthropicProperties) {
 		return new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, claudeDefaults,
-				geoFilter, tokenEstimator, failureLog, anthropicProperties);
+				geoFilter, tokenEstimator, failureLog, thoughtsCompleteness, anthropicProperties);
 	}
 }

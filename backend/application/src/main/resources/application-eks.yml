@@ -1,0 +1,87 @@
+# application-eks.yml
+#
+# AWS EKS profile (AIAE shared DEV/PROD clusters). Activated by the Helm chart
+# via SPRING_PROFILES_ACTIVE=eks.
+#
+# Environment-specific values (origins, template ids, feature flags) come from
+# the ConfigMap rendered by AIAE-helm; secrets arrive from AWS Secrets Manager
+# through the Secrets Store CSI driver. Nothing environment-specific belongs in
+# this file — it is shared by DEV and PROD. This is what replaces the Replit
+# scripts/lib/deploy-env.sh split: there the workspace and the published app
+# shared one environment and the difference had to be made by overwriting
+# variables at boot, here DEV and PROD are separate ConfigMaps and separate
+# secrets.
+
+spring:
+  liquibase:
+    # Schema migration runs as an Argo CD PreSync Job from the paired
+    # liquibase-* image BEFORE any new pod rolls out, so the application must
+    # never migrate on startup. With more than one replica, startup migration
+    # would also race between pods on the same changelog lock.
+    enabled: false
+
+  jpa:
+    # The PreSync Job owns the schema, so the runtime only validates that the
+    # mapped entities match what the migration produced. A mismatch must fail
+    # startup loudly rather than be silently tolerated.
+    hibernate:
+      ddl-auto: validate
+
+  datasource:
+    # Database credentials come from the RDS-managed master user secret, and
+    # nothing copies them anywhere else. The AWS Advanced JDBC Wrapper's
+    # awsSecretsManager plugin reads that secret through the pod's IRSA role
+    # when it opens a connection. AWS rotates the password every seven days;
+    # when PostgreSQL then rejects a login, the plugin refetches the secret and
+    # retries, so the rotation never surfaces.
+    #
+    # Projecting the password into an environment variable cannot work here.
+    # Environment variables are fixed for the lifetime of a container, while the
+    # pool retires connections within a minute, so a rotated password starts
+    # failing about a minute after the rotation and keeps failing until
+    # something restarts the pod.
+    url: jdbc:aws-wrapper:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    driver-class-name: software.amazon.jdbc.Driver
+
+    # Deliberately empty: the plugin supplies both from the secret's username
+    # and password fields. Inheriting POSTGRES_USER and POSTGRES_PASSWORD
+    # instead would let a misconfigured plugin fall back to stale credentials
+    # and connect anyway; an empty credential fails loudly, which is the
+    # behaviour this profile wants.
+    username: ""
+    password: ""
+
+    hikari:
+      # Forwarded to the driver as connection properties, which is how the
+      # wrapper is configured.
+      data-source-properties:
+        # This plugin only. The wrapper's default plugin list targets Aurora
+        # failover topology, which a single-instance RDS deployment has not got.
+        wrapperPlugins: awsSecretsManager
+        wrapperDialect: rds-pg
+        # ARN of the RDS-managed secret, supplied by the chart's ConfigMap from
+        # the Terraform output presentation_builder_database_master_secret_arn.
+        secretsManagerSecretId: ${DB_MASTER_SECRET_ID}
+        secretsManagerRegion: ${AWS_REGION:us-east-1}
+      # Report generation fans out to Anthropic and the Google APIs on a shared
+      # virtual-thread executor, so several connections can be wanted at once.
+      # Still small: db.t3.small has a modest max_connections budget that the
+      # migration Job also draws on.
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:10}
+      minimum-idle: 1
+
+management:
+  # Kubernetes startup, readiness and liveness probes hit
+  # /actuator/health/readiness and /actuator/health/liveness. Spring exposes
+  # those groups only when probes are enabled; the chart sets
+  # MANAGEMENT_HEALTH_PROBES_ENABLED=true and this keeps it working even if the
+  # ConfigMap entry is ever dropped.
+  health:
+    probes:
+      enabled: true
+
+server:
+  # The ALB terminates the connection and forwards X-Forwarded-*; CloudFront
+  # sits in front of it. Without this, absolute URLs and the OpenAPI server
+  # entry resolve to the pod's own http://ip:5000 rather than the public origin.
+  forward-headers-strategy: framework

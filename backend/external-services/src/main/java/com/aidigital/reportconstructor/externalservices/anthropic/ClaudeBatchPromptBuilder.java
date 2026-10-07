@@ -252,7 +252,8 @@ public class ClaudeBatchPromptBuilder {
 						"expectations\", "
 						+ "\"we recommend monitoring\", \"this tactic requires further optimization\". "
 						+ "If a sentence could appear in any other campaign report unchanged — rewrite it.\n"
-						+ "3. EXPLAIN THE WHY. Don't write \"X had a high CTR.\" Write WHY: creative format, placement" +
+						+ "3. EXPLAIN THE WHY. Don't write \"X had a high CTR.\" Write WHY: creative format, " +
+								"placement" +
 						" type, "
 						+ "audience intent level, message-to-moment alignment, competitive bid landscape, etc.\n"
 						+ "4. SPECIFICITY IS MANDATORY. Name the specific tactic, channel, audience segment, or geo. "
@@ -365,7 +366,8 @@ public class ClaudeBatchPromptBuilder {
 						"expectations\", "
 						+ "\"we recommend monitoring\", \"this tactic requires further optimization\". "
 						+ "If a sentence could appear in any other campaign report unchanged — rewrite it.\n"
-						+ "3. EXPLAIN THE WHY. Don't write \"X had a high CTR.\" Write WHY: creative format, placement" +
+						+ "3. EXPLAIN THE WHY. Don't write \"X had a high CTR.\" Write WHY: creative format, " +
+								"placement" +
 						" type, "
 						+ "audience intent level, message-to-moment alignment, competitive bid landscape, etc.\n"
 						+ "4. SPECIFICITY IS MANDATORY. Name the specific tactic, channel, audience segment, or geo. "
@@ -378,12 +380,14 @@ public class ClaudeBatchPromptBuilder {
 						+ "Sentence 2: how it ran — tactic mix + geo + flight period. "
 						+ "Name the actual tactics, actual audience, actual geo. No character limit — write both " +
 						"sentences completely.\n"
-						+ "  \"strategic_insights\": array    // Exactly 4 objects: {\"point\": string, \"overview\": " +
+						+ "  \"strategic_insights\": array    // Exactly 4 objects: {\"point\": string, " +
+								"\"overview\": " +
 						"string}.\n"
 						+ "                                // CRITICAL for 'point': MAX 20 CHARACTERS ABSOLUTE HARD " +
 						"LIMIT.\n"
 						+ "                                // For 'overview': MAX 230 CHARACTERS.\n"
-						+ "                                // Each overview = strategic intention/approach + WHY this " +
+						+ "                                // Each overview = strategic intention/approach + WHY " +
+								"this " +
 						"choice made sense "
 						+ "for THIS client/campaign. Unique angles, past tense, Business English. No filler.\n"
 						+ "}\n\n"
@@ -580,7 +584,8 @@ public class ClaudeBatchPromptBuilder {
 						".\n"
 						+ "8. WEEKDAYS default to an evening window (between 5 PM and midnight) — most audiences " +
 						"consume media after work/school on weekdays. Only pick a daytime or morning weekday window " +
-						"when the tactic's channel or audience clearly behaves otherwise (e.g. a B2B/workplace tactic).\n"
+						"when the tactic's channel or audience clearly behaves otherwise (e.g. a B2B/workplace " +
+								"tactic).\n"
 						+ "9. WEEKENDS default to a midday window (between 10 AM and 4 PM). Only pick an evening " +
 						"weekend window when the tactic specifics clearly support it.\n\n"
 						+ "Example: {\"1\": {\"male\": 38, \"female\": 62, \"weekdays_peak\": \"7 PM – 9 PM\", " +
@@ -646,7 +651,8 @@ public class ClaudeBatchPromptBuilder {
 						"implication.\n"
 						+ "2. NO GENERIC LANGUAGE. Every sentence must be specific to this campaign's data. "
 						+ "If a sentence could appear in any other campaign report unchanged — rewrite it.\n"
-						+ "3. SPECIFICITY IS MANDATORY. Name the specific tactic, channel, audience segment, or geo.\n\n"
+						+ "3. SPECIFICITY IS MANDATORY. Name the specific tactic, channel, audience segment, or " +
+								"geo.\n\n"
 						+ "Read the campaign data below and return a JSON object with EXACTLY these keys:\n\n"
 						+ "{\n"
 						+ "  \"audience_age\": string,        // target audience age, e.g. \"25-44 years old\" or " +
@@ -654,20 +660,24 @@ public class ClaudeBatchPromptBuilder {
 						+ "Exact range if stated; lower bound only if a floor; generation → range (Millennials=25-40, "
 						+ "GenZ=18-27, GenX=41-56, Boomers=57-75); null if not specified.\n"
 						+ audienceSegmentsSpec()
-						+ "  \"tactics\": {                    // Per-tactic gender split + peak windows. Keys are tactic " +
+						+ "  \"tactics\": {                    // Per-tactic gender split + peak windows. Keys are " +
+								"tactic " +
 						"numbers as strings: " + tacticKeys + "\n"
 						+ "    \"N\": {\"male\": int, \"female\": int, \"weekdays_peak\": \"H AM/PM – H AM/PM\", " +
 						"\"weekends_peak\": \"H AM/PM – H AM/PM\"}\n"
 						+ "  //  1. Gender split of the reached audience. male + female = 100. All integers.\n"
-						+ "  //  2. Peak impression time window on WEEKDAYS (format: \"H AM/PM – H AM/PM\", e.g. \"7 PM " +
+						+ "  //  2. Peak impression time window on WEEKDAYS (format: \"H AM/PM – H AM/PM\", e.g. " +
+								"\"7 PM " +
 						"– 9 PM\").\n"
 						+ "  //  3. Peak impression time window on WEEKENDS (same format).\n"
 						+ "  //  Gender: use campaign context as primary signal. Avoid defaulting to 50/50.\n"
 						+ "  //  CRITICAL: Never use multiples of 5 for gender. Use uneven integers like 43,57,61,38.\n"
-						+ "  //  Peak windows: whole hours, 2–5 hour range. Format: \"H PM – H PM\" (no leading zeros).\n"
+						+ "  //  Peak windows: whole hours, 2–5 hour range. Format: \"H PM – H PM\" (no leading " +
+								"zeros).\n"
 						+ "  //  WEEKDAYS default to an evening window (between 5 PM and midnight) — most audiences " +
 						"consume media after work/school on weekdays. Only pick a daytime or morning weekday window " +
-						"when the tactic's channel or audience clearly behaves otherwise (e.g. a B2B/workplace tactic).\n"
+						"when the tactic's channel or audience clearly behaves otherwise (e.g. a B2B/workplace " +
+								"tactic).\n"
 						+ "  //  WEEKENDS default to a midday window (between 10 AM and 4 PM). Only pick an evening " +
 						"weekend window when the tactic specifics clearly support it.\n"
 						+ "  //  Example: {\"1\": {\"male\": 38, \"female\": 62, \"weekdays_peak\": \"7 PM – 9 PM\", " +
@@ -1024,7 +1034,8 @@ public class ClaudeBatchPromptBuilder {
 						+ "1) KEY TAKEAWAY (who this tactic reached), at most " + takeawayPrompt + " characters;\n"
 						+ "2) WHAT WORKED, at most " + shortPrompt + " characters;\n"
 						+ "3) WATCH-OUT, at most " + shortPrompt + " characters;\n"
-						+ "4) RECOMMENDED ACTION — FORWARD-LOOKING, which age groups and segments to lean into next, at "
+						+ "4) RECOMMENDED ACTION — FORWARD-LOOKING, which age groups and segments to lean into next, " +
+								"at "
 						+ "most " + shortPrompt + " characters.\n\n"
 						+ sectionObjectRules(4)
 						+ campaignContextForConclusions(data, brief) + "\n\n"
@@ -1052,7 +1063,8 @@ public class ClaudeBatchPromptBuilder {
 		int prompt = Math.max(1, (int) (limit * COMPRESSION_PROMPT_BUFFER_RATIO));
 		String text =
 				"You are a senior digital media analyst writing the 'Top Publishers' slide for ONE tactic in "
-						+ sectionReportKind() + ", on behalf of the team that ran the campaign (confident, complimentary "
+						+ sectionReportKind() + ", on behalf of the team that ran the campaign (confident, " +
+								"complimentary "
 						+ "of our own delivery).\n\n"
 						+ sectionPrinciples()
 						+ "Return the four observations in THIS order, each ONE complete sentence:\n"
@@ -1064,12 +1076,16 @@ public class ClaudeBatchPromptBuilder {
 						+ "3) PREMIUM AND BRAND SUITABILITY — state that WE BLACKLISTED a large number of PUBLISHERS "
 						+ "(hundreds to a few thousand, kept qualitative — never a precise count) to hold delivery on "
 						+ "premium, brand-safe inventory, at most " + prompt + " characters;\n"
-						+ "4) STEERING WEIGHT — an optimisation WE ALREADY MADE toward the strongest publishers and what "
+						+ "4) STEERING WEIGHT — an optimisation WE ALREADY MADE toward the strongest publishers and " +
+								"what "
 						+ "it produced, at most " + prompt + " characters.\n"
 						+ "Ground every observation in the numbers: name real publishers from the table and cite their "
-						+ "real shares/impressions. The table lists only this tactic's top publishers out of thousands; "
-						+ "the HEAD VS LONG TAIL line under it states the exact share of delivery they carry — cite that "
-						+ "share rather than estimating coverage, and never state anything the table does not show as a "
+						+ "real shares/impressions. The table lists only this tactic's top publishers out of " +
+								"thousands; "
+						+ "the HEAD VS LONG TAIL line under it states the exact share of delivery they carry — cite " +
+								"that "
+						+ "share rather than estimating coverage, and never state anything the table does not show " +
+								"as a "
 						+ "measured fact. Every optimisation is phrased as something WE ALREADY DID (e.g. 'we shifted "
 						+ "weight toward stronger publishers'); never say we blacklisted or paused a TACTIC (say we "
 						+ "REDUCED ITS WEIGHT).\n\n"
@@ -1140,7 +1156,8 @@ public class ClaudeBatchPromptBuilder {
 						+ prompt + " characters, grounded in real markets/geos and the lead KPI; vary angles: "
 						+ "concentration across top geos, efficient (over-indexing) markets, and reach with softer "
 						+ "engagement. Treat high-KPI low-volume markets as noise. String 4 is "
-						+ "DIFFERENT — a FORWARD-LOOKING recommendation (where to open budget, which markets to scale), "
+						+ "DIFFERENT — a FORWARD-LOOKING recommendation (where to open budget, which markets to " +
+								"scale), "
 						+ "at most " + prompt + " characters, still grounded in the table. "
 						+ GEO_TOP_MARKETS_RULE + "\n\n"
 						+ sectionObjectRules(4)
@@ -2430,7 +2447,8 @@ public class ClaudeBatchPromptBuilder {
 	 * the model is never asked to fabricate a field that was empty to begin with.
 	 *
 	 * @param strategic       the Batch A output whose {@code proposalOverview}/{@code strategicInsights} feed the draft
-	 * @param results         the Batch C output whose results overviews, thoughts and frequency narrative feed the draft
+	 * @param results         the Batch C output whose results overviews, thoughts and frequency
+	 *                        narrative feed the draft
 	 * @param breakdownDigest one short line per breakdown conclusion; rendered as read-only alignment context
 	 * @param brief           free-text campaign brief the aligned narrative must stay faithful to
 	 * @return the Batch D alignment prompt, or empty when the draft carries no alignable campaign-level copy
@@ -2480,7 +2498,8 @@ public class ClaudeBatchPromptBuilder {
 				if (point.isEmpty() && overview.isEmpty()) {
 					continue;
 				}
-				draft.add("strategic_insight[" + insightCount + "]: point=\"" + point + "\" overview=\"" + overview + "\"");
+				draft.add("strategic_insight[" + insightCount + "]: point=\"" + point
+						+ "\" overview=\"" + overview + "\"");
 				insightCount++;
 			}
 		}
