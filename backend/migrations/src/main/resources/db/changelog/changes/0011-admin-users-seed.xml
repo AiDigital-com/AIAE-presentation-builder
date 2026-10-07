@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Seeds the admin grants that must exist for a freshly created database to be
+	administrable at all.
+
+	Why this is here rather than in `app.admin.emails`: that allow-list is
+	environment configuration living in the AIAE-helm environment values, and
+	both that repository and this one are public. Keeping a person's address in
+	the database instead of in git means it can also be revoked through the admin
+	UI, which a configuration entry cannot be.
+
+	Why a seed is needed at all: a grant made through the UI requires an admin to
+	make it, so an empty `admin_users` on an empty database leaves the deployment
+	with only whoever `app.admin.emails` names. When that is one person, their
+	absence locks everybody out.
+
+	`added_by_email` stays NULL on purpose — nobody granted these, the schema did.
+	`AdminEntry` already documents NULL as the "not granted by a person" case.
+-->
+<databaseChangeLog
+		xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+														https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+	<!--
+		The precondition makes this idempotent against a row that already exists,
+		which happens two ways: the admin UI granted the address before this
+		changeset first ran, or the database was restored from a dump that already
+		contained it. Without it the unique constraint on `email` would fail the
+		PreSync migration Job and block the whole deployment.
+	-->
+	<changeSet id="admin-users-seed-azat-nabiev" author="agent">
+		<preConditions onFail="MARK_RAN">
+			<sqlCheck expectedResult="0">
+				SELECT COUNT(*) FROM admin_users WHERE email = 'azat.nabiev@aidigital.com'
+			</sqlCheck>
+		</preConditions>
+
+		<insert tableName="admin_users">
+			<column name="email" value="azat.nabiev@aidigital.com"/>
+		</insert>
+
+		<rollback>
+			<delete tableName="admin_users">
+				<where>email = 'azat.nabiev@aidigital.com'</where>
+			</delete>
+		</rollback>
+	</changeSet>
+
+</databaseChangeLog>
