@@ -746,30 +746,33 @@ public class CampaignDataCollector {
 						String crName = cellAt(row, colCr);
 						if (!crName.isEmpty()) {
 							double[] cr = byCreative.computeIfAbsent(liId, k -> new LinkedHashMap<>())
-									.computeIfAbsent(crName, k -> new double[]{0.0, 0.0});
+									.computeIfAbsent(crName, k -> new double[]{0.0, 0.0, 0.0});
 							cr[0] += im;
 							cr[1] += cl;
+							cr[2] += cmp;
 						}
 					}
 				}
 			}
 		}
 
-		Map<String, double[]> topCreativeByLi = new LinkedHashMap<>(); // liId -> {imps, clicks}
+		Map<String, double[]> topCreativeByLi = new LinkedHashMap<>(); // liId -> {imps, clicks, completions}
 		Map<String, String> topCreativeName = new LinkedHashMap<>();
 		for (Map.Entry<String, Map<String, double[]>> e : byCreative.entrySet()) {
 			String topName = null;
 			double topImps = -1.0;
 			double topClicks = 0.0;
+			double topCompletions = 0.0;
 			for (Map.Entry<String, double[]> c : e.getValue().entrySet()) {
 				if (c.getValue()[0] > topImps) {
 					topImps = c.getValue()[0];
 					topClicks = c.getValue()[1];
+					topCompletions = c.getValue()[2];
 					topName = c.getKey();
 				}
 			}
 			if (topName != null) {
-				topCreativeByLi.put(e.getKey(), new double[]{topImps, topClicks});
+				topCreativeByLi.put(e.getKey(), new double[]{topImps, topClicks, topCompletions});
 				topCreativeName.put(e.getKey(), topName);
 			}
 		}
@@ -803,7 +806,7 @@ public class CampaignDataCollector {
 	 * @param byChannel        accumulators keyed by lowercased channel
 	 * @param planByTacticNum  planned KPI slots per tactic
 	 * @param topCreativeName  best-delivering creative per line item
-	 * @param topCreativeByLi  that creative's impressions and clicks
+	 * @param topCreativeByLi  that creative's impressions, clicks and completions
 	 * @return the per-tactic metrics, in tactic-number order
 	 */
 	Map<Integer, Tactic> buildTactics(
@@ -869,7 +872,8 @@ public class CampaignDataCollector {
 						plan != null && plan.length > 8 ? nan(plan[8]) : null,
 						plan != null ? nan(planSlot(plan, 9)) : null,
 						plan != null ? nan(planSlot(plan, 10)) : null,
-						plan != null ? nan(planSlot(plan, 11)) : null
+						plan != null ? nan(planSlot(plan, 11)) : null,
+						topCr != null && topCr[2] > 0 ? topCr[2] : null
 				));
 			}
 		return tacticsData;

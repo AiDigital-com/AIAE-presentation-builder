@@ -58,6 +58,7 @@ services:
       USAGE_LOGGING_ENABLED:  ${USAGE_LOGGING_ENABLED:-true}
       USAGE_LOG_SERVICE_NAME: ${USAGE_LOG_SERVICE_NAME:-generated-mvp}
       USAGE_LOG_ENVIRONMENT:  ${USAGE_LOG_ENVIRONMENT:-dev}
+      ANTHROPIC_API_KEY:      ${ANTHROPIC_API_KEY:-}
     ports:
       - "8080:8080"
     healthcheck:

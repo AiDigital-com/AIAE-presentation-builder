@@ -926,7 +926,7 @@ class EomPromptBuilderTest {
 		// and the pass is told this one field is written rather than aligned
 		assertThat(prompt).contains("\"what_we_did\": array,           // EXACTLY 3 objects");
 		assertThat(prompt).contains("\"observation\": string, \"observation_text\": string");
-		assertThat(prompt).contains("MAX 60 CHARACTERS EACH, the three texts MAX 200 CHARACTERS EACH");
+		assertThat(prompt).contains("MAX 28 CHARACTERS EACH, the three texts MAX 85 CHARACTERS EACH");
 		assertThat(prompt).contains("ONE field you WRITE rather than align");
 		assertThat(prompt).contains("ONE UNBROKEN CHAIN");
 	}
@@ -971,7 +971,7 @@ class EomPromptBuilderTest {
 
 		// Then: the projection is asked for on the call whose context prints the pacing and performance
 		// tables it is arithmetic over, to the slide's budget
-		assertThat(prompt).contains("\"updated_projection\": string,   // MAX 250 chars");
+		assertThat(prompt).contains("\"updated_projection\": string,   // MAX 190 chars");
 		assertThat(prompt).contains("LANDS AT THE END OF THE FLIGHT");
 		assertThat(prompt).contains("=== PACING DASHBOARD ===");
 	}
@@ -993,7 +993,7 @@ class EomPromptBuilderTest {
 
 		// Then: three columns of three lines each, to the slide's budget, and each column is told what keeps
 		// it distinct from the other two
-		assertThat(prompt).contains("\"carry_forward\": array,         // EXACTLY 3 strings, MAX 70 CHARACTERS");
+		assertThat(prompt).contains("\"carry_forward\": array,         // EXACTLY 3 strings, MAX 60 CHARACTERS");
 		assertThat(prompt).contains("\"pivot\": array,");
 		assertThat(prompt).contains("\"new_test\": array,");
 		assertThat(prompt).contains("Nothing here may be something you are also changing.");

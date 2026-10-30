@@ -847,6 +847,14 @@ components:
         and `dateFilter` on GenerateRequestV1 doubles as the reporting month.
       enum: [ EOC, EOM ]
 
+    TemplateVariantV1:
+      type: string
+      description: |
+        Deck design the report is built on. STANDARD is the template every report
+        has used so far; MPO is the "EOC Standard – MPO" / "EOM_Report MPO" design,
+        chosen on its own tab in the UI. Applies to both report types.
+      enum: [ STANDARD, MPO ]
+
     GenerationTargetV1:
       type: string
       description: |
@@ -1200,6 +1208,12 @@ components:
             Written into the sheet's {{change log}} placeholder and fed to Claude as
             extra context so the narrative can attribute results to the actions taken.
         reportType: { $ref: "#/components/schemas/ReportTypeV1" }
+        templateVariant:
+          allOf:
+            - $ref: "#/components/schemas/TemplateVariantV1"
+          description: |
+            Deck design to build on. Optional; defaults to STANDARD so existing
+            callers keep producing today's deck.
         target:
           allOf:
             - $ref: "#/components/schemas/GenerationTargetV1"
@@ -1219,6 +1233,21 @@ components:
         audienceRows: { $ref: "#/components/schemas/Rows2DV1" }
         estimatesRows: { $ref: "#/components/schemas/Rows2DV1" }
         geoRows: { $ref: "#/components/schemas/Rows2DV1" }
+        paidSearchRows:
+          allOf:
+            - $ref: "#/components/schemas/Rows2DV1"
+          description: |
+            Paid Search (Google Ads) export rows, connected on the MPO templates tab. Optional and
+            sent only for templateVariant=MPO. Accepted but not rendered yet: the MPO Paid Search
+            slides get their placeholders in a later phase.
+        paidSocialRows:
+          allOf:
+            - $ref: "#/components/schemas/Rows2DV1"
+          description: |
+            Paid Social (Meta) export rows, connected on the MPO templates tab. Optional and sent only
+            for templateVariant=MPO. Accepted but not rendered yet, like paidSearchRows.
+        paidSearchUrl: { type: string, description: "Paid Search export sheet the user connected (provenance, like mediaPlanUrl)." }
+        paidSocialUrl: { type: string, description: "Paid Social export sheet the user connected (provenance, like mediaPlanUrl)." }
         lineItemMapping:
           type: array
           items: { $ref: "#/components/schemas/MappingEntryV1" }
@@ -1335,6 +1364,10 @@ components:
           type: string
           description: "URL of the user's filled Google Sheet. The caller must have access to it."
         reportType: { $ref: "#/components/schemas/ReportTypeV1" }
+        templateVariant:
+          allOf:
+            - $ref: "#/components/schemas/TemplateVariantV1"
+          description: "Deck design the draft will be built on. Optional; defaults to STANDARD."
 
     ReportResumeV1:
       type: object
@@ -1350,6 +1383,10 @@ components:
           allOf:
             - $ref: "#/components/schemas/ReportTypeV1"
           description: "Report type the run was started with; null for a draft stored before this was recorded."
+        templateVariant:
+          allOf:
+            - $ref: "#/components/schemas/TemplateVariantV1"
+          description: "Deck design the run was started with; null for a draft stored before this was recorded (read as STANDARD)."
         brief: { type: string, description: "Campaign brief, as the fallback for a workbook whose {{RFP info}} cell was emptied." }
         changeLog: { type: string, description: "Change log, fallback for {{change log}} the same way." }
         marketVolume: { type: string, description: "Maximum addressable audience volume entered in the UI." }

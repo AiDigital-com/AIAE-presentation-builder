@@ -22,6 +22,7 @@ export type DateRangeResult = S["DateRangeResultV1"];
 export type DateFilter = S["DateFilterV1"];
 export type ReportJob = S["ReportJobV1"];
 export type ReportType = S["ReportTypeV1"];
+export type TemplateVariant = S["TemplateVariantV1"];
 export type User = S["UserV1"];
 export type ReportList = S["ReportListV1"];
 export type ReportSummary = S["ReportSummaryV1"];

@@ -10,6 +10,7 @@ import com.aidigital.reportconstructor.service.reports.dto.DeviceRow;
 import com.aidigital.reportconstructor.service.reports.dto.DeviceTable;
 import com.aidigital.reportconstructor.service.reports.dto.GeneratePayload;
 import com.aidigital.reportconstructor.service.reports.dto.SheetChartData;
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
 import com.aidigital.reportconstructor.service.reports.engine.Pivot;
 import com.aidigital.reportconstructor.service.reports.helpers.BreakdownSelectionResolver;
 import com.aidigital.reportconstructor.service.reports.helpers.EffectiveTacticsHelper;
@@ -216,19 +217,20 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 		int tacticCount = Math.clamp(
 				effectiveTactics.effectiveTacticCount(payload.sheetRows(), payload.lineItemMapping()),
 				1, MAX_TACTICS);
-		trimUnusedTactics(slideUrl, tacticCount, payload.reportType(), userGoogleToken);
+		trimUnusedTactics(slideUrl, tacticCount, payload.reportType(), payload.templateVariant(), userGoogleToken);
 	}
 
 	@Override
 	public void trimUnusedTactics(
-			String slideUrl, int tacticCount, String reportType, String userGoogleToken) {
+			String slideUrl, int tacticCount, String reportType, TemplateVariant templateVariant,
+			String userGoogleToken) {
 		String presentationId = extractPresentationId(slideUrl);
 		if (presentationId == null) {
 			return;
 		}
 		int clamped = Math.clamp(tacticCount, 1, MAX_TACTICS);
 		try {
-			slides.trimTactics(presentationId, clamped, reportType, userGoogleToken);
+			slides.trimTactics(presentationId, clamped, reportType, templateVariant, userGoogleToken);
 		} catch (RuntimeException ex) {
 			log.warn("[slides] trimTactics failed for {} (non-fatal): {}", presentationId, ex.getMessage());
 		}
@@ -237,14 +239,15 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 	@Override
 	public List<String> addTacticSlides(
 			String slideUrl, int tacticCount, Map<String, String> flatReplacements, String reportType,
-			String userGoogleToken) {
+			TemplateVariant templateVariant, String userGoogleToken) {
 		String presentationId = extractPresentationId(slideUrl);
 		if (presentationId == null) {
 			return List.of();
 		}
 		int clamped = Math.clamp(tacticCount, 1, MAX_TACTICS);
 		try {
-			slides.addTacticSlides(presentationId, clamped, flatReplacements, reportType, userGoogleToken);
+			slides.addTacticSlides(
+					presentationId, clamped, flatReplacements, reportType, templateVariant, userGoogleToken);
 			return List.of();
 		} catch (RuntimeException ex) {
 			log.warn("[slides] addTacticSlides failed for {} (non-fatal): {}", presentationId, ex.getMessage());
@@ -277,33 +280,37 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 		}
 		try {
 			slides.addBreakdownSlides(
-					presentationId, enabledByTactic, breakdownValues, payload.reportType(), userGoogleToken);
+					presentationId, enabledByTactic, breakdownValues, payload.reportType(),
+					payload.templateVariant(), userGoogleToken);
 		} catch (RuntimeException ex) {
 			log.warn("[slides] addBreakdownSlides failed for {} (non-fatal): {}", presentationId, ex.getMessage());
 		}
 	}
 
 	@Override
-	public void deleteMasterSlides(String slideUrl, String reportType, String userGoogleToken) {
+	public void deleteMasterSlides(
+			String slideUrl, String reportType, TemplateVariant templateVariant, String userGoogleToken) {
 		String presentationId = extractPresentationId(slideUrl);
 		if (presentationId == null) {
 			return;
 		}
 		try {
-			slides.deleteMasterSlides(presentationId, reportType, userGoogleToken);
+			slides.deleteMasterSlides(presentationId, reportType, templateVariant, userGoogleToken);
 		} catch (RuntimeException ex) {
 			log.warn("[slides] deleteMasterSlides failed for {} (non-fatal): {}", presentationId, ex.getMessage());
 		}
 	}
 
 	@Override
-	public List<String> dashUnresolvedTokens(String slideUrl, String reportType, String userGoogleToken) {
+	public List<String> dashUnresolvedTokens(
+			String slideUrl, String reportType, TemplateVariant templateVariant, String userGoogleToken) {
 		String presentationId = extractPresentationId(slideUrl);
 		if (presentationId == null) {
 			return List.of();
 		}
 		try {
-			List<String> dashed = slides.dashUnresolvedTokens(presentationId, reportType, userGoogleToken);
+			List<String> dashed = slides.dashUnresolvedTokens(
+					presentationId, reportType, templateVariant, userGoogleToken);
 			if (dashed.isEmpty()) {
 				return List.of();
 			}

@@ -1,6 +1,7 @@
 package com.aidigital.reportconstructor.service.reports.services;
 
 import com.aidigital.reportconstructor.service.reports.dto.ReportResume;
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
 
 /**
  * Adopts a workbook the constructor did not build.
@@ -23,9 +24,12 @@ public interface SheetAdoptionService {
 	 * @param userEmail   email of the adopting user, used to name the eventual deck
 	 * @param sheetUrl    URL of the user's filled Google Sheet
 	 * @param reportType  report template code the deck should be built as (EOC/EOM)
+	 * @param templateVariant deck design the draft will be built on; {@code null} is read as standard
 	 * @return the new draft, in the same shape the resume endpoint serves
 	 * @throws com.aidigital.reportconstructor.service.common.error.AppException when the workbook
 	 *         cannot be read or does not look like a report workbook
 	 */
-	ReportResume adopt(String userId, String clerkUserId, String userEmail, String sheetUrl, String reportType);
+	ReportResume adopt(
+			String userId, String clerkUserId, String userEmail, String sheetUrl, String reportType,
+			TemplateVariant templateVariant);
 }

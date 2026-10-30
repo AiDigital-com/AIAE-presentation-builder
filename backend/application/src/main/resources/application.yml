@@ -529,6 +529,51 @@ external:
         26: "g3f4bc4638d4_0_18"
         27: "g3f4bc4638d4_0_19"
         28: "g3f4bc4638d4_0_21"
+  # MPO deck design ("EOC Standard – MPO" / "EOM_Report MPO"), picked per report on the UI's
+  # "MPO templates" tab (GenerateRequestV1.templateVariant=MPO). Bound by MpoDeckProperties, read only
+  # through MpoDeckPolicy. Blank = an MPO request for that report type is built on the standard template,
+  # so the design is switched on per environment by setting the id, and rolled back by clearing it.
+  # Placeholder-marked copies (2026-10-29, see .claude/tasks/eoc-mpo-template-migration/plan.md):
+  #   EOC "EOC MPO – template" 1WOeSKZPeVaTWolziOFyEtqXrX2imPSvoM5uBuTO2Vmo
+  #   EOM "EOM MPO – template" 1nqPbcaPHjqR4w1THr4k0vGTLqJJkpyl4Mtn_MsAltFo
+  # Leave these blank until the copies carry their {{…}} placeholders and every report author can open them
+  # (decks are copied as the signed-in user).
+  mpo-deck:
+    eoc-slides-template-id: ${MPO_EOC_SLIDES_TEMPLATE_ID:}
+    # The EOM MPO copy was marked up 2026-10-30 with the EOM template's own tokens, so it needs no slide ids:
+    # an EOM deck finds its masters by the tokens they carry (EomSlideFinder). Setting this id alone moves
+    # MPO EOM decks onto the EOM slide model, whether or not external.eom-deck.slides-template-id is set.
+    eom-slides-template-id: ${MPO_EOM_SLIDES_TEMPLATE_ID:}
+    # Slide ids of the EOC MPO template, used in place of external.google's ids for every deck cloned from
+    # eoc-slides-template-id (an MPO request that falls back to the standard template keeps the standard
+    # ids). Same meaning as their external.google namesakes; master tactic-slide model only. A blank id turns
+    # its pass off — it never borrows the standard template's id, which does not exist in this deck.
+    # Read with presentations.get on 1WOeSKZP… after markup (2026-10-29; 22 slides, plan.md has the token map):
+    #   - tactic master = the former DISPLAY sample slide (#12), tokens on {{tactic n …}}.
+    #   - groups 1-4 = the four "Our results" slides (#8-11), each an 8-row table: 7 tactic rows + Totals.
+    #     Groups 2-4 are copies of group 1 with fixed ids (mpo_platforms_N / mpo_platforms_N_table).
+    #   - breakdown masters = the five breakdown slides after the tactic master (#13-17).
+    #   - no thoughts master: the MPO design dropped "Thoughts on tactic performance".
+    eoc-slides:
+      tactic-master-slide-object-id: ${MPO_EOC_TACTIC_MASTER_SLIDE_OBJECT_ID:g3f541a43bbe_0_3074}
+      summary-table-object-ids:
+        1: ${MPO_EOC_SUMMARY_TABLE_OBJECT_ID_1:g3f541a43bbe_0_874}
+        2: ${MPO_EOC_SUMMARY_TABLE_OBJECT_ID_2:mpo_platforms_2_table}
+        3: ${MPO_EOC_SUMMARY_TABLE_OBJECT_ID_3:mpo_platforms_3_table}
+        4: ${MPO_EOC_SUMMARY_TABLE_OBJECT_ID_4:mpo_platforms_4_table}
+      summary-slide-object-ids: {}
+      results-slide-object-ids:
+        1: ${MPO_EOC_RESULTS_SLIDE_OBJECT_ID_1:g3f541a43bbe_0_870}
+        2: ${MPO_EOC_RESULTS_SLIDE_OBJECT_ID_2:mpo_platforms_2}
+        3: ${MPO_EOC_RESULTS_SLIDE_OBJECT_ID_3:mpo_platforms_3}
+        4: ${MPO_EOC_RESULTS_SLIDE_OBJECT_ID_4:mpo_platforms_4}
+      breakdown-master-slide-object-ids:
+        tp: ${MPO_EOC_BREAKDOWN_MASTER_SLIDE_TP:g3f681c861be_0_15}     # Top 15 Publishers
+        ca: ${MPO_EOC_BREAKDOWN_MASTER_SLIDE_CA:g3f681c861be_0_39}     # Creative analysis
+        geo: ${MPO_EOC_BREAKDOWN_MASTER_SLIDE_GEO:g3f681c861be_0_74}   # Geographic performance
+        aud: ${MPO_EOC_BREAKDOWN_MASTER_SLIDE_AUD:g3f681c861be_0_143}  # Audience analysis
+        dev: ${MPO_EOC_BREAKDOWN_MASTER_SLIDE_DEV:g3f681c861be_0_103}  # Device breakdown
+      thoughts-master-slide-object-id: ${MPO_EOC_THOUGHTS_MASTER_SLIDE_OBJECT_ID:}
   # EOM deck. Its own top-level block, not a sub-key of external.google: an EOM deck is built from its own
   # template with its own slide model, and keeping its settings apart from the EOC ones is what stops an
   # EOM change from reaching the EOC deck. Bound by EomDeckProperties, read only through EomDeckPolicy.

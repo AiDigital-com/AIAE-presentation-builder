@@ -338,6 +338,8 @@ public class PlaceholderSectionBuilderImpl implements PlaceholderSectionBuilder 
 				data));
 		m.put("{{tactic " + n + " top creative clicks}}", tacticResolvers.resolveTacticTopCreativeClicks(
 				n, sheet, adj, data));
+		m.put("{{tactic " + n + " top creative completions}}", tacticResolvers.resolveTacticTopCreativeCompletions(
+				n, sheet, adj, data));
 		if (eomPeriod) {
 			m.putAll(buildTacticPacingSection(n, sheet, adj, data));
 		}

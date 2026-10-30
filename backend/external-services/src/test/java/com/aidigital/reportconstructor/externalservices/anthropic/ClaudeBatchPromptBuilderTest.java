@@ -1,6 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.anthropic;
 
 import com.aidigital.reportconstructor.service.reports.dto.CampaignData;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.dto.CampaignFrequencies;
 import com.aidigital.reportconstructor.service.reports.dto.CreativeRow;
 import com.aidigital.reportconstructor.service.reports.dto.CreativeTable;
@@ -327,6 +328,36 @@ class ClaudeBatchPromptBuilderTest {
 
 		assertThat(builder.buildTacticPacingPrompt(input, "brief", 230, 140)).isEmpty();
 		assertThat(builder.buildTacticPacingPrompt(null, "brief", 230, 140)).isEmpty();
+	}
+
+	@Test
+	void shouldBuildTheMpoNarrativePromptFromTheDeckFiguresTest() {
+		// Given:
+		MpoNarrativeInput input = new MpoNarrativeInput(
+				List.of("Client: Azure Cove", "Total impressions: 2,093,156"),
+				List.of("Tactic 1 — CTV: impressions 1.06M; KPI VCR 98.23%"),
+				java.util.Arrays.asList(null, "Group two overview that runs long.", null, null));
+
+		// When:
+		String prompt = builder.buildMpoNarrativePrompt(input, "Drive luxury bookings.").orElseThrow();
+
+		// Then: the figures and brief are quoted, and every field the deck needs is asked for by name
+		assertThat(prompt).contains("Client: Azure Cove", "Total impressions: 2,093,156",
+				"Tactic 1 — CTV: impressions 1.06M; KPI VCR 98.23%", "Drive luxury bookings.");
+		assertThat(prompt).contains("\"audience_hhi\"", "\"proposal_points\"", "\"funnel_stages\"",
+				"\"recommendations_headline\"", "exactly 2 objects", "exactly 4 objects");
+		// And: the long group overview is handed over under its group number, to be tightened to the MPO box
+		assertThat(prompt).contains("Group 2: Group two overview that runs long.", "\"results_overviews\"",
+				"at most 160 characters");
+		// And: an income is never guessed
+		assertThat(prompt).contains("Never guess an income.");
+	}
+
+	@Test
+	void shouldSkipTheMpoNarrativePromptWithoutFiguresTest() {
+		// Given-When-Then:
+		assertThat(builder.buildMpoNarrativePrompt(new MpoNarrativeInput(List.of(), List.of(), List.of()), "brief")).isEmpty();
+		assertThat(builder.buildMpoNarrativePrompt(null, "brief")).isEmpty();
 	}
 
 	@Test

@@ -3,6 +3,10 @@ package com.aidigital.reportconstructor.externalservices.anthropic;
 import com.aidigital.reportconstructor.service.reports.diagnostics.ClaudeFailureScope;
 import com.aidigital.reportconstructor.service.reports.diagnostics.impl.ClaudeFailureLogImpl;
 import com.aidigital.reportconstructor.service.reports.dto.CampaignData;
+import com.aidigital.reportconstructor.service.reports.dto.MpoFunnelStage;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrative;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrativeInput;
+import com.aidigital.reportconstructor.service.reports.dto.MpoProposalPoint;
 import com.aidigital.reportconstructor.service.reports.dto.CampaignFrequencies;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeNarrative;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeResults;
@@ -1781,6 +1785,50 @@ class RealClaudeClientTest {
 	}
 
 	@Test
+	void shouldWriteThePacingNarrativeToTheMpoSlotsForACompactInputTest() throws Exception {
+		// Given: an MPO channel slide, and a reply whose takeaway runs past the MPO slot
+		ClaudeResponseNormalizer normalizer = new ClaudeResponseNormalizer();
+		ClaudeBatchPromptBuilder promptBuilder = new ClaudeBatchPromptBuilder(normalizer, new Fmt());
+		RealClaudeClient client = new RealClaudeClient(
+				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
+				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
+				new AnthropicProperties());
+		TacticPacingInput input = new TacticPacingInput(1, "CTV", "VCR", List.of(
+				new TacticPacingMetric("Impressions", "1,575,000", "1,602,341", "102%", "6,300,000", "6,409,364")),
+				true);
+		String longTakeaway = "Living-room inventory carried completion across every week of the month, well ahead of "
+				+ "the plan and the benchmark.";
+		JsonNode response = json.readTree("""
+				{"what_worked": "%s",
+				 "watch_outs": "Frequency is climbing on the top decile.",
+				 "actions": "Capping frequency at three per week.",
+				 "next_month": "Hold CTV weight to reach the 40%% goal."}
+				""".formatted(longTakeaway));
+		when(messagesClient.callJsonObject(
+				eq(promptBuilder.buildTacticPacingPrompt(input, "brief", 90, 85).orElseThrow()),
+				eq(900), eq(90), eq("TacticPacingNarrative"), eq(true)))
+				.thenReturn(response);
+		when(compressionService.compress(org.mockito.ArgumentMatchers.anyList(), eq("TacticPacingNarrative")))
+				.thenAnswer(invocation -> {
+					List<ClaudeCompressionField> fields = invocation.getArgument(0);
+					Map<String, String> out = new LinkedHashMap<>();
+					for (ClaudeCompressionField field : fields) {
+						out.put(field.key(), field.text());
+					}
+					return out;
+				});
+
+		// When:
+		TacticPacing pacing = client.tacticPacing(input, "brief");
+
+		// Then: the prompt quoted the MPO budgets and the over-long takeaway was cut to the 90-character slot
+		assertThat(pacing).isNotNull();
+		assertThat(pacing.whatWorked()).hasSizeLessThanOrEqualTo(90);
+		assertThat(pacing.watchOuts()).isEqualTo("Frequency is climbing on the top decile.");
+	}
+
+	@Test
 	void tacticPacingRejectsAReplyThatCarriesNoneOfTheFourFieldsTest() throws Exception {
 		// Given: a well-formed but empty reply — the shape that would otherwise blank the slide silently
 		ClaudeResponseNormalizer normalizer = new ClaudeResponseNormalizer();
@@ -1798,6 +1846,82 @@ class RealClaudeClientTest {
 
 		// When / Then: nothing usable, so the caller dashes the tokens instead of writing blanks over them
 		assertThat(client.tacticPacing(input, "brief")).isNull();
+		verifyNoInteractions(compressionService);
+	}
+
+	@Test
+	void shouldParseTheMpoNarrativeReplyTest() throws Exception {
+		// Given: a reply with every MPO field but only one funnel stage, and identity compression
+		ClaudeResponseNormalizer normalizer = new ClaudeResponseNormalizer();
+		ClaudeBatchPromptBuilder promptBuilder = new ClaudeBatchPromptBuilder(normalizer, new Fmt());
+		RealClaudeClient client = new RealClaudeClient(
+				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
+				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
+				new AnthropicProperties());
+		MpoNarrativeInput input = new MpoNarrativeInput(
+				List.of("Client: Azure Cove"), List.of("Tactic 1 — CTV: impressions 1.06M"),
+				java.util.Arrays.asList("Six channels reached 4.47M impressions, trailing plan.", null, null, null));
+		JsonNode response = json.readTree("""
+				{"audience_hhi": "$150K+",
+				 "proposal_points": [{"point": "Long-Lead Awareness", "overview": "Stay first choice."},
+				                     {"point": "High-Value Segments", "overview": "Tiered luxury audiences."}],
+				 "funnel_stages": [{"stage": "THE DREAM", "label": "98% Completion Rate",
+				                    "title": "Build the universe.", "data": "1.06M CTV impressions.",
+				                    "story": "The brand story was heard in full."}],
+				 "recommendations_headline": "TURNING CURIOSITY INTO BOOKINGS",
+				 "results_overviews": ["Six channels delivered 4.47M impressions.", "", "", ""]}
+				""");
+		when(messagesClient.callJsonObject(
+				eq(promptBuilder.buildMpoNarrativePrompt(input, "brief").orElseThrow()),
+				eq(1600), eq(90), eq("MpoNarrative"), eq(true)))
+				.thenReturn(response);
+		when(compressionService.compress(org.mockito.ArgumentMatchers.anyList(), eq("MpoNarrative")))
+				.thenAnswer(invocation -> {
+					List<ClaudeCompressionField> fields = invocation.getArgument(0);
+					Map<String, String> out = new LinkedHashMap<>();
+					for (ClaudeCompressionField field : fields) {
+						out.put(field.key(), field.text());
+					}
+					return out;
+				});
+
+		// When:
+		MpoNarrative narrative = client.mpoNarrative(input, "brief");
+
+		// Then: every field lands in its slot, and the stages the reply skipped come back empty
+		assertThat(narrative.audienceHhi()).isEqualTo("$150K+");
+		assertThat(narrative.recommendationsHeadline()).isEqualTo("TURNING CURIOSITY INTO BOOKINGS");
+		assertThat(narrative.proposalPoints()).extracting(MpoProposalPoint::point)
+				.containsExactly("Long-Lead Awareness", "High-Value Segments");
+		assertThat(narrative.funnelStages()).hasSize(4);
+		assertThat(narrative.funnelStages().getFirst()).isEqualTo(new MpoFunnelStage("THE DREAM",
+				"98% Completion Rate", "Build the universe.", "1.06M CTV impressions.",
+				"The brand story was heard in full."));
+		assertThat(narrative.funnelStages().get(3).stage()).isNull();
+		// And: the tightened group overview comes back in group order, empty groups as null
+		assertThat(narrative.resultsOverviews())
+				.containsExactly("Six channels delivered 4.47M impressions.", null, null, null);
+	}
+
+	@Test
+	void shouldRejectAnMpoNarrativeReplyWithNoUsableFieldTest() throws Exception {
+		// Given: a well-formed reply with nothing in it
+		ClaudeResponseNormalizer normalizer = new ClaudeResponseNormalizer();
+		ClaudeBatchPromptBuilder promptBuilder = new ClaudeBatchPromptBuilder(normalizer, new Fmt());
+		RealClaudeClient client = new RealClaudeClient(
+				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
+				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
+				new AnthropicProperties());
+		MpoNarrativeInput input = new MpoNarrativeInput(List.of("Client: Azure Cove"), List.of(), List.of());
+		when(messagesClient.callJsonObject(
+				eq(promptBuilder.buildMpoNarrativePrompt(input, "brief").orElseThrow()),
+				eq(1600), eq(90), eq("MpoNarrative"), eq(true)))
+				.thenReturn(json.readTree("{\"audience_hhi\": \"\", \"funnel_stages\": []}"));
+
+		// When / Then: nothing usable, so the caller dashes every slot instead of writing blanks
+		assertThat(client.mpoNarrative(input, "brief")).isNull();
 		verifyNoInteractions(compressionService);
 	}
 

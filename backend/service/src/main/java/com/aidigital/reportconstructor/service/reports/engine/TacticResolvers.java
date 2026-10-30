@@ -1000,6 +1000,36 @@ public class TacticResolvers {
 	}
 
 	/**
+	 * Resolves the completed views of tactic {@code n}'s top creative, which the deck's top-content tile shows
+	 * instead of clicks for a completion-led tactic; adj → sheet → BigQuery-derived top creative.
+	 *
+	 * @param n         one-based tactic index used to build the {@code "Tactic N top creative completions:"} label
+	 * @param sheetRows Media Plan grid rows searched for the labelled value
+	 * @param adjRows   manual Adjustments grid rows that take precedence over the sheet
+	 * @param data      campaign data providing the BigQuery top-creative completions fallback
+	 * @return the resolved completions count with its source tag, or a {@code not_found} placeholder when
+	 * no value exists
+	 */
+	public Resolved resolveTacticTopCreativeCompletions(int n, List<List<String>> sheetRows,
+	                                                    List<List<String>> adjRows, CampaignData data) {
+		String label = "Tactic " + n + " top creative completions:";
+		String fromAdj = sheetUtils.findLabelValue(adjRows, label);
+		if (fromAdj != null) {
+			return new Resolved(label, fromAdj, "adj");
+		}
+		String fromSheet = sheetUtils.findLabelValue(sheetRows, label);
+		if (fromSheet != null) {
+			return new Resolved(label, fromSheet, "sheet");
+		}
+		Tactic t = tactic(data, n);
+		Double val = t == null ? null : t.topCreativeCompletions();
+		if (val != null) {
+			return new Resolved(label + " (auto: BQ top creative)", fmt.intGroup(val), "adj");
+		}
+		return new Resolved(label, null, "not_found");
+	}
+
+	/**
 	 * Resolves the audience-gender split percentage for tactic {@code n}; {@code gender} is
 	 * {@code "male"} or {@code "female"}; adj → sheet → Claude Batch B.
 	 *

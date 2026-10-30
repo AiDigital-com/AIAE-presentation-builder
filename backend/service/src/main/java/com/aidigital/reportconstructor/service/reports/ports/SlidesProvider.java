@@ -1,6 +1,7 @@
 package com.aidigital.reportconstructor.service.reports.ports;
 
 import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
 
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,9 @@ public interface SlidesProvider {
 	 *                              into the cloned deck
 	 * @param reportType            report template code ({@code "EOC"}/{@code "EOM"}); selects which
 	 *                              template deck is cloned
+	 * @param templateVariant       deck design (standard or MPO); with {@code reportType} selects the
+	 *                              template cloned. MPO falls back to the standard template when none
+	 *                              is configured for the report type
 	 * @param userGoogleAccessToken optional Google OAuth access token for the
 	 *                              signed-in user (obtained from Clerk). When
 	 *                              non-blank the deck is created in that user's
@@ -38,7 +42,7 @@ public interface SlidesProvider {
 	 */
 	String createDeck(
 			String jobId, String fileName, Map<String, String> placeholderMap, String reportType,
-			String userGoogleAccessToken);
+			TemplateVariant templateVariant, String userGoogleAccessToken);
 
 	/**
 	 * Removes the template's unused per-tactic slides, surplus summary + "Our
@@ -55,10 +59,13 @@ public interface SlidesProvider {
 	 * @param presentationId        the deck to trim
 	 * @param tacticCount           number of real tactics (clamped 1..28)
 	 * @param reportType            report template code ({@code "EOC"}/{@code "EOM"}); selects the slide model
+	 * @param templateVariant       deck design (standard or MPO); with {@code reportType} selects the slide model
 	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token;
 	 *                              falls back to the service account when blank
 	 */
-	void trimTactics(String presentationId, int tacticCount, String reportType, String userGoogleAccessToken);
+	void trimTactics(
+			String presentationId, int tacticCount, String reportType, TemplateVariant templateVariant,
+			String userGoogleAccessToken);
 
 	/**
 	 * Builds the deck's main tactic slides from a single master slide: the master is duplicated once per
@@ -86,12 +93,13 @@ public interface SlidesProvider {
 	 * @param placeholderMap        resolved {@code {{token}}} → value pairs; a master token whose renumbered
 	 *                              form is absent from the map is only renumbered
 	 * @param reportType            report template code ({@code "EOC"}/{@code "EOM"}); selects the slide model
+	 * @param templateVariant       deck design (standard or MPO); with {@code reportType} selects the slide model
 	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token; falls back to the
 	 *                              service account when blank
 	 */
 	void addTacticSlides(
 			String presentationId, int tacticCount, Map<String, String> placeholderMap, String reportType,
-			String userGoogleAccessToken);
+			TemplateVariant templateVariant, String userGoogleAccessToken);
 
 	/**
 	 * Inserts the per-tactic breakdown slides selected on Step 3 into an already-built deck. For each
@@ -117,12 +125,14 @@ public interface SlidesProvider {
 	 * @param breakdownValues       renumbered token (e.g. {@code {{publisher_3.1}}}) → value to write;
 	 *                              tokens absent from the map are only renumbered
 	 * @param reportType            report template code ({@code "EOC"}/{@code "EOM"}); selects the slide model
+	 * @param templateVariant       deck design (standard or MPO); with {@code reportType} selects the slide model
 	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token; falls back to the
 	 *                              service account when blank
 	 */
 	void addBreakdownSlides(
 			String presentationId, Map<Integer, Set<BreakdownType>> enabledByTactic,
-			Map<String, String> breakdownValues, String reportType, String userGoogleAccessToken);
+			Map<String, String> breakdownValues, String reportType, TemplateVariant templateVariant,
+			String userGoogleAccessToken);
 
 	/**
 	 * Removes the breakdown master slides (Top Publishers, Creative, Geo, Audience, Device), the
@@ -135,10 +145,13 @@ public interface SlidesProvider {
 	 *
 	 * @param presentationId        the already-built deck to clean
 	 * @param reportType            the deck's report type, which decides the set of configured masters
+	 * @param templateVariant       deck design (standard or MPO); a deck cloned from the MPO template has its own
+	 *                              masters
 	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token; falls back to the
 	 *                              service account when blank
 	 */
-	void deleteMasterSlides(String presentationId, String reportType, String userGoogleAccessToken);
+	void deleteMasterSlides(
+			String presentationId, String reportType, TemplateVariant templateVariant, String userGoogleAccessToken);
 
 	/**
 	 * Removes the slides that the given report type must never ship. The EOM deck is a copy of the EOC
@@ -165,11 +178,14 @@ public interface SlidesProvider {
 	 *
 	 * @param presentationId        the finished deck to sweep
 	 * @param reportType            report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
+	 * @param templateVariant       requested deck design, may be {@code null} (read as standard); an EOM deck
+	 *                              cloned from the MPO template is swept like one built from the EOM template
 	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token; falls back to the
 	 *                              service account when blank
 	 * @return the tokens that were dashed, in deck order, so the caller can surface them as job warnings
 	 */
-	List<String> dashUnresolvedTokens(String presentationId, String reportType, String userGoogleAccessToken);
+	List<String> dashUnresolvedTokens(
+			String presentationId, String reportType, TemplateVariant templateVariant, String userGoogleAccessToken);
 
 	/**
 	 * Counts the slides a finished deck contains. Called once the surplus template slides have been
@@ -182,4 +198,29 @@ public interface SlidesProvider {
 	 * @return the number of slides in the deck, or 0 when the deck cannot be measured
 	 */
 	int countSlides(String presentationId, String userGoogleAccessToken);
+
+	/**
+	 * Tells whether the deck cloned for this report type carries a "Thoughts on tactic performance" slide.
+	 * Asked before the per-tactic thoughts copy is paid for: a template without that slide (the MPO-style
+	 * EOC template) has nowhere to put it, so the calls would be thrown away.
+	 *
+	 * <p>An EOM deck finds its thoughts master by the token it carries, which only the cloned deck can
+	 * show, so the EOM answer stays {@code true} and its slide pass decides as before.
+	 *
+	 * @param reportType      report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
+	 * @param templateVariant deck design (standard or MPO), may be {@code null} (read as standard)
+	 * @return {@code true} when the deck can carry per-tactic thoughts
+	 */
+	boolean carriesTacticThoughts(String reportType, TemplateVariant templateVariant);
+
+	/**
+	 * Tells whether the deck cloned for this report carries the MPO-only narrative slots (HHI, the two
+	 * proposal cards, the funnel slide, the recommendations headline). Asked before that call is paid for: an
+	 * MPO request that falls back to the standard template has nowhere to put the copy.
+	 *
+	 * @param reportType      report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
+	 * @param templateVariant deck design (standard or MPO), may be {@code null} (read as standard)
+	 * @return {@code true} when the deck is cloned from an MPO template
+	 */
+	boolean carriesMpoNarrative(String reportType, TemplateVariant templateVariant);
 }

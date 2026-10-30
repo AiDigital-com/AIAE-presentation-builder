@@ -25,7 +25,7 @@ public class ReportResumeStateHelperImpl implements ReportResumeStateHelper {
 
 	/** The state a job carries when nothing usable was stored; never null, so callers stay simple. */
 	private static final ReportResumeState EMPTY =
-			new ReportResumeState(null, null, null, null, null, null, null, null);
+			new ReportResumeState(null, null, null, null, null, null, null, null, null);
 
 	private final ObjectMapper objectMapper;
 
@@ -42,7 +42,8 @@ public class ReportResumeStateHelperImpl implements ReportResumeStateHelper {
 				payload.dateFilter(),
 				payload.estimateDaypartGender(),
 				payload.breakdownSelections(),
-				tacticNames(data));
+				tacticNames(data),
+				payload.templateVariant());
 	}
 
 	@Override

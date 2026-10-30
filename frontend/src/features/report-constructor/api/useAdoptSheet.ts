@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/shared/api/client";
-import type { ReportType } from "@/shared/api/types";
+import type { ReportType, TemplateVariant } from "@/shared/api/types";
 
 /**
  * POST /api/v1/reports/adopt-sheet — registers a workbook the user filled themselves as a
@@ -13,7 +13,7 @@ import type { ReportType } from "@/shared/api/types";
 export function useAdoptSheet() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (body: { sheetUrl: string; reportType: ReportType }) => {
+        mutationFn: async (body: { sheetUrl: string; reportType: ReportType; templateVariant: TemplateVariant }) => {
             const { data, error } = await apiClient.POST("/api/v1/reports/adopt-sheet", { body });
             if (error || !data) {
                 // The server's message names what is actually wrong with the sheet ("no tactics

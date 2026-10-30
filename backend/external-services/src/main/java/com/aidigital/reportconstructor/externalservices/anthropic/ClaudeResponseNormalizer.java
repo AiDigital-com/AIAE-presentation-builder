@@ -43,18 +43,29 @@ public class ClaudeResponseNormalizer {
 
 	/**
 	 * Characters one heading of the EOM "what we did this month" slide fits — the label above an
-	 * observation, an action or an expected impact.
+	 * observation, an action or an expected impact. One 14pt line on the card; the template's own sample
+	 * headings run 17-20 characters ("300×600 under-scaled").
 	 */
-	public static final int WHAT_WE_DID_HEADING_LIMIT = 60;
+	public static final int WHAT_WE_DID_HEADING_LIMIT = 28;
 
-	/** Characters one paragraph of the EOM "what we did this month" slide fits under its heading. */
-	public static final int WHAT_WE_DID_TEXT_LIMIT = 200;
+	/**
+	 * Characters one paragraph of the EOM "what we did this month" slide fits under its heading: two 12pt lines
+	 * on the card, which the template's own sample copy fills at 50-58 characters. Longer copy runs into the
+	 * card below it.
+	 */
+	public static final int WHAT_WE_DID_TEXT_LIMIT = 85;
 
-	/** Characters the EOM "focus next month" slide's updated-projection block fits. */
-	public static final int UPDATED_PROJECTION_LIMIT = 250;
+	/**
+	 * Characters the EOM "focus next month" slide's updated-projection bar fits: two 11pt lines, which the
+	 * template's own sample fills at 154 characters.
+	 */
+	public static final int UPDATED_PROJECTION_LIMIT = 190;
 
-	/** Characters one carry-forward, pivot or test line of the EOM "focus next month" slide fits. */
-	public static final int FOCUS_ITEM_LIMIT = 70;
+	/**
+	 * Characters one carry-forward, pivot or test bullet of the EOM "focus next month" slide fits: two 13pt
+	 * lines in its column, three bullets to a card. The template's own sample bullets run 45-59 characters.
+	 */
+	public static final int FOCUS_ITEM_LIMIT = 60;
 
 	/**
 	 * Function/connector words that read as unfinished when a sentence is cut right after them, so they are

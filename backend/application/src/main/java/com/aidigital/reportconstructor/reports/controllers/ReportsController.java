@@ -45,7 +45,8 @@ public class ReportsController implements ReportsApi {
 	public ResponseEntity<ReportResumeV1> adoptSheet(AdoptSheetRequestV1 body) {
 		var user = appUserFactory.from(SecurityContextHolder.getContext().getAuthentication());
 		var draft = sheetAdoption.adopt(
-				user.userId(), user.userId(), user.email(), body.getSheetUrl(), body.getReportType().getValue());
+				user.userId(), user.userId(), user.email(), body.getSheetUrl(), body.getReportType().getValue(),
+				mapper.toTemplateVariant(body.getTemplateVariant()));
 		return ResponseEntity.ok(mapper.toResume(draft));
 	}
 

@@ -4,9 +4,11 @@ import com.aidigital.reportconstructor.api.v1.model.ReportJobStatusV1;
 import com.aidigital.reportconstructor.api.v1.model.ReportResumeV1;
 import com.aidigital.reportconstructor.api.v1.model.ReportSummaryV1;
 import com.aidigital.reportconstructor.api.v1.model.ReportTypeV1;
+import com.aidigital.reportconstructor.api.v1.model.TemplateVariantV1;
 import com.aidigital.reportconstructor.config.ApplicationMapperConfig;
 import com.aidigital.reportconstructor.service.reports.dto.ReportResume;
 import com.aidigital.reportconstructor.service.reports.dto.ReportSummary;
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -51,7 +53,17 @@ public interface ReportsApiMapper {
 	@Mapping(target = "estimateDaypartGender", source = "state.estimateDaypartGender")
 	@Mapping(target = "breakdownSelections", source = "state.breakdownSelections")
 	@Mapping(target = "tacticNames", source = "state.tacticNames")
+	@Mapping(target = "templateVariant", source = "state.templateVariant")
 	ReportResumeV1 toResume(ReportResume resume);
+
+	/**
+	 * Converts the requested deck design into its service enum; {@code null} stays {@code null} and is
+	 * read as standard by the service.
+	 *
+	 * @param variant the API deck design, may be {@code null}
+	 * @return the service deck design, or {@code null}
+	 */
+	TemplateVariant toTemplateVariant(TemplateVariantV1 variant);
 
 	/**
 	 * Maps a report-type wire code to the V1 {@link ReportTypeV1} enum.

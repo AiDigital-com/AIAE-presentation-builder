@@ -3,6 +3,7 @@ package com.aidigital.reportconstructor.externalservices.google;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
 import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
 import com.aidigital.reportconstructor.service.reports.helpers.BreakdownThoughtsGate;
 import com.aidigital.reportconstructor.service.reports.ports.SlidesProvider;
 import com.google.api.client.http.HttpRequestInitializer;
@@ -130,6 +131,9 @@ public class RealSlidesProvider implements SlidesProvider {
 	 */
 	private static final String TITLE_FIELDS = BREAKDOWN_FIELDS;
 
+	/** Startup-log marker for a master slide that is not configured. */
+	private static final String UNSET_MARKER = "(unset)";
+
 	/** Prefix the Slides editor puts before a slide's object id in its {@code #slide=id.…} URL fragment. */
 	private static final String SLIDE_URL_ID_PREFIX = "id.";
 
@@ -159,17 +163,13 @@ public class RealSlidesProvider implements SlidesProvider {
 	private final Drive drive;
 	private final String slidesTemplateId;
 	private final EomDeckPolicy eomDeckPolicy;
+	private final MpoDeckPolicy mpoDeckPolicy;
 	private final EomSlideFinder eomSlideFinder;
 	private final String targetFolderId;
-	private final Map<Integer, String> summaryTableObjectIds;
-	private final Map<Integer, String> summarySlideObjectIds;
-	private final Map<Integer, String> resultsSlideObjectIds;
-	private final Map<Integer, String> tacticSlideObjectIds;
-	private final Map<BreakdownType, String> breakdownMasterIds;
+	private final SlideModel standardModel;
+	private final SlideModel mpoEocModel;
 	private final Set<String> eomDropSlideObjectIds;
 	private final List<String> eomDropSlideTitles;
-	private final String thoughtsMasterId;
-	private final String tacticMasterId;
 	private final BreakdownSlideNaming breakdownSlideNaming;
 	private final BreakdownThoughtsGate thoughtsGate;
 	private final SummaryTableRowTrimmer summaryTableRowTrimmer;
@@ -179,21 +179,25 @@ public class RealSlidesProvider implements SlidesProvider {
 			DriveShareRecipients shareRecipients, GoogleRequestRetrier retrier,
 			BreakdownSlideNaming breakdownSlideNaming, BreakdownThoughtsGate thoughtsGate,
 			SummaryTableRowTrimmer summaryTableRowTrimmer, EomDeckPolicy eomDeckPolicy,
-			EomSlideFinder eomSlideFinder) {
+			MpoDeckPolicy mpoDeckPolicy, EomSlideFinder eomSlideFinder) {
 		String slidesTemplateId = props.getSlidesTemplateId();
 		this.eomDeckPolicy = eomDeckPolicy;
+		this.mpoDeckPolicy = mpoDeckPolicy;
 		this.eomSlideFinder = eomSlideFinder;
 		String targetFolderId = props.getSlidesTargetFolderId();
-		this.summaryTableObjectIds = props.getSummaryTableObjectIds();
-		this.summarySlideObjectIds = props.getSummarySlideObjectIds();
-		this.resultsSlideObjectIds = props.getResultsSlideObjectIds();
-		this.tacticSlideObjectIds = props.getTacticSlideObjectIds();
-		this.breakdownMasterIds = resolveBreakdownMasterIds(props.getBreakdownMasterSlideObjectIds());
+		this.standardModel = slideModel(
+				props.getSummaryTableObjectIds(), props.getSummarySlideObjectIds(),
+				props.getResultsSlideObjectIds(), props.getTacticSlideObjectIds(),
+				props.getBreakdownMasterSlideObjectIds(), props.getThoughtsMasterSlideObjectId(),
+				props.getTacticMasterSlideObjectId());
+		MpoDeckProperties.SlideIds mpoEoc = mpoDeckPolicy.eocSlideIds();
+		this.mpoEocModel = slideModel(
+				mpoEoc.getSummaryTableObjectIds(), mpoEoc.getSummarySlideObjectIds(),
+				mpoEoc.getResultsSlideObjectIds(), Map.of(),
+				mpoEoc.getBreakdownMasterSlideObjectIds(), mpoEoc.getThoughtsMasterSlideObjectId(),
+				mpoEoc.getTacticMasterSlideObjectId());
 		this.eomDropSlideObjectIds = normalizeSlideIds(eomDeckPolicy.dropSlideObjectIds());
 		this.eomDropSlideTitles = normalizeTitles(eomDeckPolicy.dropSlideTitles());
-		String thoughtsMaster = props.getThoughtsMasterSlideObjectId();
-		this.thoughtsMasterId = thoughtsMaster == null ? "" : thoughtsMaster.trim();
-		this.tacticMasterId = normalizeSlideId(props.getTacticMasterSlideObjectId());
 		this.breakdownSlideNaming = breakdownSlideNaming;
 		this.thoughtsGate = thoughtsGate;
 		this.summaryTableRowTrimmer = summaryTableRowTrimmer;
@@ -213,24 +217,72 @@ public class RealSlidesProvider implements SlidesProvider {
 		// because the answer is otherwise invisible: a deck built from the wrong template looks like a code
 		// problem, while it is nearly always an environment variable that never reached the process (set but
 		// not restarted, or set on the other environment). One line here settles that in a glance.
-		log.info("[slides] template={} eomTemplate={} tacticModel={} tacticMaster={} breakdownMasters={}",
+		log.info("[slides] template={} eomTemplate={} mpoTemplates=[{}] tacticModel={} tacticMaster={} "
+						+ "breakdownMasters={} mpoEocTacticMaster={} mpoEocBreakdownMasters={}",
 				this.slidesTemplateId,
 				eomDeckPolicy.describeTemplate(),
-				masterTacticModel() ? "master" : "legacy-28-slots",
-				masterTacticModel() ? tacticMasterId : "(unset)",
-				breakdownMasterIds.size());
+				mpoDeckPolicy.describeTemplates(),
+				standardModel.masterTacticModel() ? "master" : "legacy-28-slots",
+				standardModel.masterTacticModel() ? standardModel.tacticMasterId() : UNSET_MARKER,
+				standardModel.breakdownMasterIds().size(),
+				mpoEocModel.masterTacticModel() ? mpoEocModel.tacticMasterId() : UNSET_MARKER,
+				mpoEocModel.breakdownMasterIds().size());
 	}
 
 	/**
-	 * Resolves which template deck to clone for the given report type: the EOM deck when
-	 * {@code reportType} is {@code "EOM"} and an EOM template id is configured, otherwise the EOC
-	 * (default) deck.
+	 * Builds a slide model from configured ids, normalizing each one the same way for every template: maps
+	 * never {@code null}, unknown breakdown codes and blank ids dropped, slide ids trimmed of a pasted
+	 * {@code id.} URL prefix.
 	 *
-	 * @param reportType report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
+	 * @param summaryTables  group → summary table id (may be {@code null})
+	 * @param summarySlides  group → summary slide id (may be {@code null})
+	 * @param resultsSlides  group → results slide id (may be {@code null})
+	 * @param tacticSlides   tactic → drawn tactic slide id, legacy model only (may be {@code null})
+	 * @param breakdownMasters breakdown wire code → master slide id (may be {@code null})
+	 * @param thoughtsMaster the thoughts master slide id (may be {@code null})
+	 * @param tacticMaster   the main tactic master slide id (may be {@code null})
+	 * @return the normalized model
+	 */
+	SlideModel slideModel(
+			Map<Integer, String> summaryTables, Map<Integer, String> summarySlides,
+			Map<Integer, String> resultsSlides, Map<Integer, String> tacticSlides,
+			Map<String, String> breakdownMasters, String thoughtsMaster, String tacticMaster) {
+		return new SlideModel(
+				summaryTables == null ? Map.of() : summaryTables,
+				summarySlides == null ? Map.of() : summarySlides,
+				resultsSlides == null ? Map.of() : resultsSlides,
+				tacticSlides == null ? Map.of() : tacticSlides,
+				resolveBreakdownMasterIds(breakdownMasters),
+				thoughtsMaster == null ? "" : thoughtsMaster.trim(),
+				normalizeSlideId(tacticMaster));
+	}
+
+	/**
+	 * Picks the slide ids a deck's slide passes work against: the EOC MPO template's own ids when the deck
+	 * was cloned from it, the standard ids otherwise (including an MPO request that fell back to the
+	 * standard template, which is then a standard deck).
+	 *
+	 * @param reportType      report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
+	 * @param templateVariant requested deck design, may be {@code null} (read as standard)
+	 * @return the slide model for that deck
+	 */
+	SlideModel slideModelFor(String reportType, TemplateVariant templateVariant) {
+		return mpoDeckPolicy.usesEocSlides(templateVariant, reportType) ? mpoEocModel : standardModel;
+	}
+
+	/**
+	 * Resolves which template deck to clone. The standard design clones the EOM deck when
+	 * {@code reportType} is {@code "EOM"} and an EOM template id is configured, otherwise the EOC
+	 * (default) deck; the MPO design clones the MPO template configured for the report type, falling back
+	 * to that standard choice when none is.
+	 *
+	 * @param reportType      report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
+	 * @param templateVariant requested deck design, may be {@code null} (read as standard)
 	 * @return the template id to clone
 	 */
-	String templateIdFor(String reportType) {
-		return eomDeckPolicy.templateIdOr(reportType, slidesTemplateId);
+	String templateIdFor(String reportType, TemplateVariant templateVariant) {
+		return mpoDeckPolicy.templateIdOr(
+				templateVariant, reportType, eomDeckPolicy.templateIdOr(reportType, slidesTemplateId));
 	}
 
 	@Override
@@ -239,14 +291,25 @@ public class RealSlidesProvider implements SlidesProvider {
 	}
 
 	@Override
+	public boolean carriesTacticThoughts(String reportType, TemplateVariant templateVariant) {
+		return eomDeckPolicy.appliesTo(reportType)
+				|| !slideModelFor(reportType, templateVariant).thoughtsMasterId().isBlank();
+	}
+
+	@Override
+	public boolean carriesMpoNarrative(String reportType, TemplateVariant templateVariant) {
+		return mpoDeckPolicy.usesMpoTemplate(templateVariant, reportType);
+	}
+
+	@Override
 	public String createDeck(
 			String jobId, String fileName, Map<String, String> placeholderMap, String reportType,
-			String userGoogleAccessToken) {
-		String templateId = templateIdFor(reportType);
+			TemplateVariant templateVariant, String userGoogleAccessToken) {
+		String templateId = templateIdFor(reportType, templateVariant);
 		// Which template a run cloned is otherwise invisible: the artifact looks plausible either way, and a
 		// stale-or-swapped id has already cost one debugging session. Logged before the copy, so a failed
 		// copy still names the id it tried.
-		log.info("[slides] job {} cloning {} template {}", jobId, reportType, templateId);
+		log.info("[slides] job {} cloning {} {} template {}", jobId, reportType, templateVariant, templateId);
 		boolean asUser = userGoogleAccessToken != null && !userGoogleAccessToken.isBlank();
 		Drive driveClient = asUser ? buildDrive(userGoogleAccessToken) : drive;
 		Slides slidesClient = asUser ? buildSlides(userGoogleAccessToken) : slides;
@@ -299,22 +362,24 @@ public class RealSlidesProvider implements SlidesProvider {
 
 	@Override
 	public void trimTactics(
-			String presentationId, int tacticCount, String reportType, String userGoogleAccessToken) {
-		if (eomDeck(reportType)) {
+			String presentationId, int tacticCount, String reportType, TemplateVariant templateVariant,
+			String userGoogleAccessToken) {
+		if (eomDeck(reportType, templateVariant)) {
 			trimEomDashboardSlides(presentationId, tacticCount, userGoogleAccessToken);
 			return;
 		}
 		if (tacticCount >= MAX_TACTICS) {
 			return;
 		}
+		SlideModel model = slideModelFor(reportType, templateVariant);
 		boolean asUser = userGoogleAccessToken != null && !userGoogleAccessToken.isBlank();
 		Slides slidesClient = asUser ? buildSlides(userGoogleAccessToken) : slides;
 		try {
-			List<Request> requests = trimRequests(tacticCount);
+			List<Request> requests = trimRequests(model, tacticCount);
 			// The last partial group's surplus table rows are located by reading the deck rather than by
 			// assuming fixed row indices: how many header rows the template keeps inside the table differs
 			// per template, and guessing wrong deletes the Totals row instead of a tactic row.
-			requests.addAll(surplusRowRequests(slidesClient, presentationId, tacticCount));
+			requests.addAll(surplusRowRequests(model, slidesClient, presentationId, tacticCount));
 			if (requests.isEmpty()) {
 				return;
 			}
@@ -363,24 +428,25 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * handled here — they need the live table, see {@link #surplusRowRequests}. Requests are emitted only for
 	 * configured (non-blank) object ids, so an unconfigured deck degrades to a safe no-op.
 	 *
+	 * @param model       the slide ids of the template the deck was cloned from
 	 * @param tacticCount number of real tactics (already clamped to {@code [1, 28]} by the caller)
 	 * @return the ordered list of delete requests (empty when nothing is configured to trim)
 	 */
-	List<Request> trimRequests(int tacticCount) {
+	List<Request> trimRequests(SlideModel model, int tacticCount) {
 		int groups = (tacticCount + TACTICS_PER_GROUP - 1) / TACTICS_PER_GROUP;
 
 		List<Request> requests = new ArrayList<>();
 		// Surplus per-tactic detail slides — legacy model only: under the master model the deck is built with
 		// exactly as many tactic slides as there are tactics, so there is nothing to delete.
-		if (!masterTacticModel()) {
+		if (!model.masterTacticModel()) {
 			for (int t = tacticCount + 1; t <= MAX_TACTICS; t++) {
-				addDeleteObject(requests, tacticSlideObjectIds.get(t));
+				addDeleteObject(requests, model.tacticSlideObjectIds().get(t));
 			}
 		}
 		// Surplus "Our results" and summary slides for empty groups.
 		for (int g = groups + 1; g <= GROUP_COUNT; g++) {
-			addDeleteObject(requests, resultsSlideObjectIds.get(g));
-			addDeleteObject(requests, summarySlideObjectIds.get(g));
+			addDeleteObject(requests, model.resultsSlideObjectIds().get(g));
+			addDeleteObject(requests, model.summarySlideObjectIds().get(g));
 		}
 		return requests;
 	}
@@ -395,15 +461,17 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * <p>Non-fatal by design: a failed read yields no row requests, so the slide deletes still go through and
 	 * the deck ships with an untrimmed table rather than not at all.
 	 *
+	 * @param model          the slide ids of the template the deck was cloned from
 	 * @param slidesClient   the authenticated Slides client
 	 * @param presentationId the deck being trimmed
 	 * @param tacticCount    number of real tactics (already clamped to {@code [1, 28]} by the caller)
 	 * @return the row delete requests, bottom-up; empty when there is nothing (or nothing safe) to delete
 	 */
-	List<Request> surplusRowRequests(Slides slidesClient, String presentationId, int tacticCount) {
+	List<Request> surplusRowRequests(
+			SlideModel model, Slides slidesClient, String presentationId, int tacticCount) {
 		int groups = (tacticCount + TACTICS_PER_GROUP - 1) / TACTICS_PER_GROUP;
 		int usedInLastGroup = tacticCount - (groups - 1) * TACTICS_PER_GROUP;
-		String lastTableId = summaryTableObjectIds.get(groups);
+		String lastTableId = model.summaryTableObjectIds().get(groups);
 		if (usedInLastGroup >= TACTICS_PER_GROUP || lastTableId == null || lastTableId.isBlank()) {
 			return new ArrayList<>();
 		}
@@ -436,12 +504,13 @@ public class RealSlidesProvider implements SlidesProvider {
 	@Override
 	public void addTacticSlides(
 			String presentationId, int tacticCount, Map<String, String> placeholderMap, String reportType,
-			String userGoogleAccessToken) {
-		if (eomDeck(reportType)) {
+			TemplateVariant templateVariant, String userGoogleAccessToken) {
+		if (eomDeck(reportType, templateVariant)) {
 			addEomTacticSlides(presentationId, tacticCount, placeholderMap, userGoogleAccessToken);
 			return;
 		}
-		if (!masterTacticModel()) {
+		SlideModel model = slideModelFor(reportType, templateVariant);
+		if (!model.masterTacticModel()) {
 			return;
 		}
 		Map<String, String> values = placeholderMap == null ? Map.of() : placeholderMap;
@@ -452,14 +521,14 @@ public class RealSlidesProvider implements SlidesProvider {
 			Presentation deck = retrier.execute(
 					slidesClient.presentations().get(presentationId).setFields(BREAKDOWN_FIELDS),
 					"addTacticSlides get " + presentationId);
-			List<Request> requests = buildTacticRequests(deck.getSlides(), count, values);
+			List<Request> requests = buildTacticRequests(model, deck.getSlides(), count, values);
 			// A configured master that is not in the deck means the deck will ship with no per-tactic slides at
 			// all — every tactic loses its main slide, and its breakdowns lose the anchor they are placed after.
 			// Raised rather than returned quietly so the caller can turn it into a job warning: silence here is
 			// what made a whole run come back without tactic slides and still look successful.
 			if (requests.isEmpty()) {
 				throw new AppException(ErrorReason.C000,
-						"master tactic slide " + tacticMasterId + " was not found in deck " + presentationId
+						"master tactic slide " + model.tacticMasterId() + " was not found in deck " + presentationId
 								+ "; no per-tactic slides were built");
 			}
 			executeInChunks(slidesClient, presentationId, requests,
@@ -484,6 +553,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * place for {@link #deleteMasterSlides}; the copies sit before it, so deleting it afterwards leaves the
 	 * block where the move put it.
 	 *
+	 * @param model          the slide ids of the template the deck was cloned from
 	 * @param slides         the deck's slides in order (from {@code presentations.get}), carrying the master's
 	 *                       text for token discovery
 	 * @param tacticCount    number of real tactics (already clamped to {@code [1, 28]} by the caller)
@@ -491,7 +561,9 @@ public class RealSlidesProvider implements SlidesProvider {
 	 *                       renumbered
 	 * @return the ordered batchUpdate requests, or an empty list when the master is absent from the deck
 	 */
-	List<Request> buildTacticRequests(List<Page> slides, int tacticCount, Map<String, String> placeholderMap) {
+	List<Request> buildTacticRequests(
+			SlideModel model, List<Page> slides, int tacticCount, Map<String, String> placeholderMap) {
+		String tacticMasterId = model.tacticMasterId();
 		List<Request> requests = new ArrayList<>();
 		if (slides == null || slides.isEmpty()) {
 			return requests;
@@ -542,38 +614,31 @@ public class RealSlidesProvider implements SlidesProvider {
 	}
 
 	/**
-	 * Whether the deck is built on the master tactic-slide model (one generic slide duplicated per tactic)
-	 * rather than the legacy model of 28 drawn tactic slots that are trimmed down.
-	 *
-	 * @return {@code true} when a master tactic slide is configured
-	 */
-	boolean masterTacticModel() {
-		return !tacticMasterId.isBlank();
-	}
-
-	/**
 	 * Resolves the object id of a tactic's main slide in the deck: the deterministic id of the master's copy
 	 * under the master model, or the configured per-slot template id under the legacy model. The breakdown
 	 * step anchors each tactic's copies after this slide.
 	 *
+	 * @param model     the slide ids of the template the deck was cloned from
 	 * @param tacticNum the 1-based tactic number
 	 * @return the main slide object id, or {@code null} when the legacy model has no slot configured
 	 */
-	String mainTacticSlideId(int tacticNum) {
-		return masterTacticModel()
+	String mainTacticSlideId(SlideModel model, int tacticNum) {
+		return model.masterTacticModel()
 				? breakdownSlideNaming.tacticSlideId(tacticNum)
-				: tacticSlideObjectIds.get(tacticNum);
+				: model.tacticSlideObjectIds().get(tacticNum);
 	}
 
 	@Override
 	public void addBreakdownSlides(
 			String presentationId, Map<Integer, Set<BreakdownType>> enabledByTactic,
-			Map<String, String> breakdownValues, String reportType, String userGoogleAccessToken) {
-		if (eomDeck(reportType)) {
+			Map<String, String> breakdownValues, String reportType, TemplateVariant templateVariant,
+			String userGoogleAccessToken) {
+		if (eomDeck(reportType, templateVariant)) {
 			addEomBreakdownSlides(presentationId, enabledByTactic, breakdownValues, userGoogleAccessToken);
 			return;
 		}
-		if (enabledByTactic == null || enabledByTactic.isEmpty() || breakdownMasterIds.isEmpty()) {
+		SlideModel model = slideModelFor(reportType, templateVariant);
+		if (enabledByTactic == null || enabledByTactic.isEmpty() || model.breakdownMasterIds().isEmpty()) {
 			return;
 		}
 		Map<String, String> values = breakdownValues == null ? Map.of() : breakdownValues;
@@ -584,7 +649,8 @@ public class RealSlidesProvider implements SlidesProvider {
 					slidesClient.presentations().get(presentationId).setFields(BREAKDOWN_FIELDS),
 					"addBreakdownSlides get " + presentationId);
 			List<Request> requests =
-					buildBreakdownRequests(deck.getSlides(), breakdownMasterIds, enabledByTactic, values);
+					buildBreakdownRequests(
+							model, deck.getSlides(), model.breakdownMasterIds(), enabledByTactic, values);
 			if (requests.isEmpty()) {
 				return;
 			}
@@ -613,6 +679,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * order while accumulating the number of already-inserted copies, keeping every insertion index valid
 	 * against the live arrangement.
 	 *
+	 * @param model            the slide ids of the template the deck was cloned from
 	 * @param slides           the deck's slides in order (from {@code presentations.get}), carrying master
 	 *                         text for token discovery
 	 * @param masterIds        configured master slide object id per breakdown type
@@ -622,49 +689,52 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @return the ordered batchUpdate requests, or an empty list when there is nothing to insert
 	 */
 	List<Request> buildBreakdownRequests(
-			List<Page> slides, Map<BreakdownType, String> masterIds,
+			SlideModel model, List<Page> slides, Map<BreakdownType, String> masterIds,
 			Map<Integer, Set<BreakdownType>> enabledByTactic, Map<String, String> breakdownValues) {
-		return buildBreakdownRequests(slides, masterIds, enabledByTactic, breakdownValues, Map.of());
+		return buildBreakdownRequests(model, slides, masterIds, enabledByTactic, breakdownValues, Map.of());
 	}
 
 	/**
-	 * Same as {@link #buildBreakdownRequests(List, Map, Map, Map)}, with the anchor slide each tactic's
-	 * copies are placed after supplied explicitly. An EOM deck builds two master slides per tactic, so its
-	 * anchor is the second of them rather than the single slide {@link #mainTacticSlideId(int)} names.
+	 * Same as {@link #buildBreakdownRequests(SlideModel, List, Map, Map, Map)}, with the anchor slide each
+	 * tactic's copies are placed after supplied explicitly. An EOM deck builds two master slides per tactic,
+	 * so its anchor is the second of them rather than the single slide
+	 * {@link #mainTacticSlideId(SlideModel, int)} names.
 	 *
+	 * @param model             the slide ids of the template the deck was cloned from
 	 * @param slides            the deck's slides in order (from {@code presentations.get})
 	 * @param masterIds         master slide object id per breakdown type
 	 * @param enabledByTactic   1-based tactic number → the breakdown sections that tactic enabled
 	 * @param breakdownValues   renumbered token → final value; a token absent from the map is only renumbered
 	 * @param anchorSlideByTactic 1-based tactic number → the slide its copies follow; empty falls back to
-	 *                          {@link #mainTacticSlideId(int)}
+	 *                          {@link #mainTacticSlideId(SlideModel, int)}
 	 * @return the ordered batchUpdate requests, or an empty list when there is nothing to insert
 	 */
 	List<Request> buildBreakdownRequests(
-			List<Page> slides, Map<BreakdownType, String> masterIds,
+			SlideModel model, List<Page> slides, Map<BreakdownType, String> masterIds,
 			Map<Integer, Set<BreakdownType>> enabledByTactic, Map<String, String> breakdownValues,
 			Map<Integer, String> anchorSlideByTactic) {
-		return buildBreakdownRequests(
-				slides, masterIds, enabledByTactic, breakdownValues, anchorSlideByTactic, thoughtsMasterId);
+		return buildBreakdownRequests(model, slides, masterIds, enabledByTactic, breakdownValues,
+				anchorSlideByTactic, model.thoughtsMasterId());
 	}
 
 	/**
-	 * Same as {@link #buildBreakdownRequests(List, Map, Map, Map, Map)}, with the thoughts master supplied
-	 * explicitly. An EOC deck names that slide by configured object id, while an EOM deck discovers it by
-	 * the token it carries, so the id cannot come from the same place for both.
+	 * Same as {@link #buildBreakdownRequests(SlideModel, List, Map, Map, Map, Map)}, with the thoughts master
+	 * supplied explicitly. An EOC deck names that slide by configured object id, while an EOM deck discovers
+	 * it by the token it carries, so the id cannot come from the same place for both.
 	 *
+	 * @param model               the slide ids of the template the deck was cloned from
 	 * @param slides              the deck's slides in order (from {@code presentations.get})
 	 * @param masterIds           master slide object id per breakdown type
 	 * @param enabledByTactic     1-based tactic number → the breakdown sections that tactic enabled
 	 * @param breakdownValues     renumbered token → final value; a token absent from the map is only renumbered
 	 * @param anchorSlideByTactic 1-based tactic number → the slide its copies follow; empty falls back to
-	 *                            {@link #mainTacticSlideId(int)}
+	 *                            {@link #mainTacticSlideId(SlideModel, int)}
 	 * @param thoughtsMaster      the "Thoughts on tactic performance" master slide id; blank or {@code null}
 	 *                            disables that slide as a no-op
 	 * @return the ordered batchUpdate requests, or an empty list when there is nothing to insert
 	 */
 	List<Request> buildBreakdownRequests(
-			List<Page> slides, Map<BreakdownType, String> masterIds,
+			SlideModel model, List<Page> slides, Map<BreakdownType, String> masterIds,
 			Map<Integer, Set<BreakdownType>> enabledByTactic, Map<String, String> breakdownValues,
 			Map<Integer, String> anchorSlideByTactic, String thoughtsMaster) {
 		List<Request> requests = new ArrayList<>();
@@ -691,7 +761,7 @@ public class RealSlidesProvider implements SlidesProvider {
 			if (tacticNum == null || entry.getValue() == null || entry.getValue().isEmpty()) {
 				continue;
 			}
-			String mainSlideId = anchorSlideByTactic.getOrDefault(tacticNum, mainTacticSlideId(tacticNum));
+			String mainSlideId = anchorSlideByTactic.getOrDefault(tacticNum, mainTacticSlideId(model, tacticNum));
 			if (mainSlideId == null || !indexById.containsKey(mainSlideId)) {
 				log.warn("[slides] addBreakdownSlides: no main slide for tactic {} in deck — skipping", tacticNum);
 				continue;
@@ -781,8 +851,8 @@ public class RealSlidesProvider implements SlidesProvider {
 
 	@Override
 	public List<String> dashUnresolvedTokens(
-			String presentationId, String reportType, String userGoogleAccessToken) {
-		if (!eomDeck(reportType)) {
+			String presentationId, String reportType, TemplateVariant templateVariant, String userGoogleAccessToken) {
+		if (!eomDeck(reportType, templateVariant)) {
 			return List.of();
 		}
 		boolean asUser = userGoogleAccessToken != null && !userGoogleAccessToken.isBlank();
@@ -853,14 +923,18 @@ public class RealSlidesProvider implements SlidesProvider {
 
 
 	/**
-	 * Whether this deck build follows the EOM model: an EOM report whose own template is switched on. The
-	 * EOC path is left untouched for every other case, which is what keeps an EOM change off the EOC deck.
+	 * Whether this deck build follows the EOM model: an EOM report whose own template is switched on, or one
+	 * cloned from the EOM MPO template — which carries the same token-discovered slide model whatever the
+	 * standard EOM switch says. The EOC path is left untouched for every other case, which is what keeps an
+	 * EOM change off the EOC deck.
 	 *
-	 * @param reportType report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
+	 * @param reportType      report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
+	 * @param templateVariant requested deck design, may be {@code null} (read as standard)
 	 * @return {@code true} when the EOM slide model applies
 	 */
-	boolean eomDeck(String reportType) {
-		return eomDeckPolicy.appliesTo(reportType) && eomDeckPolicy.hasOwnTemplate();
+	boolean eomDeck(String reportType, TemplateVariant templateVariant) {
+		return eomDeckPolicy.appliesTo(reportType)
+				&& (eomDeckPolicy.hasOwnTemplate() || mpoDeckPolicy.usesMpoTemplate(templateVariant, reportType));
 	}
 
 	/**
@@ -887,7 +961,8 @@ public class RealSlidesProvider implements SlidesProvider {
 			Presentation deck = retrier.execute(
 					slidesClient.presentations().get(presentationId).setFields(EOM_TRIM_FIELDS),
 					"trimEomDashboardSlides get " + presentationId);
-			List<String> surplus = eomSlideFinder.surplusTacticSlideIds(deck.getSlides(), tacticCount);
+			List<String> surplus = eomSlideFinder.surplusTacticSlideIds(
+					deck.getSlides(), tacticCount, TACTICS_PER_GROUP);
 			List<Request> requests = new ArrayList<>();
 			for (String objectId : surplus) {
 				addDeleteObject(requests, objectId);
@@ -1106,7 +1181,7 @@ public class RealSlidesProvider implements SlidesProvider {
 				anchors.put(tacticNum, breakdownSlideNaming.eomTacticSlideId(lastOrdinal, tacticNum));
 			}
 		}
-		return buildBreakdownRequests(slides, masterIds, enabledByTactic, breakdownValues, anchors,
+		return buildBreakdownRequests(standardModel, slides, masterIds, enabledByTactic, breakdownValues, anchors,
 				eomSlideFinder.thoughtsMasterSlideId(slides));
 	}
 
@@ -1160,12 +1235,14 @@ public class RealSlidesProvider implements SlidesProvider {
 	}
 
 	@Override
-	public void deleteMasterSlides(String presentationId, String reportType, String userGoogleAccessToken) {
-		if (eomDeck(reportType)) {
+	public void deleteMasterSlides(
+			String presentationId, String reportType, TemplateVariant templateVariant, String userGoogleAccessToken) {
+		if (eomDeck(reportType, templateVariant)) {
 			deleteEomMasterSlides(presentationId, userGoogleAccessToken);
 			return;
 		}
-		if (breakdownMasterIds.isEmpty() && thoughtsMasterId.isBlank() && tacticMasterId.isBlank()) {
+		SlideModel model = slideModelFor(reportType, templateVariant);
+		if (!model.hasMasters()) {
 			return;
 		}
 		boolean asUser = userGoogleAccessToken != null && !userGoogleAccessToken.isBlank();
@@ -1174,7 +1251,7 @@ public class RealSlidesProvider implements SlidesProvider {
 			Presentation deck = retrier.execute(
 					slidesClient.presentations().get(presentationId).setFields(MASTER_FIELDS),
 					"deleteMasterSlides get " + presentationId);
-			List<Request> requests = buildMasterDeleteRequests(deck.getSlides());
+			List<Request> requests = buildMasterDeleteRequests(model, deck.getSlides());
 			if (requests.isEmpty()) {
 				return;
 			}
@@ -1383,10 +1460,13 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * already deleted) is skipped rather than failing the batch. Breakdown masters are de-duplicated and
 	 * emitted first, then the thoughts master, then the tactic master.
 	 *
+	 * @param model  the slide ids of the template the deck was cloned from
 	 * @param slides the deck's slides in order (from {@code presentations.get} with {@link #MASTER_FIELDS})
 	 * @return the ordered delete requests, or an empty list when no configured master is present
 	 */
-	List<Request> buildMasterDeleteRequests(List<Page> slides) {
+	List<Request> buildMasterDeleteRequests(SlideModel model, List<Page> slides) {
+		String thoughtsMasterId = model.thoughtsMasterId();
+		String tacticMasterId = model.tacticMasterId();
 		List<Request> requests = new ArrayList<>();
 		if (slides == null || slides.isEmpty()) {
 			return requests;
@@ -1397,7 +1477,7 @@ public class RealSlidesProvider implements SlidesProvider {
 				presentIds.add(page.getObjectId());
 			}
 		}
-		for (String masterId : new LinkedHashSet<>(breakdownMasterIds.values())) {
+		for (String masterId : new LinkedHashSet<>(model.breakdownMasterIds().values())) {
 			if (masterId != null && presentIds.contains(masterId)) {
 				requests.add(new Request().setDeleteObject(new DeleteObjectRequest().setObjectId(masterId)));
 			}

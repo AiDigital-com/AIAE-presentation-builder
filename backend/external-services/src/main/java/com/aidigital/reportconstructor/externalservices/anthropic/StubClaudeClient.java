@@ -6,6 +6,8 @@ import com.aidigital.reportconstructor.service.reports.dto.CampaignFrequencies;
 import com.aidigital.reportconstructor.service.reports.dto.CreativeTakeawayInput;
 import com.aidigital.reportconstructor.service.reports.dto.DeviceInsightInput;
 import com.aidigital.reportconstructor.service.reports.dto.GeoInsightInput;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrative;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.dto.PublisherObservationInput;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeNarrative;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeResults;
@@ -117,6 +119,12 @@ public class StubClaudeClient implements ClaudeClient {
 	@Override
 	public TacticPacing tacticPacing(TacticPacingInput input, String brief) {
 		// The stub writes no narrative: a dry run's channel slides show the dash the sweep leaves behind.
+		return null;
+	}
+
+	@Override
+	public MpoNarrative mpoNarrative(MpoNarrativeInput input, String brief) {
+		// The stub writes no narrative: a dry run's MPO slots show the dash the assembler leaves behind.
 		return null;
 	}
 

@@ -43,6 +43,8 @@ import java.util.List;
  *                        shifts, audience weight changes, delayed launches). Written into the sheet's {@code {{change
  *                        log}}} placeholder in step 1 and fed to Claude as extra context so the narrative can attribute
  *                        results to the actual actions taken. {@code null}/blank when the user leaves it empty.
+ * @param templateVariant deck design to clone (standard or MPO); {@code null} is read as
+ *                        {@link TemplateVariant#STANDARD}, so callers that predate the choice keep today's deck
  */
 public record GeneratePayload(
 		String brief,
@@ -59,8 +61,58 @@ public record GeneratePayload(
 		DateFilter dateFilter,
 		String sheetUrl,
 		String changeLog,
-		Boolean estimateDaypartGender
+		Boolean estimateDaypartGender,
+		TemplateVariant templateVariant
 ) {
+
+	/**
+	 * Normalizes a missing template variant to {@link TemplateVariant#STANDARD}.
+	 */
+	public GeneratePayload {
+		templateVariant = templateVariant == null ? TemplateVariant.STANDARD : templateVariant;
+	}
+
+	/**
+	 * Backward-compatible constructor for callers that predate the template choice; builds on the
+	 * standard deck so their behaviour is unchanged.
+	 *
+	 * @param brief                 free-text campaign brief
+	 * @param reportType            report template code
+	 * @param marketVolume          maximum addressable audience volume entered in the UI
+	 * @param sheetRows             raw Media Plan grid rows
+	 * @param adjRows               manual Adjustments grid rows
+	 * @param audienceRows          raw audience-breakdown grid rows
+	 * @param estimatesRows         raw per-tactic estimates grid rows
+	 * @param geoRows               every workbook tab flattened into one grid
+	 * @param lineItemMapping       media-plan tactic to BigQuery line-item mapping
+	 * @param breakdownSelections   per-tactic Step-3 breakdown toggle state
+	 * @param bqSheetId             Google Sheet ID backing the BigQuery export
+	 * @param dateFilter            user-confirmed raw-data date window
+	 * @param sheetUrl              URL of a previously generated sheet (slides-from-sheet only)
+	 * @param changeLog             optional free-text log of mid-flight changes
+	 * @param estimateDaypartGender whether Claude may estimate dayparting and gender split
+	 */
+	public GeneratePayload(
+			String brief,
+			String reportType,
+			String marketVolume,
+			List<List<String>> sheetRows,
+			List<List<String>> adjRows,
+			List<List<String>> audienceRows,
+			List<List<String>> estimatesRows,
+			List<List<String>> geoRows,
+			List<LineItemMapping> lineItemMapping,
+			List<BreakdownSelection> breakdownSelections,
+			String bqSheetId,
+			DateFilter dateFilter,
+			String sheetUrl,
+			String changeLog,
+			Boolean estimateDaypartGender
+	) {
+		this(brief, reportType, marketVolume, sheetRows, adjRows, audienceRows, estimatesRows, geoRows,
+				lineItemMapping, breakdownSelections, bqSheetId, dateFilter, sheetUrl, changeLog,
+				estimateDaypartGender, TemplateVariant.STANDARD);
+	}
 
 	/**
 	 * Backward-compatible constructor for callers that predate the dayparting/gender toggle; keeps the

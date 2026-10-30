@@ -17,6 +17,7 @@ import com.aidigital.reportconstructor.service.reports.dto.CreativeTakeawayInput
 import com.aidigital.reportconstructor.service.reports.dto.GeoInsightInput;
 import com.aidigital.reportconstructor.service.reports.dto.GeoRow;
 import com.aidigital.reportconstructor.service.reports.dto.GeoTable;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.dto.PublisherObservationInput;
 import com.aidigital.reportconstructor.service.reports.dto.PublisherRow;
 import com.aidigital.reportconstructor.service.reports.dto.StrategicInsight;
@@ -67,6 +68,53 @@ public class ClaudeBatchPromptBuilder {
 	private static final int F_OPPORTUNITY_LIMIT = 180;
 	private static final int F_FACT_LIMIT = 140;
 	private static final int F_STORYTELLING_LIMIT = 320;
+
+	/*
+	 * MPO-only narrative budgets, sized to the "EOC Standard – MPO" sample deck's own copy so the generated text
+	 * fits the boxes that copy was drawn for. Package-visible: the client normalizes the reply to the same numbers.
+	 */
+
+	/** HHI tile ("$250K"). */
+	static final int MPO_HHI_LIMIT = 20;
+
+	/** Proposal card heading ("Long-Lead Awareness"). */
+	static final int MPO_POINT_LIMIT = 30;
+
+	/** Proposal card body (~130 characters in the sample). */
+	static final int MPO_OVERVIEW_LIMIT = 150;
+
+	/** Funnel band stage name ("THE CONSIDERATION"). */
+	static final int MPO_STAGE_LIMIT = 20;
+
+	/** Funnel band caption ("Maximize reach to build RTG audiences."). */
+	static final int MPO_STAGE_LABEL_LIMIT = 40;
+
+	/** Funnel card headline ("Capture the market."). */
+	static final int MPO_FUNNEL_TITLE_LIMIT = 28;
+
+	/** Funnel card evidence line ("2.27M Total Unique Reach at a 5.91 Frequency."). */
+	static final int MPO_FUNNEL_DATA_LIMIT = 70;
+
+	/** Funnel card story (~100 characters in the sample). */
+	static final int MPO_FUNNEL_STORY_LIMIT = 120;
+
+	/** Recommendations slide headline ("TURNING CURIOSITY INTO BOOKINGS"). */
+	static final int MPO_HEADLINE_LIMIT = 40;
+
+	/**
+	 * A tactic group's "Our results" overview on the MPO deck. Its box holds three lines at 14 pt; the standard
+	 * deck's {@link #RESULTS_OVERVIEW_LIMIT} copy runs into the table header below it.
+	 */
+	static final int MPO_RESULTS_OVERVIEW_LIMIT = 200;
+
+	/** Number of tactic groups, each with its own "Our results" slide. */
+	static final int MPO_RESULTS_GROUPS = 4;
+
+	/** Number of proposal cards the MPO deck draws. */
+	static final int MPO_PROPOSAL_POINTS = 2;
+
+	/** Number of funnel stages the MPO deck draws. */
+	static final int MPO_FUNNEL_STAGES = 4;
 
 	/**
 	 * Substrings marking a completion-led tactic as audio, so Claude sees its completion rate as ACR not VCR.
@@ -1684,6 +1732,121 @@ public class ClaudeBatchPromptBuilder {
 				+ "=== CAMPAIGN BRIEF ===\n" + (brief == null ? "" : brief) + "\n\n"
 				+ AnthropicMessagesClient.CACHE_BREAKPOINT + "=== CHANNEL PERFORMANCE VS PLAN ===\n" + dataBlock;
 		return Optional.of(prompt);
+	}
+
+	/**
+	 * Builds the prompt for the copy only the MPO deck design carries: the media-plan slide's HHI tile and two
+	 * proposal cards, the four-stage funnel slide, and the recommendations headline. The figures come from the
+	 * resolved deck values, so every number the funnel quotes is one the deck already prints.
+	 *
+	 * @param input the campaign and per-tactic figures, as the deck prints them
+	 * @param brief free-text campaign brief the copy must stay faithful to
+	 * @return the prompt, or empty when there are no figures to reason over
+	 */
+	public Optional<String> buildMpoNarrativePrompt(MpoNarrativeInput input, String brief) {
+		if (input == null || (linesOf(input.campaignFacts()).isEmpty() && linesOf(input.tacticFacts()).isEmpty())) {
+			return Optional.empty();
+		}
+		String prompt = mpoNarrativeRole()
+				+ mpoNarrativeFieldsSpec()
+				+ mpoNarrativeOutputRules()
+				+ "=== CAMPAIGN BRIEF ===\n" + (brief == null ? "" : brief) + "\n\n"
+				+ AnthropicMessagesClient.CACHE_BREAKPOINT
+				+ "=== CAMPAIGN FIGURES (as printed in the deck) ===\n" + linesOf(input.campaignFacts()) + "\n"
+				+ "=== TACTICS ===\n" + linesOf(input.tacticFacts()) + "\n"
+				+ "=== RESULTS OVERVIEWS TO TIGHTEN ===\n" + linesOf(numberedOverviews(input.resultsOverviews()));
+		return Optional.of(prompt);
+	}
+
+	/**
+	 * Numbers the tactic groups' results overviews for the prompt, leaving out groups that have none.
+	 *
+	 * @param overviews one entry per group, group 1 first; an entry may be {@code null}
+	 * @return {@code "Group N: text"} lines, or a single line saying there are none
+	 */
+	List<String> numberedOverviews(List<String> overviews) {
+		List<String> lines = new ArrayList<>();
+		for (int g = 0; overviews != null && g < overviews.size(); g++) {
+			String overview = overviews.get(g);
+			if (overview != null && !overview.isBlank()) {
+				lines.add("Group " + (g + 1) + ": " + overview.trim());
+			}
+		}
+		return lines.isEmpty() ? List.of("(none)") : lines;
+	}
+
+	/**
+	 * States who is writing and which slides the MPO narrative fills.
+	 *
+	 * @return the role paragraph, ending in a blank line
+	 */
+	String mpoNarrativeRole() {
+		return "You are a senior digital media strategist finishing an end-of-campaign report deck. Every other "
+				+ "slide is already written; you write the few remaining fields of the media-plan overview, the "
+				+ "\"How channels work together across the funnel\" slide and the recommendations slide. You "
+				+ "write on behalf of the team that ran the campaign: confident, specific, client-friendly.\n\n";
+	}
+
+	/**
+	 * The spec for every MPO narrative field: what it says and how long it is.
+	 *
+	 * @return the fields spec, ending in a blank line
+	 */
+	String mpoNarrativeFieldsSpec() {
+		return "Write these fields:\n"
+				+ "\"audience_hhi\" (at most " + bufferedLimit(MPO_HHI_LIMIT) + " characters) — the household-income "
+				+ "target the plan buys, e.g. \"$150K+\". Only if the brief or the figures state one; otherwise "
+				+ "an empty string. Never guess an income.\n"
+				+ "\"proposal_points\" — exactly " + MPO_PROPOSAL_POINTS + " objects {\"point\", \"overview\"}: the "
+				+ "two pillars of the media proposal. \"point\" is a bold heading (at most "
+				+ bufferedLimit(MPO_POINT_LIMIT) + " characters, Title Case, no full stop); \"overview\" is one "
+				+ "sentence (at most " + bufferedLimit(MPO_OVERVIEW_LIMIT) + " characters) on what that pillar set "
+				+ "out to do.\n"
+				+ "\"funnel_stages\" — exactly " + MPO_FUNNEL_STAGES + " objects, upper funnel first (e.g. dream, "
+				+ "consideration, interest, booking), each placing the campaign's tactics at one stage:\n"
+				+ "  \"stage\" — the stage name in capitals, 1-3 words (at most " + bufferedLimit(MPO_STAGE_LIMIT)
+				+ " characters), e.g. \"THE DREAM\";\n"
+				+ "  \"label\" — the stage's caption (at most " + bufferedLimit(MPO_STAGE_LABEL_LIMIT)
+				+ " characters): its headline figure or its job, e.g. \"98% Completion Rate\";\n"
+				+ "  \"title\" — a short imperative headline ending in a full stop (at most "
+				+ bufferedLimit(MPO_FUNNEL_TITLE_LIMIT) + " characters), e.g. \"Capture the market.\";\n"
+				+ "  \"data\" — the evidence (at most " + bufferedLimit(MPO_FUNNEL_DATA_LIMIT) + " characters): the "
+				+ "tactic and figure behind this stage, e.g. \"1.06M CTV impressions at a 98.23% VCR.\";\n"
+				+ "  \"story\" — what that evidence means for the client (at most "
+				+ bufferedLimit(MPO_FUNNEL_STORY_LIMIT) + " characters), one sentence.\n"
+				+ "\"recommendations_headline\" (at most " + bufferedLimit(MPO_HEADLINE_LIMIT) + " characters) — the "
+				+ "recommendations slide's headline in capitals: the one move the recommendations add up to, in "
+				+ "the client's language, e.g. \"TURNING CURIOSITY INTO BOOKINGS\".\n"
+				+ "\"results_overviews\" — exactly " + MPO_RESULTS_GROUPS + " strings, one per group in group order: "
+				+ "each listed overview rewritten to at most " + bufferedLimit(MPO_RESULTS_OVERVIEW_LIMIT)
+				+ " characters, keeping its verdict and its two most important figures exactly as written; an empty "
+				+ "string for a group that is not listed.\n\n";
+	}
+
+	/**
+	 * The closing output rules for the MPO narrative call.
+	 *
+	 * @return the rules block, ending in a blank line
+	 */
+	String mpoNarrativeOutputRules() {
+		return "Quote only figures given below, exactly as written; never invent a metric, a tactic or a market. "
+				+ "When the campaign has fewer tactics than stages, a tactic may anchor more than one stage, or a "
+				+ "stage may rest on a campaign total. No bullet characters, no markdown.\n\n"
+				+ "Return ONLY a JSON object: {\"audience_hhi\": \"...\", \"proposal_points\": [{\"point\": "
+				+ "\"...\", \"overview\": \"...\"}], \"funnel_stages\": [{\"stage\": \"...\", \"label\": \"...\", "
+				+ "\"title\": \"...\", \"data\": \"...\", \"story\": \"...\"}], \"recommendations_headline\": "
+				+ "\"...\", \"results_overviews\": [\"...\", \"...\", \"...\", \"...\"]} — write NO preamble, reasoning or commentary before or after it; do NOT refuse and do "
+				+ "NOT flag data problems.\n\n";
+	}
+
+	/**
+	 * Renders prompt lines one per row.
+	 *
+	 * @param lines the lines, may be {@code null}
+	 * @return the lines joined by newlines, ending in a newline when not empty
+	 */
+	String linesOf(List<String> lines) {
+		return lines == null || lines.isEmpty() ? "" : String.join("\n", lines) + "\n";
 	}
 
 	/**

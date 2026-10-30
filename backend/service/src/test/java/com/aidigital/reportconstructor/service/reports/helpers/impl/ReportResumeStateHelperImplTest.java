@@ -7,6 +7,7 @@ import com.aidigital.reportconstructor.service.reports.dto.DateFilterMode;
 import com.aidigital.reportconstructor.service.reports.dto.GeneratePayload;
 import com.aidigital.reportconstructor.service.reports.dto.ReportResumeState;
 import com.aidigital.reportconstructor.service.reports.dto.Tactic;
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.Test;
@@ -85,13 +86,28 @@ class ReportResumeStateHelperImplTest {
 		ReportResumeState state = new ReportResumeState(
 				"EOC", "brief", "log", "500K",
 				new DateFilter(DateFilterMode.RANGE, LocalDate.of(2026, 1, 5), LocalDate.of(2026, 2, 4)),
-				Boolean.TRUE, List.of(new BreakdownSelection(3, List.of("dev"))), List.of("Audio"));
+				Boolean.TRUE, List.of(new BreakdownSelection(3, List.of("dev"))), List.of("Audio"),
+				TemplateVariant.MPO);
 
 		// When: it is serialised and read back
 		ReportResumeState parsed = helper.parse(helper.serialize(state));
 
 		// Then: it survives unchanged
 		assertThat(parsed).isEqualTo(state);
+	}
+
+	@Test
+	void shouldReadADraftStoredBeforeTheTemplateChoiceWithNoVariantTest() {
+		// Given: resume state JSON written before the template variant was recorded
+		String stored = "{\"reportType\":\"EOC\",\"brief\":\"brief\",\"tacticNames\":[\"Audio\"]}";
+
+		// When
+		ReportResumeState parsed = helper.parse(stored);
+
+		// Then: it still parses, and the missing variant stays null for the client to read as standard
+		assertThat(parsed.reportType()).isEqualTo("EOC");
+		assertThat(parsed.tacticNames()).containsExactly("Audio");
+		assertThat(parsed.templateVariant()).isNull();
 	}
 
 	@Test

@@ -7,6 +7,10 @@ import com.aidigital.reportconstructor.service.reports.dto.CreativeTakeawayInput
 import com.aidigital.reportconstructor.service.reports.dto.DeviceInsightInput;
 import com.aidigital.reportconstructor.service.reports.dto.FocusNextMonth;
 import com.aidigital.reportconstructor.service.reports.dto.GeoInsightInput;
+import com.aidigital.reportconstructor.service.reports.dto.MpoFunnelStage;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrative;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrativeInput;
+import com.aidigital.reportconstructor.service.reports.dto.MpoProposalPoint;
 import com.aidigital.reportconstructor.service.reports.dto.PublisherObservationInput;
 import com.aidigital.reportconstructor.service.reports.dto.CampaignFrequencies;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeNarrative;
@@ -244,11 +248,33 @@ public class RealClaudeClient implements ClaudeClient {
 	/** Log/warning label of the channel-slide pacing narrative call. */
 	private static final String PACING_LABEL = "TacticPacingNarrative";
 
+	/** Log/warning label of the MPO-only narrative call. */
+	private static final String MPO_NARRATIVE_LABEL = "MpoNarrative";
+
+	/** Failure-log message of an MPO narrative reply that carried no usable field. */
+	private static final String MPO_NARRATIVE_EMPTY_REASON = "reply carried no usable field; its slots ship dashed";
+
+	/**
+	 * Output budget of the MPO narrative call: the short slide fields plus up to four tightened results overviews
+	 * and JSON overhead, about 2,800 characters at the limits quoted, with headroom so the last field is never cut
+	 * off mid-object.
+	 */
+	private static final int MPO_NARRATIVE_MAX_TOKENS = 1600;
+
 	/** Characters one of the channel slide's three key takeaways fits above the METRIC table. */
 	private static final int PACING_TAKEAWAY_LIMIT = 230;
 
 	/** Characters the channel slide's month-ahead directive fits on its one line. */
 	private static final int PACING_NEXT_MONTH_LIMIT = 140;
+
+	/**
+	 * Characters one key takeaway fits on the MPO design's channel slide, whose three takeaway slots are a
+	 * fraction of the EOM template's (its sample copy runs 50-80 characters).
+	 */
+	private static final int COMPACT_PACING_TAKEAWAY_LIMIT = 90;
+
+	/** Characters the MPO design's NEXT MONTH bar fits on its one line. */
+	private static final int COMPACT_PACING_NEXT_MONTH_LIMIT = 85;
 
 	/**
 	 * Output ceiling for one pacing-narrative call: three ~230-character takeaways plus a 140-character
@@ -1580,8 +1606,9 @@ public class RealClaudeClient implements ClaudeClient {
 		if (input == null) {
 			return null;
 		}
-		var prompt = promptBuilder.buildTacticPacingPrompt(
-				input, brief, PACING_TAKEAWAY_LIMIT, PACING_NEXT_MONTH_LIMIT);
+		int takeawayLimit = input.compact() ? COMPACT_PACING_TAKEAWAY_LIMIT : PACING_TAKEAWAY_LIMIT;
+		int nextMonthLimit = input.compact() ? COMPACT_PACING_NEXT_MONTH_LIMIT : PACING_NEXT_MONTH_LIMIT;
+		var prompt = promptBuilder.buildTacticPacingPrompt(input, brief, takeawayLimit, nextMonthLimit);
 		if (prompt.isEmpty()) {
 			return null;
 		}
@@ -1590,7 +1617,7 @@ public class RealClaudeClient implements ClaudeClient {
 		if (parsed == null) {
 			return null;
 		}
-		return pacingFrom(input.tacticNum(), parsed);
+		return pacingFrom(input.tacticNum(), parsed, takeawayLimit, nextMonthLimit);
 	}
 
 	/**
@@ -1602,14 +1629,16 @@ public class RealClaudeClient implements ClaudeClient {
 	 *
 	 * @param tacticNum the 1-based tactic number the reply belongs to
 	 * @param parsed    the reply's JSON object
+	 * @param takeawayLimit  the character budget of each of the three key takeaways
+	 * @param nextMonthLimit the character budget of the month-ahead directive
 	 * @return the tactic's narrative, or {@code null} when the reply carried nothing usable
 	 */
-	TacticPacing pacingFrom(int tacticNum, JsonNode parsed) {
+	TacticPacing pacingFrom(int tacticNum, JsonNode parsed, int takeawayLimit, int nextMonthLimit) {
 		List<ClaudeCompressionField> fields = List.of(
-				pacingField(tacticNum, "what_worked", parsed, PACING_TAKEAWAY_LIMIT),
-				pacingField(tacticNum, "watch_outs", parsed, PACING_TAKEAWAY_LIMIT),
-				pacingField(tacticNum, "actions", parsed, PACING_TAKEAWAY_LIMIT),
-				pacingField(tacticNum, "next_month", parsed, PACING_NEXT_MONTH_LIMIT));
+				pacingField(tacticNum, "what_worked", parsed, takeawayLimit),
+				pacingField(tacticNum, "watch_outs", parsed, takeawayLimit),
+				pacingField(tacticNum, "actions", parsed, takeawayLimit),
+				pacingField(tacticNum, "next_month", parsed, nextMonthLimit));
 		if (fields.stream().allMatch(field -> field.text() == null || field.text().isBlank())) {
 			rejectSection(PACING_LABEL, tacticNum, "reply carried none of the four pacing fields");
 			return null;
@@ -1617,10 +1646,10 @@ public class RealClaudeClient implements ClaudeClient {
 		Map<String, String> compressed = compressionService.compress(fields, PACING_LABEL);
 		return new TacticPacing(
 				tacticNum,
-				normalizer.normalizeC(compressed.get(pacingKey(tacticNum, "what_worked")), PACING_TAKEAWAY_LIMIT),
-				normalizer.normalizeC(compressed.get(pacingKey(tacticNum, "watch_outs")), PACING_TAKEAWAY_LIMIT),
-				normalizer.normalizeC(compressed.get(pacingKey(tacticNum, "actions")), PACING_TAKEAWAY_LIMIT),
-				normalizer.normalizeC(compressed.get(pacingKey(tacticNum, "next_month")), PACING_NEXT_MONTH_LIMIT));
+				normalizer.normalizeC(compressed.get(pacingKey(tacticNum, "what_worked")), takeawayLimit),
+				normalizer.normalizeC(compressed.get(pacingKey(tacticNum, "watch_outs")), takeawayLimit),
+				normalizer.normalizeC(compressed.get(pacingKey(tacticNum, "actions")), takeawayLimit),
+				normalizer.normalizeC(compressed.get(pacingKey(tacticNum, "next_month")), nextMonthLimit));
 	}
 
 	/**
@@ -1646,6 +1675,91 @@ public class RealClaudeClient implements ClaudeClient {
 	 */
 	String pacingKey(int tacticNum, String field) {
 		return tacticNum + "_pacing_" + field;
+	}
+
+	@Override
+	public MpoNarrative mpoNarrative(MpoNarrativeInput input, String brief) {
+		var prompt = promptBuilder.buildMpoNarrativePrompt(input, brief);
+		if (prompt.isEmpty()) {
+			return null;
+		}
+		JsonNode parsed = messagesClient.callJsonObject(
+				prompt.get(), MPO_NARRATIVE_MAX_TOKENS, BREAKDOWN_TIMEOUT_SEC, MPO_NARRATIVE_LABEL, true);
+		if (parsed == null) {
+			return null;
+		}
+		return mpoNarrativeFrom(parsed);
+	}
+
+	/**
+	 * Turns the MPO narrative reply into its DTO: compress each field that ran over budget, then normalize to
+	 * the slide's own limits. A reply with no usable field at all is rejected ({@code null}) so every slot is
+	 * dashed; a reply that filled some fields ships those and the caller dashes the rest.
+	 *
+	 * @param parsed the reply's JSON object
+	 * @return the MPO copy, or {@code null} when the reply carried nothing usable
+	 */
+	MpoNarrative mpoNarrativeFrom(JsonNode parsed) {
+		List<ClaudeCompressionField> fields = new ArrayList<>();
+		addConclusionField(fields, "hhi", parsed.path("audience_hhi"), ClaudeBatchPromptBuilder.MPO_HHI_LIMIT);
+		addConclusionField(fields, "headline", parsed.path("recommendations_headline"),
+				ClaudeBatchPromptBuilder.MPO_HEADLINE_LIMIT);
+		JsonNode points = parsed.path("proposal_points");
+		for (int i = 0; i < ClaudeBatchPromptBuilder.MPO_PROPOSAL_POINTS; i++) {
+			JsonNode point = points.path(i);
+			addConclusionField(fields, "point_" + i, point.path("point"), ClaudeBatchPromptBuilder.MPO_POINT_LIMIT);
+			addConclusionField(fields, "overview_" + i, point.path("overview"),
+					ClaudeBatchPromptBuilder.MPO_OVERVIEW_LIMIT);
+		}
+		JsonNode stages = parsed.path("funnel_stages");
+		for (int i = 0; i < ClaudeBatchPromptBuilder.MPO_FUNNEL_STAGES; i++) {
+			JsonNode stage = stages.path(i);
+			addConclusionField(fields, "stage_" + i, stage.path("stage"), ClaudeBatchPromptBuilder.MPO_STAGE_LIMIT);
+			addConclusionField(fields, "label_" + i, stage.path("label"),
+					ClaudeBatchPromptBuilder.MPO_STAGE_LABEL_LIMIT);
+			addConclusionField(fields, "title_" + i, stage.path("title"),
+					ClaudeBatchPromptBuilder.MPO_FUNNEL_TITLE_LIMIT);
+			addConclusionField(fields, "data_" + i, stage.path("data"), ClaudeBatchPromptBuilder.MPO_FUNNEL_DATA_LIMIT);
+			addConclusionField(fields, "story_" + i, stage.path("story"),
+					ClaudeBatchPromptBuilder.MPO_FUNNEL_STORY_LIMIT);
+		}
+		JsonNode overviews = parsed.path("results_overviews");
+		for (int g = 0; g < ClaudeBatchPromptBuilder.MPO_RESULTS_GROUPS; g++) {
+			addConclusionField(fields, "results_" + g, overviews.path(g),
+					ClaudeBatchPromptBuilder.MPO_RESULTS_OVERVIEW_LIMIT);
+		}
+		if (fields.stream().allMatch(field -> field.text() == null || field.text().isBlank())) {
+			log.warn("[claude:{}] {}", MPO_NARRATIVE_LABEL, MPO_NARRATIVE_EMPTY_REASON);
+			failureLog.record(MPO_NARRATIVE_LABEL, MPO_NARRATIVE_EMPTY_REASON + ".");
+			return null;
+		}
+		Map<String, String> c = compressionService.compress(fields, MPO_NARRATIVE_LABEL);
+		List<MpoProposalPoint> proposalPoints = new ArrayList<>();
+		for (int i = 0; i < ClaudeBatchPromptBuilder.MPO_PROPOSAL_POINTS; i++) {
+			proposalPoints.add(new MpoProposalPoint(
+					normalizer.normalizeC(c.get("point_" + i), ClaudeBatchPromptBuilder.MPO_POINT_LIMIT),
+					normalizer.normalizeC(c.get("overview_" + i), ClaudeBatchPromptBuilder.MPO_OVERVIEW_LIMIT)));
+		}
+		List<MpoFunnelStage> funnelStages = new ArrayList<>();
+		for (int i = 0; i < ClaudeBatchPromptBuilder.MPO_FUNNEL_STAGES; i++) {
+			funnelStages.add(new MpoFunnelStage(
+					normalizer.normalizeC(c.get("stage_" + i), ClaudeBatchPromptBuilder.MPO_STAGE_LIMIT),
+					normalizer.normalizeC(c.get("label_" + i), ClaudeBatchPromptBuilder.MPO_STAGE_LABEL_LIMIT),
+					normalizer.normalizeC(c.get("title_" + i), ClaudeBatchPromptBuilder.MPO_FUNNEL_TITLE_LIMIT),
+					normalizer.normalizeC(c.get("data_" + i), ClaudeBatchPromptBuilder.MPO_FUNNEL_DATA_LIMIT),
+					normalizer.normalizeC(c.get("story_" + i), ClaudeBatchPromptBuilder.MPO_FUNNEL_STORY_LIMIT)));
+		}
+		List<String> resultsOverviews = new ArrayList<>();
+		for (int g = 0; g < ClaudeBatchPromptBuilder.MPO_RESULTS_GROUPS; g++) {
+			resultsOverviews.add(
+					normalizer.normalizeC(c.get("results_" + g), ClaudeBatchPromptBuilder.MPO_RESULTS_OVERVIEW_LIMIT));
+		}
+		return new MpoNarrative(
+				normalizer.normalizeC(c.get("hhi"), ClaudeBatchPromptBuilder.MPO_HHI_LIMIT),
+				proposalPoints,
+				funnelStages,
+				normalizer.normalizeC(c.get("headline"), ClaudeBatchPromptBuilder.MPO_HEADLINE_LIMIT),
+				resultsOverviews);
 	}
 
 	@Override

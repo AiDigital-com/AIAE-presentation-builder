@@ -4,12 +4,14 @@ import com.aidigital.reportconstructor.api.v1.model.DateFilterModeV1;
 import com.aidigital.reportconstructor.api.v1.model.ReportResumeV1;
 import com.aidigital.reportconstructor.api.v1.model.ReportSummaryV1;
 import com.aidigital.reportconstructor.api.v1.model.ReportTypeV1;
+import com.aidigital.reportconstructor.api.v1.model.TemplateVariantV1;
 import com.aidigital.reportconstructor.service.reports.dto.BreakdownSelection;
 import com.aidigital.reportconstructor.service.reports.dto.DateFilter;
 import com.aidigital.reportconstructor.service.reports.dto.DateFilterMode;
 import com.aidigital.reportconstructor.service.reports.dto.ReportResume;
 import com.aidigital.reportconstructor.service.reports.dto.ReportResumeState;
 import com.aidigital.reportconstructor.service.reports.dto.ReportSummary;
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -28,7 +30,7 @@ class ReportsApiMapperTest {
 				new ReportResumeState("EOM", "the brief", "the log", "1.2M",
 						new DateFilter(DateFilterMode.RANGE, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31)),
 						Boolean.FALSE, List.of(new BreakdownSelection(2, List.of("aud", "dev"))),
-						List.of("Display", "CTV")));
+						List.of("Display", "CTV"), TemplateVariant.MPO));
 
 		// When: it is mapped to the API DTO
 		ReportResumeV1 dto = mapper.toResume(resume);
@@ -51,6 +53,18 @@ class ReportsApiMapperTest {
 					assertThat(sel.getBreakdowns()).containsExactly("aud", "dev");
 				});
 		assertThat(dto.getTacticNames()).containsExactly("Display", "CTV");
+		assertThat(dto.getTemplateVariant()).isEqualTo(TemplateVariantV1.MPO);
+	}
+
+	@Test
+	void shouldMapTheRequestedTemplateVariantOntoTheServiceEnumTest() {
+		// Given / When
+		TemplateVariant mpo = mapper.toTemplateVariant(TemplateVariantV1.MPO);
+		TemplateVariant unset = mapper.toTemplateVariant(null);
+
+		// Then: an omitted variant stays null for the service to read as standard
+		assertThat(mpo).isEqualTo(TemplateVariant.MPO);
+		assertThat(unset).isNull();
 	}
 
 	@Test

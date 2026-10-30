@@ -91,7 +91,7 @@ class EomSlideFinderTest {
 				tableSlide("publishers", "Delivery Breakdown – {{tactic n}}", "{{publisher_n.1}}"),
 				shapeSlide("creative", "{{cr_live_n}}", "{{tactic n top creative name}}"),
 				tableSlide("geo", "{{geo_n.1}}", "{{geo_imp_n.1}}"),
-				shapeSlide("audience", "{{age_n_gr}}", "{{tactic n male}}"),
+				shapeSlide("audience", "{{aud_n_takeaway}}", "{{tactic n male}}"),
 				tableSlide("device", "{{dev_n_ctr}}", "{{mobile_imps_n}}"));
 
 		assertThat(finder.tacticMasterSlideIds(deck)).containsExactly("tactic-master");
@@ -111,9 +111,28 @@ class EomSlideFinderTest {
 				tableSlide("perf-1-7", "{{tactic 1 KPI}}", "{{tactic 7 KPI}}"),
 				tableSlide("perf-15-21", "{{tactic 15 KPI}}", "{{tactic 21 KPI}}"));
 
-		assertThat(finder.surplusTacticSlideIds(deck, 3)).containsExactly("pacing-8-14", "perf-15-21");
-		assertThat(finder.surplusTacticSlideIds(deck, 28)).isEmpty();
-		assertThat(finder.surplusTacticSlideIds(deck, 8)).containsExactly("perf-15-21");
+		assertThat(finder.surplusTacticSlideIds(deck, 3, 7)).containsExactly("pacing-8-14", "perf-15-21");
+		assertThat(finder.surplusTacticSlideIds(deck, 28, 7)).isEmpty();
+		assertThat(finder.surplusTacticSlideIds(deck, 8, 7)).containsExactly("perf-15-21");
+	}
+
+	@Test
+	void shouldKeepTheBlockTheCountLandsInsideOnceTheDeckIsFilledTest() {
+		// Given: a filled six-tactic deck — only the unused slots are still printed as tokens
+		List<Page> deck = List.of(
+				shapeSlide("divider", "{{tactic 3}}"),
+				namedTableSlide("pacing-1-7", "pacing-table-1",
+						"{{tactic 7 planned budget}}", "{{tactic 7 fact imps}}"),
+				namedTableSlide("perf-1-7", "perf-table-1", "{{tactic 7 KPI goal}}"),
+				namedTableSlide("pacing-8-14", "pacing-table-2", "{{tactic 8 planned budget}}"));
+
+		// When:
+		List<String> surplus = finder.surplusTacticSlideIds(deck, 6, 7);
+		List<String> trimmed = finder.partialBlockTableIds(deck, 6, 7);
+
+		// Then: only the untouched 8-14 block goes; the 1-7 dashboards stay and lose their tactic-7 row
+		assertThat(surplus).containsExactly("pacing-8-14");
+		assertThat(trimmed).containsExactly("pacing-table-1", "perf-table-1");
 	}
 
 	@Test
@@ -123,7 +142,7 @@ class EomSlideFinderTest {
 				shapeSlide("master", "{{tactic n}}", "{{tactic n imps}}"),
 				shapeSlide("static", "CHANNEL-BY-CHANNEL BREAKDOWN"));
 
-		assertThat(finder.surplusTacticSlideIds(deck, 1)).isEmpty();
+		assertThat(finder.surplusTacticSlideIds(deck, 1, 7)).isEmpty();
 	}
 
 	@Test
@@ -138,7 +157,7 @@ class EomSlideFinderTest {
 	void emptyOrNullDeckIsHandled() {
 		assertThat(finder.tacticMasterSlideIds(null)).isEmpty();
 		assertThat(finder.breakdownMasterSlideIds(List.of())).isEmpty();
-		assertThat(finder.surplusTacticSlideIds(null, 3)).isEmpty();
+		assertThat(finder.surplusTacticSlideIds(null, 3, 7)).isEmpty();
 	}
 
 	@Test

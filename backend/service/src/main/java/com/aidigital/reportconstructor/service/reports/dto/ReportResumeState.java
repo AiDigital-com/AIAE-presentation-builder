@@ -25,6 +25,9 @@ import java.util.List;
  *                              the breakdown slides the sheet was prepared for
  * @param tacticNames           the reported tactics in order, so the resumed review table has labels
  *                              before the sheet summary read lands
+ * @param templateVariant       deck design the run was started with, so a resumed draft is built on the
+ *                              template it was prepared for; {@code null} for a draft stored before this
+ *                              was recorded, which the client reads as standard
  */
 public record ReportResumeState(
 		String reportType,
@@ -34,5 +37,6 @@ public record ReportResumeState(
 		DateFilter dateFilter,
 		Boolean estimateDaypartGender,
 		List<BreakdownSelection> breakdownSelections,
-		List<String> tacticNames) {
+		List<String> tacticNames,
+		TemplateVariant templateVariant) {
 }

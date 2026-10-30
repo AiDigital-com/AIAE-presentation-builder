@@ -51,13 +51,15 @@ public class EomSlideFinder {
 	/**
 	 * Token that identifies each breakdown master slide. Chosen to be unique to that slide in the EOM
 	 * template and to be a master token (it carries the {@code n} variable), so a breakdown master can
-	 * never be mistaken for a tactic master or the other way round.
+	 * never be mistaken for a tactic master or the other way round. Each marker is a token both the EOM
+	 * template and the EOM MPO template carry: the MPO audience slide draws its age chart as an image and has
+	 * no {@code {{age_n_gr}}}, so the audience master is found by its key-takeaway token instead.
 	 */
 	private static final Map<BreakdownType, String> BREAKDOWN_MARKERS = Map.of(
 			BreakdownType.TOP_PUBLISHERS, "{{publisher_n.1}}",
 			BreakdownType.CREATIVE, "{{cr_live_n}}",
 			BreakdownType.GEO, "{{geo_n.1}}",
-			BreakdownType.AUDIENCE, "{{age_n_gr}}",
+			BreakdownType.AUDIENCE, "{{aud_n_takeaway}}",
 			BreakdownType.DEVICE, "{{dev_n_ctr}}");
 
 	/**
@@ -153,17 +155,21 @@ public class EomSlideFinder {
 	 * for a fixed block of tactics (1–7, 8–14, 15–21, 22–28), so a campaign with three tactics keeps only
 	 * the first slide of each pair and the rest would ship showing raw {@code {{tactic 8 …}}} tokens.
 	 *
-	 * <p>A slide is judged by the lowest tactic number printed on it, which is why the channel divider —
-	 * numbered from {@code {{tactic 1}}} — is never selected, and why a master slide, numbered with the
-	 * variable {@code n} rather than a digit, is not considered at all.
+	 * <p>A slide is judged by the lowest tactic number still printed on it. The trim runs after the deck has
+	 * been filled, so the used slots are already gone and only the unused ones remain: a slide is surplus
+	 * when that lowest number opens a block ({@code 8}, {@code 15}, {@code 22}) above the tactic count. A
+	 * slide the count lands inside shows a number mid-block — {@code 7} for a six-tactic campaign — and is
+	 * kept for the row trim, and so is the channel divider ({@code {{tactic 1..3}}}). A master slide,
+	 * numbered with the variable {@code n} rather than a digit, is not considered at all.
 	 *
-	 * @param pages       the deck's slides in order, from {@code presentations.get}
-	 * @param tacticCount number of real tactics in the campaign
+	 * @param pages           the deck's slides in order, from {@code presentations.get}
+	 * @param tacticCount     number of real tactics in the campaign
+	 * @param tacticsPerBlock tactic rows one dashboard slide draws
 	 * @return the object ids of the slides to delete, in deck order
 	 */
-	public List<String> surplusTacticSlideIds(List<Page> pages, int tacticCount) {
+	public List<String> surplusTacticSlideIds(List<Page> pages, int tacticCount, int tacticsPerBlock) {
 		List<String> surplus = new ArrayList<>();
-		if (pages == null) {
+		if (pages == null || tacticsPerBlock <= 0) {
 			return surplus;
 		}
 		for (Page page : pages) {
@@ -172,7 +178,7 @@ public class EomSlideFinder {
 				continue;
 			}
 			int lowest = lowestTacticNumber(page);
-			if (lowest > 0 && lowest > tacticCount) {
+			if (lowest > 0 && lowest > tacticCount && (lowest - 1) % tacticsPerBlock == 0) {
 				surplus.add(objectId);
 			}
 		}
@@ -203,8 +209,11 @@ public class EomSlideFinder {
 			return tables;
 		}
 		int blockStart = (tacticCount - 1) / tacticsPerBlock * tacticsPerBlock + 1;
+		int blockEnd = blockStart + tacticsPerBlock - 1;
 		for (Page page : pages) {
-			if (lowestTacticNumber(page) != blockStart) {
+			// Before the fill the block's slide shows its first number; after it, the first unused one.
+			int lowest = lowestTacticNumber(page);
+			if (lowest < blockStart || lowest > blockEnd) {
 				continue;
 			}
 			tables.addAll(numberedTacticTableIds(page));
