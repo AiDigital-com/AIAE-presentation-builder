@@ -1701,32 +1701,32 @@ public class RealClaudeClient implements ClaudeClient {
 	 */
 	MpoNarrative mpoNarrativeFrom(JsonNode parsed) {
 		List<ClaudeCompressionField> fields = new ArrayList<>();
-		addConclusionField(fields, "hhi", parsed.path("audience_hhi"), ClaudeBatchPromptBuilder.MPO_HHI_LIMIT);
+		addConclusionField(fields, "hhi", parsed.path("audience_hhi"), MpoPromptSpec.MPO_HHI_LIMIT);
 		addConclusionField(fields, "headline", parsed.path("recommendations_headline"),
-				ClaudeBatchPromptBuilder.MPO_HEADLINE_LIMIT);
+				MpoPromptSpec.MPO_HEADLINE_LIMIT);
 		JsonNode points = parsed.path("proposal_points");
-		for (int i = 0; i < ClaudeBatchPromptBuilder.MPO_PROPOSAL_POINTS; i++) {
+		for (int i = 0; i < MpoPromptSpec.MPO_PROPOSAL_POINTS; i++) {
 			JsonNode point = points.path(i);
-			addConclusionField(fields, "point_" + i, point.path("point"), ClaudeBatchPromptBuilder.MPO_POINT_LIMIT);
+			addConclusionField(fields, "point_" + i, point.path("point"), MpoPromptSpec.MPO_POINT_LIMIT);
 			addConclusionField(fields, "overview_" + i, point.path("overview"),
-					ClaudeBatchPromptBuilder.MPO_OVERVIEW_LIMIT);
+					MpoPromptSpec.MPO_OVERVIEW_LIMIT);
 		}
 		JsonNode stages = parsed.path("funnel_stages");
-		for (int i = 0; i < ClaudeBatchPromptBuilder.MPO_FUNNEL_STAGES; i++) {
+		for (int i = 0; i < MpoPromptSpec.MPO_FUNNEL_STAGES; i++) {
 			JsonNode stage = stages.path(i);
-			addConclusionField(fields, "stage_" + i, stage.path("stage"), ClaudeBatchPromptBuilder.MPO_STAGE_LIMIT);
+			addConclusionField(fields, "stage_" + i, stage.path("stage"), MpoPromptSpec.MPO_STAGE_LIMIT);
 			addConclusionField(fields, "label_" + i, stage.path("label"),
-					ClaudeBatchPromptBuilder.MPO_STAGE_LABEL_LIMIT);
+					MpoPromptSpec.MPO_STAGE_LABEL_LIMIT);
 			addConclusionField(fields, "title_" + i, stage.path("title"),
-					ClaudeBatchPromptBuilder.MPO_FUNNEL_TITLE_LIMIT);
-			addConclusionField(fields, "data_" + i, stage.path("data"), ClaudeBatchPromptBuilder.MPO_FUNNEL_DATA_LIMIT);
+					MpoPromptSpec.MPO_FUNNEL_TITLE_LIMIT);
+			addConclusionField(fields, "data_" + i, stage.path("data"), MpoPromptSpec.MPO_FUNNEL_DATA_LIMIT);
 			addConclusionField(fields, "story_" + i, stage.path("story"),
-					ClaudeBatchPromptBuilder.MPO_FUNNEL_STORY_LIMIT);
+					MpoPromptSpec.MPO_FUNNEL_STORY_LIMIT);
 		}
 		JsonNode overviews = parsed.path("results_overviews");
-		for (int g = 0; g < ClaudeBatchPromptBuilder.MPO_RESULTS_GROUPS; g++) {
+		for (int g = 0; g < MpoPromptSpec.MPO_RESULTS_GROUPS; g++) {
 			addConclusionField(fields, "results_" + g, overviews.path(g),
-					ClaudeBatchPromptBuilder.MPO_RESULTS_OVERVIEW_LIMIT);
+					MpoPromptSpec.MPO_RESULTS_OVERVIEW_LIMIT);
 		}
 		if (fields.stream().allMatch(field -> field.text() == null || field.text().isBlank())) {
 			log.warn("[claude:{}] {}", MPO_NARRATIVE_LABEL, MPO_NARRATIVE_EMPTY_REASON);
@@ -1735,30 +1735,30 @@ public class RealClaudeClient implements ClaudeClient {
 		}
 		Map<String, String> c = compressionService.compress(fields, MPO_NARRATIVE_LABEL);
 		List<MpoProposalPoint> proposalPoints = new ArrayList<>();
-		for (int i = 0; i < ClaudeBatchPromptBuilder.MPO_PROPOSAL_POINTS; i++) {
+		for (int i = 0; i < MpoPromptSpec.MPO_PROPOSAL_POINTS; i++) {
 			proposalPoints.add(new MpoProposalPoint(
-					normalizer.normalizeC(c.get("point_" + i), ClaudeBatchPromptBuilder.MPO_POINT_LIMIT),
-					normalizer.normalizeC(c.get("overview_" + i), ClaudeBatchPromptBuilder.MPO_OVERVIEW_LIMIT)));
+					normalizer.normalizeC(c.get("point_" + i), MpoPromptSpec.MPO_POINT_LIMIT),
+					normalizer.normalizeC(c.get("overview_" + i), MpoPromptSpec.MPO_OVERVIEW_LIMIT)));
 		}
 		List<MpoFunnelStage> funnelStages = new ArrayList<>();
-		for (int i = 0; i < ClaudeBatchPromptBuilder.MPO_FUNNEL_STAGES; i++) {
+		for (int i = 0; i < MpoPromptSpec.MPO_FUNNEL_STAGES; i++) {
 			funnelStages.add(new MpoFunnelStage(
-					normalizer.normalizeC(c.get("stage_" + i), ClaudeBatchPromptBuilder.MPO_STAGE_LIMIT),
-					normalizer.normalizeC(c.get("label_" + i), ClaudeBatchPromptBuilder.MPO_STAGE_LABEL_LIMIT),
-					normalizer.normalizeC(c.get("title_" + i), ClaudeBatchPromptBuilder.MPO_FUNNEL_TITLE_LIMIT),
-					normalizer.normalizeC(c.get("data_" + i), ClaudeBatchPromptBuilder.MPO_FUNNEL_DATA_LIMIT),
-					normalizer.normalizeC(c.get("story_" + i), ClaudeBatchPromptBuilder.MPO_FUNNEL_STORY_LIMIT)));
+					normalizer.normalizeC(c.get("stage_" + i), MpoPromptSpec.MPO_STAGE_LIMIT),
+					normalizer.normalizeC(c.get("label_" + i), MpoPromptSpec.MPO_STAGE_LABEL_LIMIT),
+					normalizer.normalizeC(c.get("title_" + i), MpoPromptSpec.MPO_FUNNEL_TITLE_LIMIT),
+					normalizer.normalizeC(c.get("data_" + i), MpoPromptSpec.MPO_FUNNEL_DATA_LIMIT),
+					normalizer.normalizeC(c.get("story_" + i), MpoPromptSpec.MPO_FUNNEL_STORY_LIMIT)));
 		}
 		List<String> resultsOverviews = new ArrayList<>();
-		for (int g = 0; g < ClaudeBatchPromptBuilder.MPO_RESULTS_GROUPS; g++) {
+		for (int g = 0; g < MpoPromptSpec.MPO_RESULTS_GROUPS; g++) {
 			resultsOverviews.add(
-					normalizer.normalizeC(c.get("results_" + g), ClaudeBatchPromptBuilder.MPO_RESULTS_OVERVIEW_LIMIT));
+					normalizer.normalizeC(c.get("results_" + g), MpoPromptSpec.MPO_RESULTS_OVERVIEW_LIMIT));
 		}
 		return new MpoNarrative(
-				normalizer.normalizeC(c.get("hhi"), ClaudeBatchPromptBuilder.MPO_HHI_LIMIT),
+				normalizer.normalizeC(c.get("hhi"), MpoPromptSpec.MPO_HHI_LIMIT),
 				proposalPoints,
 				funnelStages,
-				normalizer.normalizeC(c.get("headline"), ClaudeBatchPromptBuilder.MPO_HEADLINE_LIMIT),
+				normalizer.normalizeC(c.get("headline"), MpoPromptSpec.MPO_HEADLINE_LIMIT),
 				resultsOverviews);
 	}
 

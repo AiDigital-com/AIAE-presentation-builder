@@ -588,12 +588,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		// Breakdown token map: the section data tokens first, then the Claude section tokens written from the
 		// per-section calls. Each section only emits tokens for its own tactics, so the merge cannot collide.
 		// The warnings collect every tactic whose section shipped without its Claude copy.
-		Map<String, String> breakdownValues = new LinkedHashMap<>();
-		breakdownValues.putAll(pub.dataValues());
-		breakdownValues.putAll(cre.dataValues());
-		breakdownValues.putAll(geo.dataValues());
-		breakdownValues.putAll(aud.dataValues());
-		breakdownValues.putAll(dev.dataValues());
+		Map<String, String> breakdownValues = mergeSectionDataValues(sections);
 		List<String> jobWarnings = new ArrayList<>(
 				writeBreakdownInsights(breakdownValues, pub, cre, geo, aud, dev, bullets, prelim));
 
@@ -648,6 +643,24 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		buildDeckFromSheet(
 				jobId, payload, userEmail, grid, flatReplacements, breakdownValues, tacticCount,
 				userGoogleToken, jobWarnings);
+	}
+
+	/**
+	 * Merges every breakdown section's data tokens into one ordered, mutable token map.
+	 *
+	 * <p>Each section only emits tokens for its own tactics, so the merge cannot collide.
+	 *
+	 * @param sections the breakdown section reads for the run
+	 * @return a new mutable map holding the publisher, creative, geo, audience and device data tokens
+	 */
+	Map<String, String> mergeSectionDataValues(BreakdownSectionBundle sections) {
+		Map<String, String> values = new LinkedHashMap<>();
+		values.putAll(sections.publisher().dataValues());
+		values.putAll(sections.creative().dataValues());
+		values.putAll(sections.geo().dataValues());
+		values.putAll(sections.audience().dataValues());
+		values.putAll(sections.device().dataValues());
+		return values;
 	}
 
 	/**
@@ -1034,7 +1047,8 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		if (live) {
 			boolean compact = slides.carriesMpoNarrative(reportType, templateVariant);
 			List<TacticPacingInput> inputs = pacingNarrative.toInputs(flat, tacticCount).stream()
-					.map(in -> new TacticPacingInput(in.tacticNum(), in.tacticName(), in.kpiType(), in.metrics(), compact))
+					.map(in -> new TacticPacingInput(
+							in.tacticNum(), in.tacticName(), in.kpiType(), in.metrics(), compact))
 					.toList();
 			narratives = joinPacing(dispatchPacing(claude, inputs, usageScope, brief));
 		}
