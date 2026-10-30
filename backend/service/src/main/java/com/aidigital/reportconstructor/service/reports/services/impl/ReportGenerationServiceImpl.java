@@ -600,8 +600,8 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		Map<Integer, String> namesByTactic = tacticNames(prelim, tacticCount);
 		List<TacticThoughts> thoughts = List.of();
 		if (live && !qualifying.isEmpty()) {
-			List<TacticThoughtsInput> thoughtsInputs = conclusionAssembler.toThoughtsInputs(
-					conclusions, namesByTactic, qualifying, bullets);
+			List<TacticThoughtsInput> thoughtsInputs = conclusionAssembler.toThoughtsInputs(conclusions, namesByTactic,
+					qualifying, bullets, slides.carriesMpoNarrative(payload.reportType(), payload.templateVariant()));
 			thoughts = joinThoughts(dispatchThoughts(claude, thoughtsInputs, usageScope, brief));
 		}
 		writeThoughtsTokens(breakdownValues, qualifying, thoughts, prelim);

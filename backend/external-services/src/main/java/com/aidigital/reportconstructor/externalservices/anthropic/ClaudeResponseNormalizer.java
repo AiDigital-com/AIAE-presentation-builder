@@ -38,8 +38,11 @@ public class ClaudeResponseNormalizer {
 	/** Characters the EOM horizon block fits. */
 	private static final int HORIZON_LIMIT = 150;
 
-	/** Characters one EOM pacing-dashboard key takeaway fits under its table. */
-	public static final int PACING_TAKEAWAY_LIMIT = 140;
+	/**
+	 * Characters one EOM pacing-dashboard or performance-vs-plan key takeaway fits under its table: the strip
+	 * is one ~724pt line at 11pt Inter, about 115 characters, so a 140-character takeaway overflowed it.
+	 */
+	public static final int PACING_TAKEAWAY_LIMIT = 110;
 
 	/**
 	 * Characters one heading of the EOM "what we did this month" slide fits — the label above an

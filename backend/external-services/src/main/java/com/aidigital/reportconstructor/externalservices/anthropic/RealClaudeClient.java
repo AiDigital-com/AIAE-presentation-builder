@@ -94,6 +94,15 @@ public class RealClaudeClient implements ClaudeClient {
 	 * analytical paragraphs, which makes it slide slot 5.
 	 */
 	private static final int STORY_SLOT_INDEX = 4;
+
+	/**
+	 * Characters one of the four thoughts squares fits on the MPO design's per-tactic thoughts slide: ~250pt
+	 * wide at 14pt, matching the ~95-115 character sample copy.
+	 */
+	private static final int COMPACT_THOUGHT_LIMIT = 120;
+
+	/** Characters the MPO design's wide story box fits: three ~540pt lines at 14pt, ~220 in the sample. */
+	private static final int COMPACT_STORY_LIMIT = 230;
 	private static final int TACTIC_OVERVIEW_LIMIT = 210;
 	private static final int RECOMMENDATION_TITLE_LIMIT = 30;
 	private static final int RECOMMENDATION_TEXT_LIMIT = 130;
@@ -273,8 +282,11 @@ public class RealClaudeClient implements ClaudeClient {
 	 */
 	private static final int COMPACT_PACING_TAKEAWAY_LIMIT = 90;
 
-	/** Characters the MPO design's NEXT MONTH bar fits on its one line. */
-	private static final int COMPACT_PACING_NEXT_MONTH_LIMIT = 85;
+	/**
+	 * Characters the MPO design's NEXT MONTH bar fits on its one line: its box is ~426pt wide at 11pt Inter,
+	 * about 70 average characters, so an 82-character directive wraps out of the bar.
+	 */
+	private static final int COMPACT_PACING_NEXT_MONTH_LIMIT = 65;
 
 	/**
 	 * Output ceiling for one pacing-narrative call: three ~230-character takeaways plus a 140-character
@@ -1555,7 +1567,9 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @return the tactic's thoughts, possibly with fewer than four filled, or {@code null} when unusable
 	 */
 	TacticThoughts tacticThoughtsOne(TacticThoughtsInput input, String brief) {
-		var prompt = promptBuilder.buildTacticThoughtsPrompt(input, brief, THOUGHT_LIMIT, STORY_LIMIT);
+		int thoughtLimit = input.compact() ? COMPACT_THOUGHT_LIMIT : THOUGHT_LIMIT;
+		int storyLimit = input.compact() ? COMPACT_STORY_LIMIT : STORY_LIMIT;
+		var prompt = promptBuilder.buildTacticThoughtsPrompt(input, brief, thoughtLimit, storyLimit);
 		if (prompt.isEmpty()) {
 			return null;
 		}
@@ -1576,13 +1590,13 @@ public class RealClaudeClient implements ClaudeClient {
 			if (!raw.isBlank()) {
 				filled++;
 			}
-			fields.add(new ClaudeCompressionField(input.tacticNum() + "_thought_" + i, raw, THOUGHT_LIMIT));
+			fields.add(new ClaudeCompressionField(input.tacticNum() + "_thought_" + i, raw, thoughtLimit));
 		}
 		// The story rides in its own key, so a reply that wrote the four thoughts and dropped the story is
 		// incomplete rather than unusable: it still goes back through the caller's one retry, and if the second
 		// attempt drops it too the four thoughts ship and only the story's token renders blank.
 		String rawStory = parsed.path("story").asText("").trim();
-		fields.add(new ClaudeCompressionField(input.tacticNum() + STORY_FIELD_KEY, rawStory, STORY_LIMIT));
+		fields.add(new ClaudeCompressionField(input.tacticNum() + STORY_FIELD_KEY, rawStory, storyLimit));
 		if (filled == 0) {
 			rejectSection(THOUGHTS_LABEL, input.tacticNum(),
 					"reply carried " + arr.size() + " item(s) but no non-blank thought");
@@ -1595,9 +1609,9 @@ public class RealClaudeClient implements ClaudeClient {
 		Map<String, String> compressed = compressionService.compress(fields, "BatchD-TacticThoughts");
 		List<String> thoughts = new ArrayList<>(TACTIC_THOUGHTS_SLOTS);
 		for (int i = 0; i < TACTIC_THOUGHTS_COUNT; i++) {
-			thoughts.add(normalizer.normalizeC(compressed.get(input.tacticNum() + "_thought_" + i), THOUGHT_LIMIT));
+			thoughts.add(normalizer.normalizeC(compressed.get(input.tacticNum() + "_thought_" + i), thoughtLimit));
 		}
-		thoughts.add(normalizer.normalizeC(compressed.get(input.tacticNum() + STORY_FIELD_KEY), STORY_LIMIT));
+		thoughts.add(normalizer.normalizeC(compressed.get(input.tacticNum() + STORY_FIELD_KEY), storyLimit));
 		return new TacticThoughts(input.tacticNum(), thoughts);
 	}
 

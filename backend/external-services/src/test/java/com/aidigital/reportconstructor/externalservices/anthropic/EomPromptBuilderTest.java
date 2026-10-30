@@ -487,7 +487,7 @@ class EomPromptBuilderTest {
 		// Given: the Step-3 call for one tactic that ran a publisher breakdown
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				1, "CTV", "CTV paced to 101% of the month's impression target.",
-				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of());
+				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of(), false);
 
 		// When:
 		String prompt = builder.buildTacticThoughtsPrompt(input, "Drive awareness.", 200, 470).orElseThrow();
@@ -513,7 +513,7 @@ class EomPromptBuilderTest {
 		// Given: an EOC run of the same call
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				1, "CTV", "CTV delivered 101% of its impression plan.",
-				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of());
+				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of(), false);
 
 		// When:
 		String prompt = eoc.buildTacticThoughtsPrompt(input, "Drive awareness.", 200, 470).orElseThrow();
@@ -689,7 +689,7 @@ class EomPromptBuilderTest {
 		// Then: exactly one takeaway is paid for, capped at what the slot prints
 		assertThat(prompt).contains("\"pacing_takeaways\": array");
 		assertThat(prompt).contains("EXACTLY 1 string(s)");
-		assertThat(prompt).contains("MAX 140 CHARACTERS EACH");
+		assertThat(prompt).contains("MAX 110 CHARACTERS EACH");
 	}
 
 	@Test
@@ -804,7 +804,7 @@ class EomPromptBuilderTest {
 		// Given: the Step-3 call for one tactic
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				1, "CTV", "CTV paced to 101% of the month's impression target.",
-				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of());
+				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of(), false);
 
 		// When:
 		String prompt = builder.buildTacticThoughtsPrompt(input, "Drive awareness.", 200, 470).orElseThrow();
@@ -823,7 +823,7 @@ class EomPromptBuilderTest {
 		// Given: an EOC run of the same call
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				1, "CTV", "CTV delivered 101% of its impression plan.",
-				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of());
+				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of(), false);
 
 		// When:
 		String prompt = eoc.buildTacticThoughtsPrompt(input, "Drive awareness.", 200, 470).orElseThrow();

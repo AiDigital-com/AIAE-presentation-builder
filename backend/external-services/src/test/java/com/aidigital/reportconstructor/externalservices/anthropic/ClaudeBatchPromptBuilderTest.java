@@ -287,7 +287,7 @@ class ClaudeBatchPromptBuilderTest {
 		// Given: one tactic's Step-2 conclusions, the only input the Step-3 thoughts call reasons over
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				1, "CTV", "CTV delivered 101% of its impression plan.",
-				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of());
+				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of(), false);
 
 		// When: the Step-3 per-tactic thoughts prompt is built
 		String prompt = builder.buildTacticThoughtsPrompt(input, "Drive awareness.", 220, 470).orElseThrow();

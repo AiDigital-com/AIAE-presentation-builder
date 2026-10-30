@@ -412,7 +412,7 @@ class RealClaudeClientTest {
 		String brief = "Drive awareness for the Spring Launch.";
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				2, "CTV", "CTV delivered 1M impressions at 98% VCR.",
-				null, null, List.of("West coast concentrated delivery."), null, null);
+				null, null, List.of("West coast concentrated delivery."), null, null, false);
 
 		String expectedPrompt = promptBuilder.buildTacticThoughtsPrompt(input, brief, 220, 470).orElseThrow();
 		JsonNode response = json.readTree("""
@@ -450,6 +450,52 @@ class RealClaudeClientTest {
 	}
 
 	@Test
+	void shouldBudgetTheThoughtsToTheMpoBoxesForACompactInputTest() throws Exception {
+		// Given: a compact (MPO design) input, whose thoughts squares and story box hold far shorter copy
+		ClaudeResponseNormalizer normalizer = new ClaudeResponseNormalizer();
+		ClaudeBatchPromptBuilder promptBuilder = new ClaudeBatchPromptBuilder(normalizer, new Fmt());
+		RealClaudeClient client = new RealClaudeClient(
+				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
+				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
+				new AnthropicProperties());
+		String brief = "Drive awareness for the Spring Launch.";
+		TacticThoughtsInput input = new TacticThoughtsInput(
+				2, "CTV", "CTV delivered 1M impressions at 98% VCR.",
+				null, null, List.of("West coast concentrated delivery."), null, null, true);
+		String expectedPrompt = promptBuilder.buildTacticThoughtsPrompt(input, brief, 120, 230).orElseThrow();
+		JsonNode response = json.readTree("""
+				{"thoughts": ["Headline result.", "What worked best.", "A watch-out.", "The opportunity."],
+				 "story": "CTV was asked to build reach and it did."}
+				""");
+		List<ClaudeCompressionField> expectedFields = List.of(
+				new ClaudeCompressionField("2_thought_0", "Headline result.", 120),
+				new ClaudeCompressionField("2_thought_1", "What worked best.", 120),
+				new ClaudeCompressionField("2_thought_2", "A watch-out.", 120),
+				new ClaudeCompressionField("2_thought_3", "The opportunity.", 120),
+				new ClaudeCompressionField("2_story", "CTV was asked to build reach and it did.", 230));
+		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true)))
+				.thenReturn(response);
+		when(compressionService.compress(eq(expectedFields), eq("BatchD-TacticThoughts")))
+				.thenAnswer(invocation -> {
+					List<ClaudeCompressionField> fields = invocation.getArgument(0);
+					Map<String, String> out = new LinkedHashMap<>();
+					for (ClaudeCompressionField field : fields) {
+						out.put(field.key(), field.text());
+					}
+					return out;
+				});
+
+		// When:
+		TacticThoughts thoughts = client.tacticThoughts(input, brief);
+
+		// Then: the prompt and the compression both used the MPO budgets
+		assertThat(thoughts).isNotNull();
+		assertThat(thoughts.thoughts()).hasSize(5);
+		assertThat(thoughts.thoughts().getLast()).isEqualTo("CTV was asked to build reach and it did.");
+	}
+
+	@Test
 	void shouldRetryAnEmptyThoughtsArrayAndKeepTheRetrysThoughtsTest() throws Exception {
 		// Given: a first reply whose "thoughts" array is well-formed but holds nothing but blanks — the shape
 		// that used to pass as a success and blank the slide silently — and a complete retry behind it
@@ -465,7 +511,7 @@ class RealClaudeClientTest {
 		String brief = "Drive awareness for the Spring Launch.";
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				4, "Display", "Display delivered 2M impressions at a 0.12% CTR.",
-				List.of("Hulu led delivery."), null, null, null, null);
+				List.of("Hulu led delivery."), null, null, null, null, false);
 		String expectedPrompt = promptBuilder.buildTacticThoughtsPrompt(input, brief, 220, 470).orElseThrow();
 		JsonNode blank = json.readTree("{\"thoughts\": [\"\", \"\", \"\", \"\"], \"story\": \"\"}");
 		JsonNode complete = json.readTree("""
@@ -522,7 +568,7 @@ class RealClaudeClientTest {
 		String brief = "Drive awareness for the Spring Launch.";
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				7, "Audio", "Audio delivered 500k impressions at 95% ACR.",
-				null, null, null, null, List.of("Mobile carried delivery."));
+				null, null, null, null, List.of("Mobile carried delivery."), false);
 		String expectedPrompt = promptBuilder.buildTacticThoughtsPrompt(input, brief, 220, 470).orElseThrow();
 		JsonNode partial = json.readTree("{\"thoughts\": [\"Headline result.\", \"A watch-out.\"]}");
 		List<ClaudeCompressionField> expectedFields = List.of(
@@ -1806,7 +1852,7 @@ class RealClaudeClientTest {
 				 "next_month": "Hold CTV weight to reach the 40%% goal."}
 				""".formatted(longTakeaway));
 		when(messagesClient.callJsonObject(
-				eq(promptBuilder.buildTacticPacingPrompt(input, "brief", 90, 85).orElseThrow()),
+				eq(promptBuilder.buildTacticPacingPrompt(input, "brief", 90, 65).orElseThrow()),
 				eq(900), eq(90), eq("TacticPacingNarrative"), eq(true)))
 				.thenReturn(response);
 		when(compressionService.compress(org.mockito.ArgumentMatchers.anyList(), eq("TacticPacingNarrative")))

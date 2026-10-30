@@ -31,7 +31,7 @@ public class TacticConclusionAssemblerImpl implements TacticConclusionAssembler 
 	@Override
 	public List<TacticThoughtsInput> toThoughtsInputs(
 			List<TacticConclusion> conclusions, Map<Integer, String> tacticNames, Set<Integer> qualifyingTactics,
-			BreakdownBullets bullets) {
+			BreakdownBullets bullets, boolean compact) {
 		List<TacticThoughtsInput> inputs = new ArrayList<>();
 		if (conclusions == null || qualifyingTactics == null) {
 			return inputs;
@@ -49,7 +49,8 @@ public class TacticConclusionAssemblerImpl implements TacticConclusionAssembler 
 					section(bullets == null ? null : bullets.creative(), c.tacticNum()),
 					section(bullets == null ? null : bullets.geo(), c.tacticNum()),
 					section(bullets == null ? null : bullets.audience(), c.tacticNum()),
-					section(bullets == null ? null : bullets.device(), c.tacticNum())));
+					section(bullets == null ? null : bullets.device(), c.tacticNum()),
+					compact));
 		}
 		return inputs;
 	}
