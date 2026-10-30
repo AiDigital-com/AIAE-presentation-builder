@@ -157,8 +157,9 @@ public interface ReportGenerationChartHelper {
 	 * Dashes every {@code {{token}}} still standing in the finished deck, and reports what was dashed as
 	 * job warnings so a token the pipeline has no resolver for is visible without reading the deck.
 	 *
-	 * <p>Runs last, after every pass that writes text. Non-fatal: a deck that cannot be swept is delivered
-	 * exactly as it would have been without this pass.
+	 * <p>Runs last, after every pass that writes text, and first turns the copy's {@code **key phrase**}
+	 * markers into bold text. Non-fatal: a deck that cannot be swept is delivered exactly as it would have
+	 * been without this pass.
 	 *
 	 * @param slideUrl        the finished deck's URL
 	 * @param reportType      report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}

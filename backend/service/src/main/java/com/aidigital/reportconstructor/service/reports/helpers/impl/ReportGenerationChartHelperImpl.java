@@ -309,6 +309,8 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 			return List.of();
 		}
 		try {
+			// The deck's last text pass: every value is in place, so the emphasis markers can be applied.
+			slides.applyBoldMarkup(presentationId, userGoogleToken);
 			List<String> dashed = slides.dashUnresolvedTokens(
 					presentationId, reportType, templateVariant, userGoogleToken);
 			if (dashed.isEmpty()) {

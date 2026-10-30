@@ -28,10 +28,10 @@ final class MpoPromptSpec {
 	static final int MPO_FUNNEL_TITLE_LIMIT = 28;
 
 	/** Funnel card evidence line ("2.27M Total Unique Reach at a 5.91 Frequency."). */
-	static final int MPO_FUNNEL_DATA_LIMIT = 70;
+	static final int MPO_FUNNEL_DATA_LIMIT = 50;
 
-	/** Funnel card story (~100 characters in the sample). */
-	static final int MPO_FUNNEL_STORY_LIMIT = 120;
+	/** Funnel card story: two lines of the card next to its icon block. */
+	static final int MPO_FUNNEL_STORY_LIMIT = 85;
 
 	/** Recommendations slide headline ("TURNING CURIOSITY INTO BOOKINGS"). */
 	static final int MPO_HEADLINE_LIMIT = 40;
@@ -68,6 +68,16 @@ final class MpoPromptSpec {
 			+ "\"title\": \"...\", \"data\": \"...\", \"story\": \"...\"}], \"recommendations_headline\": "
 			+ "\"...\", \"results_overviews\": [\"...\", \"...\", \"...\", \"...\"]} — write NO preamble, "
 			+ "reasoning or commentary before or after it; do NOT refuse and do NOT flag data problems.\n\n";
+
+	/**
+	 * The emphasis rule of the MPO thoughts slide, whose copy carries one bold phrase per box. The deck turns
+	 * the {@code **} markers into bold text, so this is the one place the "no markdown" rule gives way.
+	 */
+	static final String MPO_THOUGHTS_EMPHASIS =
+			"EMPHASIS — the one exception to \"no markdown\": in EACH of the four thoughts and in the story, wrap "
+			+ "exactly ONE key phrase of 3-7 words in double asterisks, e.g. \"**Display beat plan on every "
+			+ "line** — 372,400 impr (+3%) at a $6.36 CPM.\" Pick the verdict or the headline figure, never the "
+			+ "whole sentence.\n\n";
 
 	/**
 	 * Not instantiable: this class only holds constants.

@@ -46,7 +46,8 @@ public class CampaignPacingResolvers {
 	 * Over-delivery is a signed lift against the plan ({@code (fact / plan - 1) × 100}, e.g.
 	 * {@code "+2%"}); anything at or below plan is instead the share of the plan actually delivered
 	 * ({@code fact / plan × 100}, e.g. {@code "98%"}, and exactly {@code "100%"} on plan), so a shortfall
-	 * never shows up as a bare negative number on the cover.
+	 * never shows up as a bare negative number on the cover. A figure of a thousand or more is abbreviated
+	 * ({@code "+361K%"}) so it still fits the cover tile.
 	 *
 	 * @param fact the delivered impressions
 	 * @param plan the planned impressions (must be positive)
@@ -55,9 +56,9 @@ public class CampaignPacingResolvers {
 	String impsPace(double fact, double plan) {
 		double liftPct = (fact / plan - 1) * 100;
 		if (liftPct > 0) {
-			return "+" + Math.round(liftPct) + "%";
+			return "+" + fmt.compactUpper(Math.round(liftPct)) + "%";
 		}
-		return Math.round(fact / plan * 100) + "%";
+		return fmt.compactUpper(Math.round(fact / plan * 100)) + "%";
 	}
 
 

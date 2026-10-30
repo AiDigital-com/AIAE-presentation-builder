@@ -188,6 +188,17 @@ public interface SlidesProvider {
 			String presentationId, String reportType, TemplateVariant templateVariant, String userGoogleAccessToken);
 
 	/**
+	 * Turns every {@code **key phrase**} marker in a finished deck into bold text and removes the markers.
+	 * Copy that carries one emphasised phrase (the MPO thoughts slide) is written with the phrase marked,
+	 * because a {@code replaceAllText} value cannot carry a style of its own.
+	 *
+	 * @param presentationId        the finished deck
+	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token; falls back to the
+	 *                              service account when blank
+	 */
+	void applyBoldMarkup(String presentationId, String userGoogleAccessToken);
+
+	/**
 	 * Counts the slides a finished deck contains. Called once the surplus template slides have been
 	 * deleted, so the number is what the client actually receives — which is what the admin
 	 * dashboard's saved-hours figure is quoted against.

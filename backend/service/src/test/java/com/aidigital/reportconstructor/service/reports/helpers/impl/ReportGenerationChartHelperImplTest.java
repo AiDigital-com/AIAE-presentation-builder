@@ -29,6 +29,7 @@ import com.aidigital.reportconstructor.service.reports.ports.SlidesProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -44,6 +45,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -71,6 +73,22 @@ class ReportGenerationChartHelperImplTest {
 
 	@InjectMocks
 	ReportGenerationChartHelperImpl helper;
+
+	@Test
+	void shouldApplyTheBoldMarkupBeforeDashingTheUnresolvedTokensTest() {
+		// Given: a finished deck with nothing left to dash
+		String url = "https://docs.google.com/presentation/d/deck123/edit";
+		when(slides.dashUnresolvedTokens("deck123", "EOM", TemplateVariant.MPO, "token")).thenReturn(List.of());
+
+		// When:
+		List<String> warnings = helper.dashUnresolvedTokens(url, "EOM", TemplateVariant.MPO, "token");
+
+		// Then: the emphasis markers were turned into bold text on the same deck, and nothing was dashed
+		InOrder order = inOrder(slides);
+		order.verify(slides).applyBoldMarkup("deck123", "token");
+		order.verify(slides).dashUnresolvedTokens("deck123", "EOM", TemplateVariant.MPO, "token");
+		assertThat(warnings).isEmpty();
+	}
 
 	@Test
 	void shouldExtractPresentationIdFromSlideUrlTest() {

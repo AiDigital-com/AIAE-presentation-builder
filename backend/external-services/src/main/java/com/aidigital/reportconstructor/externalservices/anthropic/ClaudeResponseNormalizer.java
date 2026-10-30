@@ -33,10 +33,10 @@ public class ClaudeResponseNormalizer {
 	private static final int NORTH_STAR_LIMIT = 80;
 
 	/** Characters the EOM north-star supporting paragraph fits. */
-	private static final int EXTENDED_NORTH_STAR_LIMIT = 340;
+	private static final int EXTENDED_NORTH_STAR_LIMIT = 200;
 
 	/** Characters the EOM horizon block fits. */
-	private static final int HORIZON_LIMIT = 150;
+	private static final int HORIZON_LIMIT = 60;
 
 	/**
 	 * Characters one EOM pacing-dashboard or performance-vs-plan key takeaway fits under its table: the strip

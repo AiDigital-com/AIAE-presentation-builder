@@ -65,13 +65,13 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 	private static final int NORTH_STAR_LIMIT = 80;
 
 	/** Characters the north-star supporting paragraph fits. */
-	private static final int EXTENDED_NORTH_STAR_LIMIT = 340;
+	private static final int EXTENDED_NORTH_STAR_LIMIT = 200;
 
 	/** Characters the horizon block fits. */
-	private static final int HORIZON_LIMIT = 150;
+	private static final int HORIZON_LIMIT = 60;
 
 	/** Characters the EOM north-star slide's audience-segments line fits, wider than the EOC template's. */
-	private static final int AUDIENCE_SEGMENTS_LIMIT = 150;
+	private static final int AUDIENCE_SEGMENTS_LIMIT = 60;
 
 	/** Tactics one pacing-dashboard slide draws; the deck carries one such slide per block of them. */
 	static final int TACTICS_PER_DASHBOARD = 7;
@@ -798,11 +798,10 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 				+ "objective unpacked: in WHICH geos, against WHICH audience segments, through WHICH channels. "
 				+ "Name the actual markets, the actual segments and the actual tactic mix from the data below — "
 				+ "never a generic restatement of the headline.\n"
-				+ "  \"horizon\": string,            // MAX " + HORIZON_LIMIT + " chars. WHEN the campaign runs, "
-				+ "for HOW LONG, and with what delivery shape (continuous presence, flighted bursts, a "
-				+ "front-loaded launch). Take the dates from the campaign plan. This is what explains the "
-				+ "channel mix on the slide, so make the link explicit: sustained presence is why reach-building "
-				+ "video and always-on display sit beneath it.\n";
+				+ "  \"horizon\": string,            // MAX " + HORIZON_LIMIT + " chars. ONE short phrase, not a "
+				+ "sentence: the delivery shape over the flight (continuous presence, flighted bursts, a "
+				+ "front-loaded launch), e.g. \"Sustained presence through end of flight\". No dates, no "
+				+ "final period.\n";
 	}
 
 	/**

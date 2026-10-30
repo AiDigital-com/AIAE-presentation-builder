@@ -603,6 +603,21 @@ class CampaignResolversTest {
 	}
 
 	@Test
+	void shouldAbbreviateAnImpressionsPaceOfAThousandPercentOrMoreTest() {
+		// Given: 4.4M delivered against a 1,218-impression plan, a lift of roughly 361,000%
+		CampaignData data = new CampaignData(
+				null, null, null, null, null, null, null, null, null, null, null,
+				new Totals(0, 4_400_000, 0, 0, null, null),
+				Map.of(1, planImpsTactic(1_218d)), null);
+
+		// When:
+		Resolved r = pacingResolvers.resolveTotalImpsPace(List.of(), List.of(), data);
+
+		// Then: the figure keeps its magnitude but fits the cover tile
+		assertThat(r.value()).isEqualTo("+361K%");
+	}
+
+	@Test
 	void shouldRenderTheImpressionsPaceAsAShareOfPlanWhenAtOrBelowPlanTest() {
 		// Given: 245,000 delivered against a 250,000 tactic plan
 		CampaignData data = new CampaignData(

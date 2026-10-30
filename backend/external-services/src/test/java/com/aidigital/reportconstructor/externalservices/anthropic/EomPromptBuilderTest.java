@@ -536,8 +536,8 @@ class EomPromptBuilderTest {
 		// Then: the three north-star slide fields ride on it, each with the budget its slot fits
 		assertThat(prompt).contains("\"north_star\": string,          // MAX 80 CHARACTERS, HARD LIMIT.");
 		assertThat(prompt).contains("WRITTEN ENTIRELY IN CAPITAL LETTERS");
-		assertThat(prompt).contains("\"extended_north_star\": string, // MAX 340 chars.");
-		assertThat(prompt).contains("\"horizon\": string,            // MAX 150 chars.");
+		assertThat(prompt).contains("\"extended_north_star\": string, // MAX 200 chars.");
+		assertThat(prompt).contains("\"horizon\": string,            // MAX 60 chars.");
 	}
 
 	@Test
@@ -563,7 +563,7 @@ class EomPromptBuilderTest {
 		String eocPrompt = eoc.buildBatchSheetPrompt(campaign(null, null), "Drive awareness.").orElseThrow();
 
 		// Then: the EOM north-star slide asks for a fuller phrase than the EOC template's narrow strip
-		assertThat(eom).contains("\"audience_segments\": string,   // ≤150 chars.");
+		assertThat(eom).contains("\"audience_segments\": string,   // ≤60 chars.");
 		assertThat(eocPrompt).contains("\"audience_segments\": string,   // ≤80 chars.");
 	}
 

@@ -283,6 +283,26 @@ class ClaudeBatchPromptBuilderTest {
 	}
 
 	@Test
+	void shouldAskForOneMarkedKeyPhraseOnlyForTheMpoThoughtsSlideTest() {
+		// Given: the same tactic, once for the MPO design and once for the standard template
+		TacticThoughtsInput mpo = new TacticThoughtsInput(
+				1, "CTV", "CTV delivered 101% of its impression plan.",
+				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of(), true);
+		TacticThoughtsInput standard = new TacticThoughtsInput(
+				1, "CTV", "CTV delivered 101% of its impression plan.",
+				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of(), false);
+
+		// When:
+		String mpoPrompt = builder.buildTacticThoughtsPrompt(mpo, "Drive awareness.", 120, 230).orElseThrow();
+		String standardPrompt = builder.buildTacticThoughtsPrompt(standard, "Drive awareness.", 220, 470)
+				.orElseThrow();
+
+		// Then: only the MPO prompt asks for the ** key phrase the deck turns into bold text
+		assertThat(mpoPrompt).contains(MpoPromptSpec.MPO_THOUGHTS_EMPHASIS);
+		assertThat(standardPrompt).doesNotContain("EMPHASIS");
+	}
+
+	@Test
 	void tacticThoughtsPrompt_forbidsThePreambleThatAteTheOutputBudget() {
 		// Given: one tactic's Step-2 conclusions, the only input the Step-3 thoughts call reasons over
 		TacticThoughtsInput input = new TacticThoughtsInput(

@@ -86,6 +86,13 @@ public class RealSlidesProvider implements SlidesProvider {
 	private static final int GROUP_COUNT = 4;
 
 	/**
+	 * Field mask for the {@code presentations.get} used by {@link #applyBoldMarkup}: each shape's id and its
+	 * text runs with their start indices, which is what locating a marker in the shape's text needs.
+	 */
+	private static final String BOLD_MARKUP_FIELDS =
+			"slides.pageElements(objectId,shape.text.textElements(startIndex,textRun.content))";
+
+	/**
 	 * Field mask for the {@code presentations.get} used by {@link #addBreakdownSlides} and
 	 * {@link #addTacticSlides}: only the slide order ({@code objectId}) and the text needed to discover
 	 * {@code {{…}}} tokens on the master slides (shape text and table-cell text). Keeping the mask tight
@@ -173,13 +180,14 @@ public class RealSlidesProvider implements SlidesProvider {
 	private final BreakdownSlideNaming breakdownSlideNaming;
 	private final BreakdownThoughtsGate thoughtsGate;
 	private final SummaryTableRowTrimmer summaryTableRowTrimmer;
+	private final BoldMarkupRequestBuilder boldMarkup;
 
 	public RealSlidesProvider(
 			GoogleCredentialsFactory creds, GoogleProperties props, DriveSharer driveSharer,
 			DriveShareRecipients shareRecipients, GoogleRequestRetrier retrier,
 			BreakdownSlideNaming breakdownSlideNaming, BreakdownThoughtsGate thoughtsGate,
 			SummaryTableRowTrimmer summaryTableRowTrimmer, EomDeckPolicy eomDeckPolicy,
-			MpoDeckPolicy mpoDeckPolicy, EomSlideFinder eomSlideFinder) {
+			MpoDeckPolicy mpoDeckPolicy, EomSlideFinder eomSlideFinder, BoldMarkupRequestBuilder boldMarkup) {
 		String slidesTemplateId = props.getSlidesTemplateId();
 		this.eomDeckPolicy = eomDeckPolicy;
 		this.mpoDeckPolicy = mpoDeckPolicy;
@@ -201,6 +209,7 @@ public class RealSlidesProvider implements SlidesProvider {
 		this.breakdownSlideNaming = breakdownSlideNaming;
 		this.thoughtsGate = thoughtsGate;
 		this.summaryTableRowTrimmer = summaryTableRowTrimmer;
+		this.boldMarkup = boldMarkup;
 		this.driveSharer = driveSharer;
 		this.retrier = retrier;
 		this.shareRecipients = shareRecipients;
@@ -882,6 +891,25 @@ public class RealSlidesProvider implements SlidesProvider {
 			log.warn("[slides] dashUnresolvedTokens failed for {} (non-fatal): {}",
 					presentationId, ex.getMessage());
 			return List.of();
+		}
+	}
+
+	@Override
+	public void applyBoldMarkup(String presentationId, String userGoogleAccessToken) {
+		boolean asUser = userGoogleAccessToken != null && !userGoogleAccessToken.isBlank();
+		Slides slidesClient = asUser ? buildSlides(userGoogleAccessToken) : slides;
+		try {
+			Presentation deck = retrier.execute(
+					slidesClient.presentations().get(presentationId).setFields(BOLD_MARKUP_FIELDS),
+					"applyBoldMarkup get " + presentationId);
+			List<Request> requests = boldMarkup.boldMarkupRequests(deck.getSlides());
+			if (!requests.isEmpty()) {
+				executeInChunks(slidesClient, presentationId, requests,
+						"applyBoldMarkup batchUpdate for " + presentationId);
+			}
+		} catch (IOException ex) {
+			// Non-fatal: without this pass the deck is complete, only the emphasis markers stay visible.
+			log.warn("[slides] applyBoldMarkup failed for {} (non-fatal): {}", presentationId, ex.getMessage());
 		}
 	}
 

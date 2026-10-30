@@ -1506,6 +1506,7 @@ public class ClaudeBatchPromptBuilder {
 				+ tacticThoughtsAngles()
 				+ tacticThoughtsStorySpec(storyLimit)
 				+ tacticThoughtsOutputRules()
+				+ (input.compact() ? MpoPromptSpec.MPO_THOUGHTS_EMPHASIS : "")
 				+ "=== CAMPAIGN BRIEF ===\n" + (brief == null ? "" : brief) + "\n\n"
 				+ AnthropicMessagesClient.CACHE_BREAKPOINT + "=== TACTIC CONCLUSIONS ===\n" + dataBlock;
 		return Optional.of(prompt);
