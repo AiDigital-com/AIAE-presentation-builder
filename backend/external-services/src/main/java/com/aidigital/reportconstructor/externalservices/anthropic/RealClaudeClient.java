@@ -30,6 +30,7 @@ import com.aidigital.reportconstructor.service.reports.dto.TacticThoughtsInput;
 import com.aidigital.reportconstructor.service.reports.dto.WhatWeDidStep;
 import com.aidigital.reportconstructor.service.reports.engine.Pivot;
 import com.aidigital.reportconstructor.service.reports.engine.ReportClaudeDefaults;
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.aidigital.reportconstructor.service.reports.ports.ClaudeClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
@@ -72,24 +73,13 @@ public class RealClaudeClient implements ClaudeClient {
 
 	private static final int PROPOSAL_LIMIT = 400;
 	private static final int STRATEGIC_POINT_LIMIT = 22;
-	/** Shared with {@link ClaudeResponseNormalizer} and the prompt builders so cap and prompt never drift. */
-	private static final int STRATEGIC_OVERVIEW_LIMIT = ClaudeResponseNormalizer.STRATEGIC_OVERVIEW_LIMIT;
 	private static final int RESULTS_OVERVIEW_LIMIT = 380;
-	/** Shared with {@link ClaudeResponseNormalizer} and the prompt builders so cap and prompt never drift. */
-	private static final int THOUGHT_LIMIT = ClaudeResponseNormalizer.THOUGHT_LIMIT;
 
 	/** Pacing-dashboard takeaway slots the EOM template carries, one per dashboard slide. */
 	private static final int PACING_TAKEAWAY_SLOTS = 4;
 
 	/** Lines each column of the EOM "focus next month" slide draws — carry forward, pivot and test alike. */
 	private static final int FOCUS_SLOTS = 3;
-	/**
-	 * Character budget of the closing story that fills the fifth thoughts slot, campaign-level
-	 * ({@code {{thoughts on the performance 5}}}) and per-tactic
-	 * ({@code {{thoughts on tactic n performance 5}}}) alike. Roughly twice a thought's budget because it is
-	 * a narrative paragraph rather than one analytical observation.
-	 */
-	private static final int STORY_LIMIT = 230;
 
 	/**
 	 * Position of the story within a thoughts list, campaign-level and per-tactic alike: after the four
@@ -401,6 +391,8 @@ public class RealClaudeClient implements ClaudeClient {
 	private final int breakdownChunkSize;
 	/** Extra attempts a per-section call makes on a contract failure; bound from config, clamped to ≥ 0. */
 	private final int sectionRetries;
+	/** Kept so {@link #withCopyLimits} can build an identical client bound to other copy budgets. */
+	private final AnthropicProperties anthropicProperties;
 
 	public RealClaudeClient(
 			AnthropicMessagesClient messagesClient,
@@ -424,11 +416,34 @@ public class RealClaudeClient implements ClaudeClient {
 		this.thoughtsCompleteness = thoughtsCompleteness;
 		this.breakdownChunkSize = Math.max(1, anthropicProperties.getBreakdownChunkSize());
 		this.sectionRetries = Math.max(0, anthropicProperties.getSectionRetries());
+		this.anthropicProperties = anthropicProperties;
 	}
 
 	@Override
 	public boolean isLive() {
 		return true;
+	}
+
+	@Override
+	public ClaudeClient withCopyLimits(NarrativeCopyLimits limits) {
+		if (copyLimits() == limits) {
+			return this;
+		}
+		// The prompt builder and the normalizer are swapped as a pair, so what the prompts ask for and what the
+		// replies are capped at always come from the same profile.
+		ClaudeResponseNormalizer limited = normalizer.withCopyLimits(limits);
+		return new RealClaudeClient(messagesClient, promptBuilder.withNormalizer(limited), limited,
+				compressionService, claudeDefaults, geoFilter, tokenEstimator, failureLog, thoughtsCompleteness,
+				anthropicProperties);
+	}
+
+	/**
+	 * The character budgets this client's campaign-level copy is written to and capped at.
+	 *
+	 * @return the copy budgets of the deck design this client is bound to
+	 */
+	NarrativeCopyLimits copyLimits() {
+		return normalizer.getCopyLimits();
 	}
 
 	@Override
@@ -741,7 +756,8 @@ public class RealClaudeClient implements ClaudeClient {
 			String rawPoint = item == null ? "" : item.path("point").asText("").trim();
 			String rawOverview = item == null ? "" : item.path("overview").asText("").trim();
 			compressionFields.add(new ClaudeCompressionField("point_" + i, rawPoint, STRATEGIC_POINT_LIMIT));
-			compressionFields.add(new ClaudeCompressionField("overview_" + i, rawOverview, STRATEGIC_OVERVIEW_LIMIT));
+			compressionFields.add(
+					new ClaudeCompressionField("overview_" + i, rawOverview, copyLimits().getStrategicOverviewLimit()));
 		}
 		Map<String, String> compressed = compressionService.compress(compressionFields, "BatchD-Strategic");
 
@@ -781,7 +797,8 @@ public class RealClaudeClient implements ClaudeClient {
 			String rawPoint = item == null ? "" : item.path("point").asText("").trim();
 			String rawOverview = item == null ? "" : item.path("overview").asText("").trim();
 			compressionFields.add(new ClaudeCompressionField("point_" + i, rawPoint, STRATEGIC_POINT_LIMIT));
-			compressionFields.add(new ClaudeCompressionField("overview_" + i, rawOverview, STRATEGIC_OVERVIEW_LIMIT));
+			compressionFields.add(
+					new ClaudeCompressionField("overview_" + i, rawOverview, copyLimits().getStrategicOverviewLimit()));
 		}
 		Map<String, String> compressed = compressionService.compress(compressionFields, "BatchD-Strategic");
 
@@ -968,7 +985,8 @@ public class RealClaudeClient implements ClaudeClient {
 			String rawPoint = item == null ? "" : item.path("point").asText("").trim();
 			String rawOverview = item == null ? "" : item.path("overview").asText("").trim();
 			compressionFields.add(new ClaudeCompressionField("point_" + i, rawPoint, STRATEGIC_POINT_LIMIT));
-			compressionFields.add(new ClaudeCompressionField("overview_" + i, rawOverview, STRATEGIC_OVERVIEW_LIMIT));
+			compressionFields.add(
+					new ClaudeCompressionField("overview_" + i, rawOverview, copyLimits().getStrategicOverviewLimit()));
 		}
 
 		Map<Integer, String> rawOverviews = parseNumberedTextMap(parsed.get("results_overviews"));
@@ -1150,8 +1168,9 @@ public class RealClaudeClient implements ClaudeClient {
 	/**
 	 * The character budget of one thoughts-list slot during the alignment pass. Slots 0–3 are analytical
 	 * paragraphs; slot {@link #STORY_SLOT_INDEX} is the campaign story, which carries the larger
-	 * {@link #STORY_LIMIT}. Cutting the story to {@link #THOUGHT_LIMIT} here would let the alignment pass
-	 * silently truncate copy the campaign-results batch wrote in full.
+	 * {@link NarrativeCopyLimits#getStoryLimit() story budget}. Cutting the story to the
+	 * {@link NarrativeCopyLimits#getThoughtLimit() thought budget} here would let the alignment pass silently
+	 * truncate copy the campaign-results batch wrote in full.
 	 *
 	 * <p>The story is identified by its fixed position rather than as "the last entry", so a draft that
 	 * carries fewer slots than the slide — an older or degraded Batch C reply — has its paragraphs budgeted
@@ -1161,7 +1180,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @return the slot's character budget
 	 */
 	int thoughtLimit(int index) {
-		return index == STORY_SLOT_INDEX ? STORY_LIMIT : THOUGHT_LIMIT;
+		return index == STORY_SLOT_INDEX ? copyLimits().getStoryLimit() : copyLimits().getThoughtLimit();
 	}
 
 	/**
@@ -1569,8 +1588,8 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @return the tactic's thoughts, possibly with fewer than four filled, or {@code null} when unusable
 	 */
 	TacticThoughts tacticThoughtsOne(TacticThoughtsInput input, String brief) {
-		int thoughtLimit = input.compact() ? COMPACT_THOUGHT_LIMIT : THOUGHT_LIMIT;
-		int storyLimit = input.compact() ? COMPACT_STORY_LIMIT : STORY_LIMIT;
+		int thoughtLimit = input.compact() ? COMPACT_THOUGHT_LIMIT : copyLimits().getThoughtLimit();
+		int storyLimit = input.compact() ? COMPACT_STORY_LIMIT : copyLimits().getStoryLimit();
 		var prompt = promptBuilder.buildTacticThoughtsPrompt(input, brief, thoughtLimit, storyLimit);
 		if (prompt.isEmpty()) {
 			return null;
@@ -1857,11 +1876,13 @@ public class RealClaudeClient implements ClaudeClient {
 		for (int i = 0; i < rawThoughts.size(); i++) {
 			String thought = rawThoughts.get(i);
 			if (thought != null) {
-				compressionFields.add(new ClaudeCompressionField("thought_" + i, thought, THOUGHT_LIMIT));
+				compressionFields.add(new ClaudeCompressionField(
+						"thought_" + i, thought, copyLimits().getThoughtLimit()));
 			}
 		}
 		if (rawStory != null) {
-			compressionFields.add(new ClaudeCompressionField("performance_story", rawStory, STORY_LIMIT));
+			compressionFields.add(new ClaudeCompressionField(
+					"performance_story", rawStory, copyLimits().getStoryLimit()));
 		}
 		for (int i = 0; i < 4; i++) {
 			compressionFields.add(
@@ -1883,9 +1904,11 @@ public class RealClaudeClient implements ClaudeClient {
 		List<String> thoughts = new ArrayList<>();
 		for (int i = 0; i < rawThoughts.size(); i++) {
 			String thought = rawThoughts.get(i);
-			thoughts.add(thought == null ? null : normalizer.normalizeC(compressed.get("thought_" + i), THOUGHT_LIMIT));
+			thoughts.add(thought == null ? null
+					: normalizer.normalizeC(compressed.get("thought_" + i), copyLimits().getThoughtLimit()));
 		}
-		thoughts.add(rawStory == null ? null : normalizer.normalizeC(compressed.get("performance_story"), STORY_LIMIT));
+		thoughts.add(rawStory == null ? null
+				: normalizer.normalizeC(compressed.get("performance_story"), copyLimits().getStoryLimit()));
 
 		List<Recommendation> recommendations = new ArrayList<>();
 		for (int i = 0; i < 4; i++) {

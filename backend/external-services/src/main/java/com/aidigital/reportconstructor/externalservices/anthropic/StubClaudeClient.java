@@ -22,6 +22,7 @@ import com.aidigital.reportconstructor.service.reports.dto.TacticThoughts;
 import com.aidigital.reportconstructor.service.reports.dto.TacticThoughtsInput;
 import com.aidigital.reportconstructor.service.reports.engine.Pivot;
 import com.aidigital.reportconstructor.service.reports.engine.ReportClaudeDefaults;
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.aidigital.reportconstructor.service.reports.ports.ClaudeClient;
 import org.springframework.stereotype.Component;
 
@@ -48,6 +49,12 @@ public class StubClaudeClient implements ClaudeClient {
 	@Override
 	public boolean isLive() {
 		return false;
+	}
+
+	@Override
+	public ClaudeClient withCopyLimits(NarrativeCopyLimits limits) {
+		// No live model: there is no copy for the budgets to shape, so every deck design shares this client.
+		return this;
 	}
 
 	@Override

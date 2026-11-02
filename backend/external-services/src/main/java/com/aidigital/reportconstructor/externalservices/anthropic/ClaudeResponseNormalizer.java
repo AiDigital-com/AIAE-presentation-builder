@@ -1,6 +1,8 @@
 package com.aidigital.reportconstructor.externalservices.anthropic;
 
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.fasterxml.jackson.databind.JsonNode;
+import lombok.Getter;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -29,71 +31,41 @@ public class ClaudeResponseNormalizer {
 	 */
 	public static final int AUDIENCE_SEGMENTS_LIMIT = 80;
 
-	/**
-	 * Characters a Batch A strategic overview fits: two 10pt lines of its box. Enforced by
-	 * {@link #limitStrategicOverview} and the compression call, and the base of the budget the prompts quote.
-	 */
-	public static final int STRATEGIC_OVERVIEW_LIMIT = 120;
-
-	/** How far below {@link #STRATEGIC_OVERVIEW_LIMIT} the overview budget is quoted to Claude. */
-	static final int STRATEGIC_OVERVIEW_PROMPT_SLACK = 10;
-
-	/**
-	 * The strategic-overview budget quoted in every prompt that asks for or realigns {@code strategic_insights}
-	 * — a little under the enforced cap, so a reply that lands slightly over still fits it.
-	 */
-	public static final int STRATEGIC_OVERVIEW_PROMPT_LIMIT =
-			STRATEGIC_OVERVIEW_LIMIT - STRATEGIC_OVERVIEW_PROMPT_SLACK;
-
-	/**
-	 * Position a sentence-ending period must sit past for {@link #limitStrategicOverview} to cut there rather
-	 * than at a word boundary, so the cut keeps most of the budget.
-	 */
-	static final int STRATEGIC_OVERVIEW_MIN_SENTENCE_END = 90;
-
-	/** Characters one analytical "thoughts on performance" paragraph fits on the campaign slide. */
-	public static final int THOUGHT_LIMIT = 100;
-
 	/** Characters the EOM north-star headline fits, upper-cased, on one line. */
 	private static final int NORTH_STAR_LIMIT = 80;
 
-	/** Characters the EOM north-star supporting paragraph fits. */
-	private static final int EXTENDED_NORTH_STAR_LIMIT = 200;
-
-	/** Characters the EOM horizon block fits. */
-	private static final int HORIZON_LIMIT = 60;
+	/**
+	 * The character budgets this normalizer caps campaign-level copy at — the standard templates' unless the
+	 * run builds an MPO deck (see {@link #withCopyLimits}). The prompt builders quote the same profile.
+	 */
+	@Getter
+	private final NarrativeCopyLimits copyLimits;
 
 	/**
-	 * Characters one EOM pacing-dashboard or performance-vs-plan key takeaway fits under its table: the strip
-	 * is one ~724pt line at 11pt Inter, about 115 characters, so a 140-character takeaway overflowed it.
+	 * Creates the normalizer Spring injects, capping copy at the standard templates' budgets.
 	 */
-	public static final int PACING_TAKEAWAY_LIMIT = 110;
+	public ClaudeResponseNormalizer() {
+		this(NarrativeCopyLimits.STANDARD);
+	}
 
 	/**
-	 * Characters one heading of the EOM "what we did this month" slide fits — the label above an
-	 * observation, an action or an expected impact. One 14pt line on the card; the template's own sample
-	 * headings run 17-20 characters ("300×600 under-scaled").
+	 * Creates a normalizer capping campaign-level copy at the given budgets.
+	 *
+	 * @param copyLimits the budgets of the deck design the copy is written for
 	 */
-	public static final int WHAT_WE_DID_HEADING_LIMIT = 28;
+	public ClaudeResponseNormalizer(NarrativeCopyLimits copyLimits) {
+		this.copyLimits = copyLimits;
+	}
 
 	/**
-	 * Characters one paragraph of the EOM "what we did this month" slide fits under its heading: two 12pt lines
-	 * on the card, which the template's own sample copy fills at 50-58 characters. Longer copy runs into the
-	 * card below it.
+	 * Returns a normalizer identical to this one but capping campaign-level copy at the given budgets.
+	 *
+	 * @param limits the budgets of the deck design the copy is written for
+	 * @return a normalizer bound to {@code limits}
 	 */
-	public static final int WHAT_WE_DID_TEXT_LIMIT = 85;
-
-	/**
-	 * Characters the EOM "focus next month" slide's updated-projection bar fits: two 11pt lines, which the
-	 * template's own sample fills at 154 characters.
-	 */
-	public static final int UPDATED_PROJECTION_LIMIT = 190;
-
-	/**
-	 * Characters one carry-forward, pivot or test bullet of the EOM "focus next month" slide fits: two 13pt
-	 * lines in its column, three bullets to a card. The template's own sample bullets run 45-59 characters.
-	 */
-	public static final int FOCUS_ITEM_LIMIT = 60;
+	public ClaudeResponseNormalizer withCopyLimits(NarrativeCopyLimits limits) {
+		return new ClaudeResponseNormalizer(limits);
+	}
 
 	/**
 	 * Function/connector words that read as unfinished when a sentence is cut right after them, so they are
@@ -393,41 +365,43 @@ public class ClaudeResponseNormalizer {
 	}
 
 	/**
-	 * Normalizes the EOM {@code extended_north_star} copy with a {@link #EXTENDED_NORTH_STAR_LIMIT}-character
-	 * budget via {@link #normalizeC}, so it reads as a finished thought.
+	 * Normalizes the EOM {@code extended_north_star} copy to the profile's
+	 * {@link NarrativeCopyLimits#getExtendedNorthStarLimit() budget} via {@link #normalizeC}, so it reads as a
+	 * finished thought.
 	 *
 	 * @param val raw extended-north-star text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
 	public String limitExtendedNorthStar(String val) {
-		return normalizeC(val, EXTENDED_NORTH_STAR_LIMIT);
+		return normalizeC(val, copyLimits.getExtendedNorthStarLimit());
 	}
 
 	/**
-	 * Normalizes the EOM {@code horizon} copy with a {@link #HORIZON_LIMIT}-character budget via
-	 * {@link #normalizeC}.
+	 * Normalizes the EOM {@code horizon} copy to the profile's {@link NarrativeCopyLimits#getHorizonLimit() budget}
+	 * via {@link #normalizeC}.
 	 *
 	 * @param val raw horizon text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
 	public String limitHorizon(String val) {
-		return normalizeC(val, HORIZON_LIMIT);
+		return normalizeC(val, copyLimits.getHorizonLimit());
 	}
 
 	/**
-	 * Normalizes one EOM pacing-dashboard key takeaway with a {@link #PACING_TAKEAWAY_LIMIT}-character
-	 * budget via {@link #normalizeC}, so it reads as a finished sentence inside the slide's takeaway strip.
+	 * Normalizes one EOM pacing-dashboard key takeaway to the profile's
+	 * {@link NarrativeCopyLimits#getPacingTakeawayLimit() budget} via {@link #normalizeC}, so it reads as a
+	 * finished sentence inside the slide's takeaway strip.
 	 *
 	 * @param val raw takeaway text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
 	public String limitPacingTakeaway(String val) {
-		return normalizeC(val, PACING_TAKEAWAY_LIMIT);
+		return normalizeC(val, copyLimits.getPacingTakeawayLimit());
 	}
 
 	/**
-	 * Caps one heading of the EOM "what we did this month" slide at {@link #WHAT_WE_DID_HEADING_LIMIT}
-	 * characters.
+	 * Caps one heading of the EOM "what we did this month" slide at the profile's
+	 * {@link NarrativeCopyLimits#getWhatWeDidHeadingLimit() budget}.
 	 *
 	 * <p>Held to the same shape as the north-star headline rather than to {@link #normalizeC}: it is a label
 	 * above a paragraph, not a sentence, so it is cut back to a word boundary and never gains a closing
@@ -441,8 +415,8 @@ public class ClaudeResponseNormalizer {
 			return null;
 		}
 		String text = val.trim().replaceAll("\\s+", " ");
-		if (text.length() > WHAT_WE_DID_HEADING_LIMIT) {
-			String cut = text.substring(0, WHAT_WE_DID_HEADING_LIMIT);
+		if (text.length() > copyLimits.getWhatWeDidHeadingLimit()) {
+			String cut = text.substring(0, copyLimits.getWhatWeDidHeadingLimit());
 			int ls = cut.lastIndexOf(' ');
 			text = stripTrailingComma(ls > 0 ? cut.substring(0, ls).trim() : cut.trim());
 		}
@@ -451,31 +425,32 @@ public class ClaudeResponseNormalizer {
 	}
 
 	/**
-	 * Normalizes one paragraph of the EOM "what we did this month" slide with a
-	 * {@link #WHAT_WE_DID_TEXT_LIMIT}-character budget via {@link #normalizeC}, so it reads as a finished
-	 * sentence inside its block.
+	 * Normalizes one paragraph of the EOM "what we did this month" slide to the profile's
+	 * {@link NarrativeCopyLimits#getWhatWeDidTextLimit() budget} via {@link #normalizeC}, so it reads as a
+	 * finished sentence inside its block.
 	 *
 	 * @param val raw paragraph text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
 	public String limitWhatWeDidText(String val) {
-		return normalizeC(val, WHAT_WE_DID_TEXT_LIMIT);
+		return normalizeC(val, copyLimits.getWhatWeDidTextLimit());
 	}
 
 	/**
-	 * Normalizes the EOM {@code updated_projection} copy with an {@link #UPDATED_PROJECTION_LIMIT}-character
-	 * budget via {@link #normalizeC}, so it reads as a finished answer inside its block.
+	 * Normalizes the EOM {@code updated_projection} copy to the profile's
+	 * {@link NarrativeCopyLimits#getUpdatedProjectionLimit() budget} via {@link #normalizeC}, so it reads as a
+	 * finished answer inside its block.
 	 *
 	 * @param val raw projection text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
 	public String limitUpdatedProjection(String val) {
-		return normalizeC(val, UPDATED_PROJECTION_LIMIT);
+		return normalizeC(val, copyLimits.getUpdatedProjectionLimit());
 	}
 
 	/**
-	 * Caps one carry-forward, pivot or test line of the EOM "focus next month" slide at
-	 * {@link #FOCUS_ITEM_LIMIT} characters.
+	 * Caps one carry-forward, pivot or test line of the EOM "focus next month" slide at the profile's
+	 * {@link NarrativeCopyLimits#getFocusItemLimit() budget}.
 	 *
 	 * <p>Held to the same shape as a heading rather than to {@link #normalizeC}: these are one-line action
 	 * items in a bulleted column ("hold weight on the top markets"), not sentences, so they are cut back to a
@@ -489,8 +464,8 @@ public class ClaudeResponseNormalizer {
 			return null;
 		}
 		String text = val.trim().replaceAll("\\s+", " ");
-		if (text.length() > FOCUS_ITEM_LIMIT) {
-			String cut = text.substring(0, FOCUS_ITEM_LIMIT);
+		if (text.length() > copyLimits.getFocusItemLimit()) {
+			String cut = text.substring(0, copyLimits.getFocusItemLimit());
 			int ls = cut.lastIndexOf(' ');
 			text = stripTrailingComma(ls > 0 ? cut.substring(0, ls).trim() : cut.trim());
 		}
@@ -537,11 +512,13 @@ public class ClaudeResponseNormalizer {
 	}
 
 	/**
-	 * Caps the Batch A strategic overview at {@link #STRATEGIC_OVERVIEW_LIMIT} characters, preferring the last
-	 * real sentence-ending {@code .} (decimal points excluded) past {@link #STRATEGIC_OVERVIEW_MIN_SENTENCE_END}
-	 * (so the result reads as a finished thought)
-	 * over a hard cut, then falling back to the last word boundary (never mid-word) and rewriting the tail
-	 * to end on a complete sentence (see {@link #finishSentence}) when no qualifying period is found.
+	 * Caps the Batch A strategic overview at the profile's
+	 * {@link NarrativeCopyLimits#getStrategicOverviewLimit() budget}, preferring the last real sentence-ending
+	 * {@code .} (decimal points excluded) past its
+	 * {@link NarrativeCopyLimits#getStrategicOverviewMinSentenceEnd() threshold} (so the result reads as a
+	 * finished thought) over a hard cut, then falling back to the last word boundary (never mid-word) and
+	 * rewriting the tail to end on a complete sentence (see {@link #finishSentence}) when no qualifying period
+	 * is found.
 	 *
 	 * @param overview raw strategic-overview text from the model (may be null)
 	 * @return the trimmed overview, or an empty string when {@code overview} is null
@@ -551,10 +528,10 @@ public class ClaudeResponseNormalizer {
 			return "";
 		}
 		overview = overview.trim();
-		if (overview.length() > STRATEGIC_OVERVIEW_LIMIT) {
-			String cut = overview.substring(0, STRATEGIC_OVERVIEW_LIMIT);
+		if (overview.length() > copyLimits.getStrategicOverviewLimit()) {
+			String cut = overview.substring(0, copyLimits.getStrategicOverviewLimit());
 			int lastPeriod = lastSentencePeriod(cut);
-			if (lastPeriod > STRATEGIC_OVERVIEW_MIN_SENTENCE_END) {
+			if (lastPeriod > copyLimits.getStrategicOverviewMinSentenceEnd()) {
 				overview = overview.substring(0, lastPeriod + 1).trim();
 			} else {
 				int ls = cut.lastIndexOf(' ');

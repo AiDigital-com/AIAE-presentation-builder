@@ -24,7 +24,7 @@ public class ClaudeCompressionService {
 	private static final int TIMEOUT_SECONDS = 30;
 
 	private final AnthropicMessagesClient messagesClient;
-	private final ClaudeBatchPromptBuilder promptBuilder;
+	private final ClaudeCompressionPromptBuilder promptBuilder;
 
 	/**
 	 * Creates the service.
@@ -32,7 +32,8 @@ public class ClaudeCompressionService {
 	 * @param messagesClient low-level Anthropic Messages API transport used to send the compression prompt
 	 * @param promptBuilder  builds the compression prompt text from the oversized fields
 	 */
-	public ClaudeCompressionService(AnthropicMessagesClient messagesClient, ClaudeBatchPromptBuilder promptBuilder) {
+	public ClaudeCompressionService(
+			AnthropicMessagesClient messagesClient, ClaudeCompressionPromptBuilder promptBuilder) {
 		this.messagesClient = messagesClient;
 		this.promptBuilder = promptBuilder;
 	}

@@ -23,7 +23,7 @@ class ClaudeCompressionServiceTest {
 	private AnthropicMessagesClient messagesClient;
 
 	@Mock
-	private ClaudeBatchPromptBuilder promptBuilder;
+	private ClaudeCompressionPromptBuilder promptBuilder;
 
 	private final ObjectMapper json = new ObjectMapper();
 

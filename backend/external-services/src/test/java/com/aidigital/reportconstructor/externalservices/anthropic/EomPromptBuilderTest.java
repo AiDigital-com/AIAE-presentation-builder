@@ -25,6 +25,7 @@ import com.aidigital.reportconstructor.service.reports.dto.TacticThoughtsInput;
 import com.aidigital.reportconstructor.service.reports.dto.Totals;
 import com.aidigital.reportconstructor.service.reports.engine.Fmt;
 import com.aidigital.reportconstructor.service.reports.engine.Pivot;
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -125,7 +126,7 @@ class EomPromptBuilderTest {
 		assertThat(prompt).contains("\"strategic_insights\": array");
 		assertThat(prompt).contains("Exactly 4 objects: {\"point\": string, \"overview\": string}");
 		assertThat(prompt).contains("MAX 20 CHARACTERS ABSOLUTE HARD LIMIT");
-		assertThat(prompt).contains("MAX 110 CHARACTERS");
+		assertThat(prompt).contains("MAX 230 CHARACTERS");
 		assertThat(prompt).contains("Exactly 2 complete sentences");
 		assertThat(prompt).contains("Return ONLY the JSON object");
 	}
@@ -536,8 +537,8 @@ class EomPromptBuilderTest {
 		// Then: the three north-star slide fields ride on it, each with the budget its slot fits
 		assertThat(prompt).contains("\"north_star\": string,          // MAX 80 CHARACTERS, HARD LIMIT.");
 		assertThat(prompt).contains("WRITTEN ENTIRELY IN CAPITAL LETTERS");
-		assertThat(prompt).contains("\"extended_north_star\": string, // MAX 200 chars.");
-		assertThat(prompt).contains("\"horizon\": string,            // MAX 60 chars.");
+		assertThat(prompt).contains("\"extended_north_star\": string, // MAX 340 chars.");
+		assertThat(prompt).contains("\"horizon\": string,            // MAX 150 chars.");
 	}
 
 	@Test
@@ -563,7 +564,7 @@ class EomPromptBuilderTest {
 		String eocPrompt = eoc.buildBatchSheetPrompt(campaign(null, null), "Drive awareness.").orElseThrow();
 
 		// Then: the EOM north-star slide asks for a fuller phrase than the EOC template's narrow strip
-		assertThat(eom).contains("\"audience_segments\": string,   // ≤60 chars.");
+		assertThat(eom).contains("\"audience_segments\": string,   // ≤150 chars.");
 		assertThat(eocPrompt).contains("\"audience_segments\": string,   // ≤80 chars.");
 	}
 
@@ -589,7 +590,7 @@ class EomPromptBuilderTest {
 		assertThat(prompt).contains("\"audience_age\": string");
 		assertThat(prompt).contains("\"audience_segments\": string");
 		assertThat(prompt).contains("MAX 20 CHARACTERS ABSOLUTE HARD LIMIT");
-		assertThat(prompt).contains("MAX 110 CHARACTERS");
+		assertThat(prompt).contains("MAX 230 CHARACTERS");
 	}
 
 	@Test
@@ -689,7 +690,7 @@ class EomPromptBuilderTest {
 		// Then: exactly one takeaway is paid for, capped at what the slot prints
 		assertThat(prompt).contains("\"pacing_takeaways\": array");
 		assertThat(prompt).contains("EXACTLY 1 string(s)");
-		assertThat(prompt).contains("MAX 110 CHARACTERS EACH");
+		assertThat(prompt).contains("MAX 140 CHARACTERS EACH");
 	}
 
 	@Test
@@ -926,7 +927,7 @@ class EomPromptBuilderTest {
 		// and the pass is told this one field is written rather than aligned
 		assertThat(prompt).contains("\"what_we_did\": array,           // EXACTLY 3 objects");
 		assertThat(prompt).contains("\"observation\": string, \"observation_text\": string");
-		assertThat(prompt).contains("MAX 28 CHARACTERS EACH, the three texts MAX 85 CHARACTERS EACH");
+		assertThat(prompt).contains("MAX 60 CHARACTERS EACH, the three texts MAX 200 CHARACTERS EACH");
 		assertThat(prompt).contains("ONE field you WRITE rather than align");
 		assertThat(prompt).contains("ONE UNBROKEN CHAIN");
 	}
@@ -971,7 +972,7 @@ class EomPromptBuilderTest {
 
 		// Then: the projection is asked for on the call whose context prints the pacing and performance
 		// tables it is arithmetic over, to the slide's budget
-		assertThat(prompt).contains("\"updated_projection\": string,   // MAX 190 chars");
+		assertThat(prompt).contains("\"updated_projection\": string,   // MAX 250 chars");
 		assertThat(prompt).contains("LANDS AT THE END OF THE FLIGHT");
 		assertThat(prompt).contains("=== PACING DASHBOARD ===");
 	}
@@ -993,7 +994,7 @@ class EomPromptBuilderTest {
 
 		// Then: three columns of three lines each, to the slide's budget, and each column is told what keeps
 		// it distinct from the other two
-		assertThat(prompt).contains("\"carry_forward\": array,         // EXACTLY 3 strings, MAX 60 CHARACTERS");
+		assertThat(prompt).contains("\"carry_forward\": array,         // EXACTLY 3 strings, MAX 70 CHARACTERS");
 		assertThat(prompt).contains("\"pivot\": array,");
 		assertThat(prompt).contains("\"new_test\": array,");
 		assertThat(prompt).contains("Nothing here may be something you are also changing.");
@@ -1020,5 +1021,30 @@ class EomPromptBuilderTest {
 		assertThat(batchA).doesNotContain("updated_projection");
 		assertThat(batchD).doesNotContain("carry_forward");
 		assertThat(batchD).doesNotContain("new_test");
+	}
+
+	@Test
+	void shouldQuoteTheMpoBudgetsWhenBoundToTheCompactProfileTest() {
+		// Given: the EOM builder bound to the MPO deck's budgets, the way an MPO run's client builds it
+		EomPromptBuilder compact = new EomPromptBuilder(new ClaudeResponseNormalizer(), new Fmt())
+				.withNormalizer(new ClaudeResponseNormalizer(NarrativeCopyLimits.COMPACT));
+
+		// When:
+		String insights = compact.batchAStrategicInsightsSpec();
+		String northStar = compact.northStarSchema();
+		String pacing = compact.pacingTakeawaysSchema(1);
+		String whatWeDid = compact.whatWeDidSchema();
+		String projection = compact.updatedProjectionSchema();
+		String focus = compact.focusNextMonthSchema();
+
+		// Then: every EOM slot is asked for at the MPO box's size, not the standard template's
+		assertThat(insights).contains("MAX 110 CHARACTERS");
+		assertThat(northStar).contains("\"extended_north_star\": string, // MAX 200 chars.");
+		assertThat(northStar).contains("\"horizon\": string,            // MAX 60 chars.");
+		assertThat(compact.audienceSegmentsLimit()).isEqualTo(60);
+		assertThat(pacing).contains("MAX 110 CHARACTERS EACH");
+		assertThat(whatWeDid).contains("MAX 28 CHARACTERS EACH, the three texts MAX 85 CHARACTERS EACH");
+		assertThat(projection).contains("\"updated_projection\": string,   // MAX 190 chars");
+		assertThat(focus).contains("\"carry_forward\": array,         // EXACTLY 3 strings, MAX 60 CHARACTERS");
 	}
 }

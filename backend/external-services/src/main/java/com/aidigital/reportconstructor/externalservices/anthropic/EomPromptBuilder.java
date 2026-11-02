@@ -64,15 +64,6 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 	/** Characters the north-star headline fits on the slide, upper-cased. */
 	private static final int NORTH_STAR_LIMIT = 80;
 
-	/** Characters the north-star supporting paragraph fits. */
-	private static final int EXTENDED_NORTH_STAR_LIMIT = 200;
-
-	/** Characters the horizon block fits. */
-	private static final int HORIZON_LIMIT = 60;
-
-	/** Characters the EOM north-star slide's audience-segments line fits, wider than the EOC template's. */
-	private static final int AUDIENCE_SEGMENTS_LIMIT = 60;
-
 	/** Tactics one pacing-dashboard slide draws; the deck carries one such slide per block of them. */
 	static final int TACTICS_PER_DASHBOARD = 7;
 
@@ -108,6 +99,11 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 		super(normalizer, fmt);
 		this.normalizer = normalizer;
 		this.fmt = fmt;
+	}
+
+	@Override
+	EomPromptBuilder withNormalizer(ClaudeResponseNormalizer limited) {
+		return new EomPromptBuilder(limited, fmt);
 	}
 
 	/**
@@ -188,7 +184,8 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 						+ "\"overview\": string}.\n"
 						+ "                                // CRITICAL for 'point': MAX 20 CHARACTERS ABSOLUTE HARD "
 						+ "LIMIT.\n"
-						+ "                                // For 'overview': MAX " + OVERVIEW_PROMPT_LIMIT
+						+ "                                // For 'overview': MAX "
+						+ copyLimits().getStrategicOverviewPromptLimit()
 						+ " CHARACTERS.\n"
 						+ "                                // Each overview = a SHIFT visible in this reporting "
 						+ "month — a metric that moved against the previous months, a tactic that changed "
@@ -246,7 +243,8 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 				+ "string}.\n"
 				+ "                                // CRITICAL for 'point': MAX 20 CHARACTERS ABSOLUTE HARD "
 				+ "LIMIT.\n"
-				+ "                                // For 'overview': MAX " + OVERVIEW_PROMPT_LIMIT + " CHARACTERS.\n"
+				+ "                                // For 'overview': MAX "
+				+ copyLimits().getStrategicOverviewPromptLimit() + " CHARACTERS.\n"
 				+ "                                // Each overview = a notable pattern in THIS reporting month's "
 				+ "delivery — plus WHY it is happening and what it means for the rest of the flight. The campaign "
 				+ "is STILL RUNNING: never write a closing verdict. Unique angles, Business English, no filler.\n";
@@ -795,26 +793,27 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 				+ "\"DEEP PENETRATION OF THE HIGH-HHI LUXURY-TRAVEL AUDIENCE\". Name the actual audience or "
 				+ "outcome this campaign is bought for — not a channel, not a metric, not a slogan. No final "
 				+ "period.\n"
-				+ "  \"extended_north_star\": string, // MAX " + EXTENDED_NORTH_STAR_LIMIT + " chars. The same "
+				+ "  \"extended_north_star\": string, // MAX " + copyLimits().getExtendedNorthStarLimit()
+				+ " chars. The same "
 				+ "objective unpacked: in WHICH geos, against WHICH audience segments, through WHICH channels. "
 				+ "Name the actual markets, the actual segments and the actual tactic mix from the data below — "
 				+ "never a generic restatement of the headline.\n"
-				+ "  \"horizon\": string,            // MAX " + HORIZON_LIMIT + " chars. ONE short phrase, not a "
+				+ "  \"horizon\": string,            // MAX " + copyLimits().getHorizonLimit()
+				+ " chars. ONE short phrase, not a "
 				+ "sentence: the delivery shape over the flight (continuous presence, flighted bursts, a "
 				+ "front-loaded launch), e.g. \"Sustained presence through end of flight\". No dates, no "
 				+ "final period.\n";
 	}
 
 	/**
-	 * Widens the {@code audience_segments} budget to {@link #AUDIENCE_SEGMENTS_LIMIT} characters: the EOM
-	 * north-star slide prints the segments line in its own block rather than in the EOC template's narrow
-	 * strip, so it fits a fuller phrase than the parent asks for.
+	 * Uses the EOM north-star slide's own audience-segments budget: that slide prints the segments line in its
+	 * own block rather than in the EOC template's strip, sized per deck design.
 	 *
 	 * @return the end-of-month audience-segments budget
 	 */
 	@Override
 	int audienceSegmentsLimit() {
-		return AUDIENCE_SEGMENTS_LIMIT;
+		return copyLimits().getEomAudienceSegmentsLimit();
 	}
 
 	/**
@@ -847,7 +846,7 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 		return "  \"pacing_takeaways\": array,      // EXACTLY " + dashboards + " string(s), in order, one per "
 				+ "PACING DASHBOARD block below (block 1 = tactics 1-" + TACTICS_PER_DASHBOARD + ", block 2 = "
 				+ "the next " + TACTICS_PER_DASHBOARD + ", and so on). MAX "
-				+ ClaudeResponseNormalizer.PACING_TAKEAWAY_LIMIT + " CHARACTERS EACH, HARD LIMIT — the slot is "
+				+ copyLimits().getPacingTakeawayLimit() + " CHARACTERS EACH, HARD LIMIT — the slot is "
 				+ "one line under the table.\n"
 				+ "                                // Each string is the pacing verdict for THAT block and "
 				+ "nothing else: if every channel in it is delivering against its budget and impression goal, "
@@ -873,7 +872,7 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 		return "  \"performance_takeaways\": array, // EXACTLY " + dashboards + " string(s), in order, one per "
 				+ "PERFORMANCE VS PLAN block below (same blocks as the pacing dashboard: block 1 = tactics 1-"
 				+ TACTICS_PER_DASHBOARD + ", and so on). MAX "
-				+ ClaudeResponseNormalizer.PACING_TAKEAWAY_LIMIT + " CHARACTERS EACH, HARD LIMIT — the slot is "
+				+ copyLimits().getPacingTakeawayLimit() + " CHARACTERS EACH, HARD LIMIT — the slot is "
 				+ "one line under the table.\n"
 				+ "                                // Each string is the KPI verdict for THAT block and nothing "
 				+ "else — this is about the RATES (CTR / completion rate) against their goals, NOT about budget "
@@ -1061,8 +1060,8 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 		return "  \"what_we_did\": array,           // EXACTLY " + WHAT_WE_DID_STEPS + " objects {\"observation\": "
 				+ "string, \"observation_text\": string, \"action\": string, \"action_text\": string, "
 				+ "\"impact\": string, \"impact_text\": string}. The three headings MAX "
-				+ ClaudeResponseNormalizer.WHAT_WE_DID_HEADING_LIMIT + " CHARACTERS EACH, the three texts MAX "
-				+ ClaudeResponseNormalizer.WHAT_WE_DID_TEXT_LIMIT + " CHARACTERS EACH — HARD LIMITS, these are "
+				+ copyLimits().getWhatWeDidHeadingLimit() + " CHARACTERS EACH, the three texts MAX "
+				+ copyLimits().getWhatWeDidTextLimit() + " CHARACTERS EACH — HARD LIMITS, these are "
 				+ "fixed boxes on the slide.\n"
 				+ "                                // This is the ONE field you WRITE rather than align, and it "
 				+ "is expected of you: the slide it fills is the month's optimisation story and it has no draft. "
@@ -1096,7 +1095,7 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 	 * @return the field spec, newline-terminated
 	 */
 	String updatedProjectionSchema() {
-		return "  \"updated_projection\": string,   // MAX " + ClaudeResponseNormalizer.UPDATED_PROJECTION_LIMIT
+		return "  \"updated_projection\": string,   // MAX " + copyLimits().getUpdatedProjectionLimit()
 				+ " chars. Where the campaign LANDS AT THE END OF THE FLIGHT if the current pace holds, and "
 				+ "whether that clears the final KPI. Use the pacing dashboard and the performance-vs-plan "
 				+ "figures below: project the delivery forward over the months left, name the figure you land "
@@ -1122,7 +1121,7 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 	@Override
 	String focusNextMonthSchema() {
 		return "  \"carry_forward\": array,         // EXACTLY " + FOCUS_ITEMS + " strings, MAX "
-				+ ClaudeResponseNormalizer.FOCUS_ITEM_LIMIT + " CHARACTERS EACH, HARD LIMIT — one line each in a "
+				+ copyLimits().getFocusItemLimit() + " CHARACTERS EACH, HARD LIMIT — one line each in a "
 				+ "narrow column. What ALREADY BEATS ITS BENCHMARK and keeps its budget UNCHANGED (or gets more): "
 				+ "a proven channel, format, market or audience pairing, named. Written as an instruction, e.g. "
 				+ "\"hold weight on the top two markets\" or \"keep video on the CPM buy\". Nothing here may be "

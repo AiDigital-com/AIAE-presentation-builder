@@ -22,6 +22,7 @@ import com.aidigital.reportconstructor.service.reports.dto.TacticThoughts;
 import com.aidigital.reportconstructor.service.reports.dto.TacticThoughtsInput;
 
 import com.aidigital.reportconstructor.service.reports.engine.Pivot;
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,15 @@ public interface ClaudeClient {
 	 * @return true when the client is hitting the real Anthropic API.
 	 */
 	boolean isLive();
+
+	/**
+	 * Returns a client identical to this one except that its campaign-level copy — what the prompts ask for
+	 * and what the replies are capped at — follows the given deck design's character budgets.
+	 *
+	 * @param limits the budgets of the deck the run builds
+	 * @return a client bound to those budgets; this client itself when it generates no copy
+	 */
+	ClaudeClient withCopyLimits(NarrativeCopyLimits limits);
 
 	/**
 	 * One tactic's "Top Publishers" slide copy, produced by a small dedicated call. Common contract for every

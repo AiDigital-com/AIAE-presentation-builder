@@ -183,7 +183,7 @@ class ClaudeBatchPromptBuilderTest {
 
 		// Then: every character budget is quoted at 80% of the limit actually enforced on the reply
 		assertThat(prompt).contains("≤304 chars");   // results overview, 380
-		assertThat(prompt).contains("≤320 chars");   // thoughts total, 400
+		assertThat(prompt).contains("≤560 chars");   // thoughts total, 700
 		assertThat(prompt).contains("≤22 chars");    // recommendation title, 28
 		assertThat(prompt).contains("≤100 chars");   // recommendation text, 125
 		assertThat(prompt).contains("≤144 chars");   // f_opportunity, 180

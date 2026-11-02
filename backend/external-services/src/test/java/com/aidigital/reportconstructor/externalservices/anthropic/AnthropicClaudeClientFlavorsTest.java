@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.anthropic;
 
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.aidigital.reportconstructor.service.reports.enums.ReportFlavor;
 import com.aidigital.reportconstructor.service.reports.ports.ClaudeClient;
 import org.junit.jupiter.api.Test;
@@ -65,5 +66,20 @@ class AnthropicClaudeClientFlavorsTest {
 
 		// Then: an EOM run still generates, exactly as it did before the split
 		assertThat(flavors.forReportType("EOM")).isSameAs(defaultClient);
+	}
+
+	@Test
+	void shouldBindTheReportTypesClientToTheDecksCopyBudgetsTest() {
+		// Given: an EOM client that hands out a copy bound to the MPO budgets
+		ClaudeClient compactEom = mock(ClaudeClient.class);
+		when(eomClient.withCopyLimits(NarrativeCopyLimits.COMPACT)).thenReturn(compactEom);
+		AnthropicClaudeClientFlavors flavors =
+				new AnthropicClaudeClientFlavors(defaultClient, provider(eomClient));
+
+		// When:
+		ClaudeClient client = flavors.forReport("EOM", NarrativeCopyLimits.COMPACT);
+
+		// Then: the report type picks the prompts and the deck picks the budgets
+		assertThat(client).isSameAs(compactEom);
 	}
 }

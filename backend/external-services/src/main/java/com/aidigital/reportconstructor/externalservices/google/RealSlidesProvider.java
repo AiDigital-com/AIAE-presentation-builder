@@ -198,7 +198,7 @@ public class RealSlidesProvider implements SlidesProvider {
 				props.getResultsSlideObjectIds(), props.getTacticSlideObjectIds(),
 				props.getBreakdownMasterSlideObjectIds(), props.getThoughtsMasterSlideObjectId(),
 				props.getTacticMasterSlideObjectId());
-		MpoDeckProperties.SlideIds mpoEoc = mpoDeckPolicy.eocSlideIds();
+		MpoDeckSlideIds mpoEoc = mpoDeckPolicy.eocSlideIds();
 		this.mpoEocModel = slideModel(
 				mpoEoc.getSummaryTableObjectIds(), mpoEoc.getSummarySlideObjectIds(),
 				mpoEoc.getResultsSlideObjectIds(), Map.of(),

@@ -298,7 +298,7 @@ class RealSlidesProviderTest {
 	private MpoDeckPolicy mpoDeckPolicy() {
 		MpoDeckProperties mpoDeckProps = new MpoDeckProperties();
 		mpoDeckProps.setEocSlidesTemplateId("mpo-eoc-template");
-		MpoDeckProperties.SlideIds eocSlides = new MpoDeckProperties.SlideIds();
+		MpoDeckSlideIds eocSlides = new MpoDeckSlideIds();
 		eocSlides.setTacticMasterSlideObjectId("mpo_tactic");
 		eocSlides.setBreakdownMasterSlideObjectIds(Map.of("dev", "mpo_dev"));
 		eocSlides.setResultsSlideObjectIds(Map.of(1, "mpo_results_1", 2, "mpo_results_2"));

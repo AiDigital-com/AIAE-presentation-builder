@@ -66,6 +66,7 @@ import com.aidigital.reportconstructor.service.reports.ports.ClaudeClientFlavors
 import com.aidigital.reportconstructor.service.reports.ports.SlidesProvider;
 import com.aidigital.reportconstructor.service.reports.ports.UserGoogleTokenProvider;
 import com.aidigital.reportconstructor.service.reports.services.PlaceholderResolverService;
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.aidigital.reportconstructor.service.reports.services.ReportGenerationService;
 import com.aidigital.reportconstructor.service.reports.diagnostics.ClaudeFailureLog;
 import com.aidigital.reportconstructor.service.reports.diagnostics.ClaudeFailureScope;
@@ -251,8 +252,10 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 
 			jobProgress.markJobRunningAtStep(jobId, 2, "Resolving placeholders");
 
-			// EOC and EOM send different prompt text for the same calls; the report type picks which.
-			ClaudeClient claude = claudeClients.forReportType(payload.reportType());
+			// EOC and EOM send different prompt text for the same calls; the report type picks which, and the
+			// deck design picks how long the campaign-level copy may run.
+			ClaudeClient claude = claudeClients.forReport(payload.reportType(), NarrativeCopyLimits.forDeck(
+					slides.carriesMpoNarrative(payload.reportType(), payload.templateVariant())));
 			boolean live = claude.isLive();
 			// The brief is user-pasted and unbounded, and every batch below repeats it as context. Digest it
 			// once here and feed the digest everywhere instead: the campaign facts the copy must stay faithful
@@ -528,8 +531,10 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 			log.info("[report] job {} slides-from-sheet context tacticCount={} tactics={}",
 					jobId, tacticCount, describeTactics(data));
 		}
-		// EOC and EOM send different prompt text for the same calls; the report type picks which.
-		ClaudeClient claude = claudeClients.forReportType(payload.reportType());
+		// EOC and EOM send different prompt text for the same calls; the report type picks which, and the deck
+		// design picks how long the campaign-level copy may run.
+		ClaudeClient claude = claudeClients.forReport(payload.reportType(), NarrativeCopyLimits.forDeck(
+				slides.carriesMpoNarrative(payload.reportType(), payload.templateVariant())));
 		boolean live = claude.isLive();
 		// Every call below repeats this text as context, so it is bounded to the digest budget before any of them
 		// sees it. The sheet's {{RFP info}} normally already holds step 1's digest, but it is a user-editable cell,

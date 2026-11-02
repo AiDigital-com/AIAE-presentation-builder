@@ -11,6 +11,7 @@ import com.aidigital.reportconstructor.service.reports.dto.MpoNarrative;
 import com.aidigital.reportconstructor.service.reports.dto.MpoNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.dto.MpoProposalPoint;
 import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeSheetBatch;
 import com.aidigital.reportconstructor.service.reports.dto.GenerationTarget;
 import com.aidigital.reportconstructor.service.reports.dto.ProgressView;
@@ -79,6 +80,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -133,7 +135,7 @@ class ReportGenerationServiceImplTest {
 
 	@BeforeEach
 	void setUp() {
-		lenient().when(claudeClients.forReportType(any())).thenReturn(claude);
+		lenient().when(claudeClients.forReport(any(), any())).thenReturn(claude);
 		service = new ReportGenerationServiceImpl(
 				jobProgress, warnings, chartHelper, sheetHelper, publisherBreakdown, creativeBreakdown, geoBreakdown, audienceBreakdown, deviceBreakdown, placeholderReader, sheetCampaign, placeholders,
 				claudeClients, slides, userGoogleTokens, self, claudeDefaults, fileNamer,
@@ -233,6 +235,8 @@ class ReportGenerationServiceImplTest {
 
 		service.run(7L, payload, "clerk-1", "user@x.com", GenerationTarget.SLIDES);
 
+		// The standard deck's copy is written to the standard templates' budgets
+		verify(claudeClients).forReport("standard", NarrativeCopyLimits.STANDARD);
 		verify(chartHelper).trimUnusedTactics("http://deck", payload, null);
 		verify(jobProgress).markJobDone(7L, "http://deck", "[]");
 		// The deck placeholder map is bounded to the real tactic count (here the collector yields none, so 1),
@@ -268,7 +272,9 @@ class ReportGenerationServiceImplTest {
 		// Unused slots' leftover tokens are blanked by a single regex pass in createSheet.
 		verify(placeholders).buildFlatReplacements(
 				any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), eq(1));
-		verifyNoInteractions(slides);
+		// The sheet's copy is sized for the deck it will feed — the only thing asked of the slides provider
+		verify(slides).carriesMpoNarrative("standard", TemplateVariant.STANDARD);
+		verifyNoMoreInteractions(slides);
 		verifyNoInteractions(chartHelper);
 	}
 
@@ -384,6 +390,7 @@ class ReportGenerationServiceImplTest {
 		when(sheetHelper.readSheetGrid("http://sheet", null)).thenReturn(grid);
 		when(placeholderReader.readPlaceholders(grid)).thenReturn(sheetValues);
 		when(claude.isLive()).thenReturn(false);
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.MPO)).thenReturn(true);
 		when(placeholders.buildFlatReplacements(
 				any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt())).thenReturn(Map.of());
 		when(fileNamer.buildFileName(any(), any(), any())).thenReturn("deck-file");
@@ -416,6 +423,8 @@ class ReportGenerationServiceImplTest {
 
 		// Then: the provider is asked for the MPO design, and the job completes on the deck it returned
 		verify(slides).createDeck(eq("12"), eq("deck-file"), any(), eq("EOC"), eq(TemplateVariant.MPO), isNull());
+		// And: the copy is written to the MPO boxes' budgets
+		verify(claudeClients).forReport("EOC", NarrativeCopyLimits.COMPACT);
 		verify(jobProgress).markJobDone(12L, "http://deck", "[]");
 	}
 

@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.anthropic;
 
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -279,9 +280,9 @@ class ClaudeResponseNormalizerTest {
 
 	@Test
 	void shouldPreferSentenceEndingPeriodOverALaterCommaForStrategicOverviewTest() {
-		// Given: a period sits just past position 90, and a comma sits further along but still inside
-		// the 120-char cut window
-		String longOverview = "a".repeat(95) + "." + "b".repeat(10) + "," + "c".repeat(50);
+		// Given: a period sits just past position 180, and a comma sits further along but still inside
+		// the 240-char cut window
+		String longOverview = "a".repeat(190) + "." + "b".repeat(20) + "," + "c".repeat(50);
 
 		// When:
 		String out = normalizer.limitStrategicOverview(longOverview);
@@ -384,5 +385,23 @@ class ClaudeResponseNormalizerTest {
 		assertThat(out).doesNotEndWith(" with.");
 		assertThat(out).doesNotEndWith(" and.");
 		assertThat(out).doesNotEndWith(" the.");
+	}
+
+	@Test
+	void shouldCapTheStrategicOverviewAtTheMpoBudgetForTheCompactProfileTest() {
+		// Given: a normalizer bound to the MPO deck, a period just past position 90, and a comma after it
+		// still inside the 120-character cut window
+		ClaudeResponseNormalizer compact = new ClaudeResponseNormalizer().withCopyLimits(NarrativeCopyLimits.COMPACT);
+		String longOverview = "a".repeat(95) + "." + "b".repeat(10) + "," + "c".repeat(50);
+
+		// When:
+		String out = compact.limitStrategicOverview(longOverview);
+		String standard = normalizer.limitStrategicOverview(longOverview);
+
+		// Then: the MPO cap cuts at the period, while the standard template's wider box keeps the whole text
+		assertThat(out).isEqualTo("a".repeat(95) + ".");
+		assertThat(standard).isEqualTo(longOverview);
+		assertThat(compact.getCopyLimits()).isEqualTo(NarrativeCopyLimits.COMPACT);
+		assertThat(normalizer.getCopyLimits()).isEqualTo(NarrativeCopyLimits.STANDARD);
 	}
 }

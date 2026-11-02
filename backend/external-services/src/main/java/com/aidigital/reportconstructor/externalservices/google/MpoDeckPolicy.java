@@ -68,8 +68,8 @@ public class MpoDeckPolicy {
 	 *
 	 * @return the EOC MPO slide ids, never {@code null}
 	 */
-	public MpoDeckProperties.SlideIds eocSlideIds() {
-		return props.getEocSlides() == null ? new MpoDeckProperties.SlideIds() : props.getEocSlides();
+	public MpoDeckSlideIds eocSlideIds() {
+		return props.getEocSlides() == null ? new MpoDeckSlideIds() : props.getEocSlides();
 	}
 
 	/**
