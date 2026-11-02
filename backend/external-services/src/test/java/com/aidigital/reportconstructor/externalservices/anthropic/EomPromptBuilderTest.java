@@ -1038,7 +1038,7 @@ class EomPromptBuilderTest {
 		String focus = compact.focusNextMonthSchema();
 
 		// Then: every EOM slot is asked for at the MPO box's size, not the standard template's
-		assertThat(insights).contains("MAX 110 CHARACTERS");
+		assertThat(insights).contains("MAX 90 CHARACTERS");
 		assertThat(northStar).contains("\"extended_north_star\": string, // MAX 200 chars.");
 		assertThat(northStar).contains("\"horizon\": string,            // MAX 60 chars.");
 		assertThat(compact.audienceSegmentsLimit()).isEqualTo(60);

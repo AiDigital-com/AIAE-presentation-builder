@@ -389,8 +389,8 @@ class ClaudeResponseNormalizerTest {
 
 	@Test
 	void shouldCapTheStrategicOverviewAtTheMpoBudgetForTheCompactProfileTest() {
-		// Given: a normalizer bound to the MPO deck, a period just past position 90, and a comma after it
-		// still inside the 120-character cut window
+		// Given: a normalizer bound to the MPO deck, a period just past position 75, and a comma after it
+		// still inside the 100-character cut window
 		ClaudeResponseNormalizer compact = new ClaudeResponseNormalizer().withCopyLimits(NarrativeCopyLimits.COMPACT);
 		String longOverview = "a".repeat(95) + "." + "b".repeat(10) + "," + "c".repeat(50);
 

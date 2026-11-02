@@ -20,7 +20,7 @@ public enum NarrativeCopyLimits {
 	STANDARD(240, 230, 180, 220, 470, 700, 340, 150, 150, 140, 60, 200, 250, 70),
 
 	/** The MPO templates, whose boxes hold roughly half the copy of the standard ones. */
-	COMPACT(120, 110, 90, 100, 230, 400, 200, 60, 60, 110, 28, 85, 190, 60);
+	COMPACT(100, 90, 75, 100, 230, 400, 200, 60, 60, 110, 28, 85, 190, 60);
 
 	/** Cap on one strategic insight's overview. */
 	private final int strategicOverviewLimit;
