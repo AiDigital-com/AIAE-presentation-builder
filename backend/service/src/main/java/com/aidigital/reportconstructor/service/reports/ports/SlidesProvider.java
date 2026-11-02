@@ -188,15 +188,16 @@ public interface SlidesProvider {
 			String presentationId, String reportType, TemplateVariant templateVariant, String userGoogleAccessToken);
 
 	/**
-	 * Turns every {@code **key phrase**} marker in a finished deck into bold text and removes the markers.
-	 * Copy that carries one emphasised phrase (the MPO thoughts slide) is written with the phrase marked,
-	 * because a {@code replaceAllText} value cannot carry a style of its own.
+	 * Applies the markup the placeholder values carry, once every value is in place: every
+	 * {@code **key phrase**} marker becomes bold text (copy with one emphasised phrase, such as the MPO
+	 * thoughts slide, because a {@code replaceAllText} value cannot carry a style of its own), and every shape
+	 * whose whole text is {@link DeckMarkup#HIDE_SHAPE} is removed (an optional chip with nothing to show).
 	 *
 	 * @param presentationId        the finished deck
 	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token; falls back to the
 	 *                              service account when blank
 	 */
-	void applyBoldMarkup(String presentationId, String userGoogleAccessToken);
+	void applyDeckMarkup(String presentationId, String userGoogleAccessToken);
 
 	/**
 	 * Counts the slides a finished deck contains. Called once the surplus template slides have been

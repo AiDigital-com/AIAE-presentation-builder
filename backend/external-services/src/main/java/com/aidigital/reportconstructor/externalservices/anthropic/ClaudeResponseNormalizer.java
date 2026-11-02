@@ -29,6 +29,21 @@ public class ClaudeResponseNormalizer {
 	 */
 	public static final int AUDIENCE_SEGMENTS_LIMIT = 80;
 
+	/**
+	 * Characters a Batch A strategic overview fits: two 10pt lines of its box. Enforced by
+	 * {@link #limitStrategicOverview} and the compression call, and the base of the budget the prompts quote.
+	 */
+	public static final int STRATEGIC_OVERVIEW_LIMIT = 120;
+
+	/**
+	 * Position a sentence-ending period must sit past for {@link #limitStrategicOverview} to cut there rather
+	 * than at a word boundary, so the cut keeps most of the budget.
+	 */
+	static final int STRATEGIC_OVERVIEW_MIN_SENTENCE_END = 90;
+
+	/** Characters one analytical "thoughts on performance" paragraph fits on the campaign slide. */
+	public static final int THOUGHT_LIMIT = 100;
+
 	/** Characters the EOM north-star headline fits, upper-cased, on one line. */
 	private static final int NORTH_STAR_LIMIT = 80;
 
@@ -512,8 +527,9 @@ public class ClaudeResponseNormalizer {
 	}
 
 	/**
-	 * Caps the Batch A strategic overview at 240 characters, preferring the last real sentence-ending
-	 * {@code .} (decimal points excluded) past position 180 (so the result reads as a finished thought)
+	 * Caps the Batch A strategic overview at {@link #STRATEGIC_OVERVIEW_LIMIT} characters, preferring the last
+	 * real sentence-ending {@code .} (decimal points excluded) past {@link #STRATEGIC_OVERVIEW_MIN_SENTENCE_END}
+	 * (so the result reads as a finished thought)
 	 * over a hard cut, then falling back to the last word boundary (never mid-word) and rewriting the tail
 	 * to end on a complete sentence (see {@link #finishSentence}) when no qualifying period is found.
 	 *
@@ -525,10 +541,10 @@ public class ClaudeResponseNormalizer {
 			return "";
 		}
 		overview = overview.trim();
-		if (overview.length() > 240) {
-			String cut = overview.substring(0, 240);
+		if (overview.length() > STRATEGIC_OVERVIEW_LIMIT) {
+			String cut = overview.substring(0, STRATEGIC_OVERVIEW_LIMIT);
 			int lastPeriod = lastSentencePeriod(cut);
-			if (lastPeriod > 180) {
+			if (lastPeriod > STRATEGIC_OVERVIEW_MIN_SENTENCE_END) {
 				overview = overview.substring(0, lastPeriod + 1).trim();
 			} else {
 				int ls = cut.lastIndexOf(' ');

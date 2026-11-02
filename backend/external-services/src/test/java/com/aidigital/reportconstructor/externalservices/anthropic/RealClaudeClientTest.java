@@ -414,18 +414,18 @@ class RealClaudeClientTest {
 				2, "CTV", "CTV delivered 1M impressions at 98% VCR.",
 				null, null, List.of("West coast concentrated delivery."), null, null, false);
 
-		String expectedPrompt = promptBuilder.buildTacticThoughtsPrompt(input, brief, 220, 470).orElseThrow();
+		String expectedPrompt = promptBuilder.buildTacticThoughtsPrompt(input, brief, 100, 230).orElseThrow();
 		JsonNode response = json.readTree("""
 				{"thoughts": ["Headline result.", "What worked best.", "A watch-out.", "The opportunity."],
 				 "story": "CTV was asked to build reach and it did, start to finish."}
 				""");
 		List<ClaudeCompressionField> expectedFields = List.of(
-				new ClaudeCompressionField("2_thought_0", "Headline result.", 220),
-				new ClaudeCompressionField("2_thought_1", "What worked best.", 220),
-				new ClaudeCompressionField("2_thought_2", "A watch-out.", 220),
-				new ClaudeCompressionField("2_thought_3", "The opportunity.", 220),
+				new ClaudeCompressionField("2_thought_0", "Headline result.", 100),
+				new ClaudeCompressionField("2_thought_1", "What worked best.", 100),
+				new ClaudeCompressionField("2_thought_2", "A watch-out.", 100),
+				new ClaudeCompressionField("2_thought_3", "The opportunity.", 100),
 				new ClaudeCompressionField(
-						"2_story", "CTV was asked to build reach and it did, start to finish.", 470));
+						"2_story", "CTV was asked to build reach and it did, start to finish.", 230));
 		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true)))
 				.thenReturn(response);
 		when(compressionService.compress(eq(expectedFields), eq("BatchD-TacticThoughts")))
@@ -512,19 +512,19 @@ class RealClaudeClientTest {
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				4, "Display", "Display delivered 2M impressions at a 0.12% CTR.",
 				List.of("Hulu led delivery."), null, null, null, null, false);
-		String expectedPrompt = promptBuilder.buildTacticThoughtsPrompt(input, brief, 220, 470).orElseThrow();
+		String expectedPrompt = promptBuilder.buildTacticThoughtsPrompt(input, brief, 100, 230).orElseThrow();
 		JsonNode blank = json.readTree("{\"thoughts\": [\"\", \"\", \"\", \"\"], \"story\": \"\"}");
 		JsonNode complete = json.readTree("""
 				{"thoughts": ["Headline result.", "What worked best.", "A watch-out.", "The opportunity."],
 				 "story": "Display was asked to hold frequency and it held it."}
 				""");
 		List<ClaudeCompressionField> retryFields = List.of(
-				new ClaudeCompressionField("4_thought_0", "Headline result.", 220),
-				new ClaudeCompressionField("4_thought_1", "What worked best.", 220),
-				new ClaudeCompressionField("4_thought_2", "A watch-out.", 220),
-				new ClaudeCompressionField("4_thought_3", "The opportunity.", 220),
+				new ClaudeCompressionField("4_thought_0", "Headline result.", 100),
+				new ClaudeCompressionField("4_thought_1", "What worked best.", 100),
+				new ClaudeCompressionField("4_thought_2", "A watch-out.", 100),
+				new ClaudeCompressionField("4_thought_3", "The opportunity.", 100),
 				new ClaudeCompressionField(
-						"4_story", "Display was asked to hold frequency and it held it.", 470));
+						"4_story", "Display was asked to hold frequency and it held it.", 230));
 		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true)))
 				.thenReturn(blank, complete);
 		when(compressionService.compress(eq(retryFields), eq("BatchD-TacticThoughts")))
@@ -569,14 +569,14 @@ class RealClaudeClientTest {
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				7, "Audio", "Audio delivered 500k impressions at 95% ACR.",
 				null, null, null, null, List.of("Mobile carried delivery."), false);
-		String expectedPrompt = promptBuilder.buildTacticThoughtsPrompt(input, brief, 220, 470).orElseThrow();
+		String expectedPrompt = promptBuilder.buildTacticThoughtsPrompt(input, brief, 100, 230).orElseThrow();
 		JsonNode partial = json.readTree("{\"thoughts\": [\"Headline result.\", \"A watch-out.\"]}");
 		List<ClaudeCompressionField> expectedFields = List.of(
-				new ClaudeCompressionField("7_thought_0", "Headline result.", 220),
-				new ClaudeCompressionField("7_thought_1", "A watch-out.", 220),
-				new ClaudeCompressionField("7_thought_2", "", 220),
-				new ClaudeCompressionField("7_thought_3", "", 220),
-				new ClaudeCompressionField("7_story", "", 470));
+				new ClaudeCompressionField("7_thought_0", "Headline result.", 100),
+				new ClaudeCompressionField("7_thought_1", "A watch-out.", 100),
+				new ClaudeCompressionField("7_thought_2", "", 100),
+				new ClaudeCompressionField("7_thought_3", "", 100),
+				new ClaudeCompressionField("7_story", "", 230));
 		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true)))
 				.thenReturn(partial);
 		when(compressionService.compress(eq(expectedFields), eq("BatchD-TacticThoughts")))
@@ -643,12 +643,12 @@ class RealClaudeClientTest {
 				""");
 		List<ClaudeCompressionField> expectedFields = List.of(
 				new ClaudeCompressionField("results_overview_1", "Overall the campaign delivered strong results.", 380),
-				new ClaudeCompressionField("thought_0", "T1.", 220),
-				new ClaudeCompressionField("thought_1", "T2.", 220),
-				new ClaudeCompressionField("thought_2", "T3.", 220),
-				new ClaudeCompressionField("thought_3", "T4.", 220),
+				new ClaudeCompressionField("thought_0", "T1.", 100),
+				new ClaudeCompressionField("thought_1", "T2.", 100),
+				new ClaudeCompressionField("thought_2", "T3.", 100),
+				new ClaudeCompressionField("thought_3", "T4.", 100),
 				new ClaudeCompressionField(
-						"performance_story", "The brief asked for reach and the campaign delivered it.", 470),
+						"performance_story", "The brief asked for reach and the campaign delivered it.", 230),
 				new ClaudeCompressionField("rec_title_0", "Scale CTV", 30),
 				new ClaudeCompressionField("rec_text_0", "Shift budget to CTV evenings to extend reach.", 130),
 				new ClaudeCompressionField("rec_title_1", "Refresh Creative", 30),
@@ -720,10 +720,10 @@ class RealClaudeClientTest {
 				""");
 		List<ClaudeCompressionField> expectedFields = List.of(
 				new ClaudeCompressionField("results_overview_1", "Overall the campaign delivered strong results.", 380),
-				new ClaudeCompressionField("thought_0", "T1.", 220),
-				new ClaudeCompressionField("thought_1", "T2.", 220),
-				new ClaudeCompressionField("thought_2", "T3.", 220),
-				new ClaudeCompressionField("thought_3", "T4.", 220),
+				new ClaudeCompressionField("thought_0", "T1.", 100),
+				new ClaudeCompressionField("thought_1", "T2.", 100),
+				new ClaudeCompressionField("thought_2", "T3.", 100),
+				new ClaudeCompressionField("thought_3", "T4.", 100),
 				new ClaudeCompressionField("rec_title_0", "", 30),
 				new ClaudeCompressionField("rec_text_0", "", 130),
 				new ClaudeCompressionField("rec_title_1", "", 30),
@@ -872,13 +872,13 @@ class RealClaudeClientTest {
 				""");
 		List<ClaudeCompressionField> expectedFields = List.of(
 				new ClaudeCompressionField("point_0", "Precision", 22),
-				new ClaudeCompressionField("overview_0", "Targeted auto intenders.", 240),
+				new ClaudeCompressionField("overview_0", "Targeted auto intenders.", 120),
 				new ClaudeCompressionField("point_1", "Reach", 22),
-				new ClaudeCompressionField("overview_1", "Scaled via CTV.", 240),
+				new ClaudeCompressionField("overview_1", "Scaled via CTV.", 120),
 				new ClaudeCompressionField("point_2", "Timing", 22),
-				new ClaudeCompressionField("overview_2", "Evening dayparts.", 240),
+				new ClaudeCompressionField("overview_2", "Evening dayparts.", 120),
 				new ClaudeCompressionField("point_3", "Efficiency", 22),
-				new ClaudeCompressionField("overview_3", "Strong CPM outcome.", 240));
+				new ClaudeCompressionField("overview_3", "Strong CPM outcome.", 120));
 		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(3500), eq(60), eq("BatchAStrategic"), eq(false)))
 				.thenReturn(response);
 		when(compressionService.compress(eq(expectedFields), eq("BatchD-Strategic")))
@@ -941,13 +941,13 @@ class RealClaudeClientTest {
 				.thenReturn(response);
 		List<ClaudeCompressionField> expectedFields = List.of(
 				new ClaudeCompressionField("point_0", "Precision", 22),
-				new ClaudeCompressionField("overview_0", "Targeted eco parents.", 240),
+				new ClaudeCompressionField("overview_0", "Targeted eco parents.", 120),
 				new ClaudeCompressionField("point_1", "Reach", 22),
-				new ClaudeCompressionField("overview_1", "Scaled via Video.", 240),
+				new ClaudeCompressionField("overview_1", "Scaled via Video.", 120),
 				new ClaudeCompressionField("point_2", "Timing", 22),
-				new ClaudeCompressionField("overview_2", "Evening dayparts.", 240),
+				new ClaudeCompressionField("overview_2", "Evening dayparts.", 120),
 				new ClaudeCompressionField("point_3", "Efficiency", 22),
-				new ClaudeCompressionField("overview_3", "Strong CPM outcome.", 240));
+				new ClaudeCompressionField("overview_3", "Strong CPM outcome.", 120));
 		when(compressionService.compress(eq(expectedFields), eq("BatchD-Strategic")))
 				.thenAnswer(invocation -> {
 					List<ClaudeCompressionField> fields = invocation.getArgument(0);
@@ -999,13 +999,13 @@ class RealClaudeClientTest {
 				.thenReturn(response);
 		when(compressionService.compress(eq(List.of(
 				new ClaudeCompressionField("point_0", "", 22),
-				new ClaudeCompressionField("overview_0", "", 240),
+				new ClaudeCompressionField("overview_0", "", 120),
 				new ClaudeCompressionField("point_1", "", 22),
-				new ClaudeCompressionField("overview_1", "", 240),
+				new ClaudeCompressionField("overview_1", "", 120),
 				new ClaudeCompressionField("point_2", "", 22),
-				new ClaudeCompressionField("overview_2", "", 240),
+				new ClaudeCompressionField("overview_2", "", 120),
 				new ClaudeCompressionField("point_3", "", 22),
-				new ClaudeCompressionField("overview_3", "", 240))), eq("BatchD-Strategic")))
+				new ClaudeCompressionField("overview_3", "", 120))), eq("BatchD-Strategic")))
 				.thenReturn(new LinkedHashMap<>());
 
 		// When:
@@ -1055,9 +1055,9 @@ class RealClaudeClientTest {
 				""");
 		List<ClaudeCompressionField> expectedFields = List.of(
 				new ClaudeCompressionField("point_0", "NewPoint", 22),
-				new ClaudeCompressionField("overview_0", "New overview copy.", 240),
+				new ClaudeCompressionField("overview_0", "New overview copy.", 120),
 				new ClaudeCompressionField("results_overview_1", "Aligned results overview.", 380),
-				new ClaudeCompressionField("thought_0", "Aligned thought.", 220),
+				new ClaudeCompressionField("thought_0", "Aligned thought.", 100),
 				new ClaudeCompressionField("proposal_overview", "Aligned proposal copy.", 400));
 		// 400 base + 220 proposal + 160 insight + 220 overview + 140 thought, no frequency copy in this draft
 		int expectedBudget = 1140;
@@ -1214,9 +1214,9 @@ class RealClaudeClientTest {
 						+ "backticks around it.";
 		List<ClaudeCompressionField> expectedFields = List.of(
 				new ClaudeCompressionField("point_0", "NewPoint", 22),
-				new ClaudeCompressionField("overview_0", "New overview copy.", 240),
+				new ClaudeCompressionField("overview_0", "New overview copy.", 120),
 				new ClaudeCompressionField("results_overview_1", "Aligned results overview.", 380),
-				new ClaudeCompressionField("thought_0", "Aligned thought.", 220),
+				new ClaudeCompressionField("thought_0", "Aligned thought.", 100),
 				new ClaudeCompressionField("proposal_overview", "Aligned proposal copy.", 400));
 		when(messagesClient.callJsonObject(eq(firstPrompt), eq(1140), eq(90), eq("AlignNarrative"), eq(true)))
 				.thenReturn(null);

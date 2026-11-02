@@ -85,7 +85,7 @@ class ReportGenerationChartHelperImplTest {
 
 		// Then: the emphasis markers were turned into bold text on the same deck, and nothing was dashed
 		InOrder order = inOrder(slides);
-		order.verify(slides).applyBoldMarkup("deck123", "token");
+		order.verify(slides).applyDeckMarkup("deck123", "token");
 		order.verify(slides).dashUnresolvedTokens("deck123", "EOM", TemplateVariant.MPO, "token");
 		assertThat(warnings).isEmpty();
 	}

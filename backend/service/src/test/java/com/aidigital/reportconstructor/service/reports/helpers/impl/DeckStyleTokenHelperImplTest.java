@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
+import com.aidigital.reportconstructor.service.reports.ports.DeckMarkup;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -11,6 +12,35 @@ class DeckStyleTokenHelperImplTest {
 
 	private DeckStyleTokenHelperImpl newHelper() {
 		return new DeckStyleTokenHelperImpl(new SheetRowHelperImpl());
+	}
+
+	@Test
+	void shouldSplitTheAudienceSegmentsIntoOneChipEachTest() {
+		// Given: two segments, the second itself a pair joined by an ampersand
+		Map<String, String> flat = new LinkedHashMap<>();
+		flat.put("{{audience_segments}}", "Luxury Travel, Honeymoons & Romantic Getaways.");
+
+		// When:
+		newHelper().fillDeckStyleTokens(flat, 0);
+
+		// Then: one chip per segment, the ampersand kept inside its chip, the unused third chip hidden
+		assertThat(flat).containsEntry("{{audience segment 1}}", "Luxury Travel")
+				.containsEntry("{{audience segment 2}}", "Honeymoons & Romantic Getaways")
+				.containsEntry("{{audience segment 3}}", DeckMarkup.HIDE_SHAPE);
+	}
+
+	@Test
+	void shouldHideEverySegmentChipWithoutSegmentsTest() {
+		// Given: the line resolved to a dash
+		Map<String, String> flat = new LinkedHashMap<>();
+		flat.put("{{audience_segments}}", "—");
+
+		// When:
+		newHelper().fillDeckStyleTokens(flat, 0);
+
+		// Then:
+		assertThat(flat).containsEntry("{{audience segment 1}}", DeckMarkup.HIDE_SHAPE)
+				.containsEntry("{{audience segment 3}}", DeckMarkup.HIDE_SHAPE);
 	}
 
 	@Test

@@ -72,9 +72,11 @@ public class RealClaudeClient implements ClaudeClient {
 
 	private static final int PROPOSAL_LIMIT = 400;
 	private static final int STRATEGIC_POINT_LIMIT = 22;
-	private static final int STRATEGIC_OVERVIEW_LIMIT = 240;
+	/** Shared with {@link ClaudeResponseNormalizer} and the prompt builders so cap and prompt never drift. */
+	private static final int STRATEGIC_OVERVIEW_LIMIT = ClaudeResponseNormalizer.STRATEGIC_OVERVIEW_LIMIT;
 	private static final int RESULTS_OVERVIEW_LIMIT = 380;
-	private static final int THOUGHT_LIMIT = 220;
+	/** Shared with {@link ClaudeResponseNormalizer} and the prompt builders so cap and prompt never drift. */
+	private static final int THOUGHT_LIMIT = ClaudeResponseNormalizer.THOUGHT_LIMIT;
 
 	/** Pacing-dashboard takeaway slots the EOM template carries, one per dashboard slide. */
 	private static final int PACING_TAKEAWAY_SLOTS = 4;
@@ -87,7 +89,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * ({@code {{thoughts on tactic n performance 5}}}) alike. Roughly twice a thought's budget because it is
 	 * a narrative paragraph rather than one analytical observation.
 	 */
-	private static final int STORY_LIMIT = 470;
+	private static final int STORY_LIMIT = 230;
 
 	/**
 	 * Position of the story within a thoughts list, campaign-level and per-tactic alike: after the four
@@ -294,7 +296,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 */
 	private static final int TACTIC_PACING_MAX_TOKENS = 900;
 	/**
-	 * Output budget for one tactic's thoughts call: four ~220-char thoughts, the ~470-char story and the JSON
+	 * Output budget for one tactic's thoughts call: four ~100-char thoughts, the ~230-char story and the JSON
 	 * overhead need roughly a quarter of this, and the headroom is deliberate. A reply that opens with a
 	 * sentence of working-out anyway — which {@link ClaudeBatchPromptBuilder#tacticThoughtsOutputRules} forbids
 	 * but cannot guarantee — still reaches the story instead of running out at the third thought. Output tokens

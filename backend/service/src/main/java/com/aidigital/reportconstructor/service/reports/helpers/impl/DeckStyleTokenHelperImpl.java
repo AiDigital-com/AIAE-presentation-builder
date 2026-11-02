@@ -2,6 +2,7 @@ package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
 import com.aidigital.reportconstructor.service.reports.helpers.DeckStyleTokenHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.SheetRowHelper;
+import com.aidigital.reportconstructor.service.reports.ports.DeckMarkup;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -30,6 +31,21 @@ public class DeckStyleTokenHelperImpl implements DeckStyleTokenHelper {
 
 	/** Media plan slide's short geo line, e.g. "9 priority markets". */
 	static final String GEO_SUMMARY_TOKEN = "{{geo_summary}}";
+
+	/** Token the segment chips are derived from: the comma-separated audience segments. */
+	static final String AUDIENCE_SEGMENTS_TOKEN = "{{audience_segments}}";
+
+	/** One segment chip of the MPO media plan slide, filled with its 1-based slot number. */
+	static final String AUDIENCE_SEGMENT_TOKEN = "{{audience segment %d}}";
+
+	/** Segment chips the MPO media plan slide draws. */
+	static final int AUDIENCE_SEGMENT_SLOTS = 3;
+
+	/**
+	 * Separates the segments of the audience line: commas and semicolons only, so a segment that is itself
+	 * a pair ("Honeymoons &amp; Romantic Getaways") stays one chip.
+	 */
+	static final Pattern SEGMENT_SEPARATOR = Pattern.compile("\\s*[,;]\\s*");
 
 	/** Em dash written when a value cannot be derived, matching the deck's other unresolved values. */
 	static final String DASH = "—";
@@ -73,6 +89,11 @@ public class DeckStyleTokenHelperImpl implements DeckStyleTokenHelper {
 		}
 		putIfBlank(flatReplacements, CAMPAIGN_PERIOD_TOKEN, campaignPeriod(flatReplacements.get(FLIGHT_DATES_TOKEN)));
 		putIfBlank(flatReplacements, GEO_SUMMARY_TOKEN, geoSummary(flatReplacements.get(GEO_LOCATIONS_TOKEN)));
+		List<String> segments = audienceSegments(flatReplacements.get(AUDIENCE_SEGMENTS_TOKEN));
+		for (int slot = 1; slot <= AUDIENCE_SEGMENT_SLOTS; slot++) {
+			putIfBlank(flatReplacements, String.format(AUDIENCE_SEGMENT_TOKEN, slot),
+					slot <= segments.size() ? segments.get(slot - 1) : DeckMarkup.HIDE_SHAPE);
+		}
 		for (int n = 1; n <= tacticCount; n++) {
 			fillTopContentKpi(flatReplacements, n);
 		}
@@ -231,6 +252,24 @@ public class DeckStyleTokenHelperImpl implements DeckStyleTokenHelper {
 			return DASH;
 		}
 		return markets.size() == 1 ? markets.getFirst() : String.format(MARKETS_SUMMARY, markets.size());
+	}
+
+	/**
+	 * Splits the audience line into the segments the MPO media plan slide prints one chip each, in order.
+	 *
+	 * @param audienceSegments the line as resolved, e.g. {@code "Luxury Travel, Honeymoons & Romantic Getaways"}
+	 * @return the segments, at most {@link #AUDIENCE_SEGMENT_SLOTS}; empty when the line is blank or a dash
+	 */
+	List<String> audienceSegments(String audienceSegments) {
+		if (isBlank(audienceSegments) || DASH.equals(audienceSegments.trim())) {
+			return List.of();
+		}
+		String line = audienceSegments.trim();
+		if (line.endsWith(".")) {
+			line = line.substring(0, line.length() - 1);
+		}
+		return Arrays.stream(SEGMENT_SEPARATOR.split(line)).map(String::trim).filter(s -> !s.isEmpty())
+				.limit(AUDIENCE_SEGMENT_SLOTS).toList();
 	}
 
 	/**

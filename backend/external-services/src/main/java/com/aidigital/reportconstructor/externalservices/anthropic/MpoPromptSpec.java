@@ -12,8 +12,8 @@ final class MpoPromptSpec {
 	/** HHI tile ("$250K"). */
 	static final int MPO_HHI_LIMIT = 20;
 
-	/** Proposal card heading ("Long-Lead Awareness"). */
-	static final int MPO_POINT_LIMIT = 30;
+	/** Proposal card heading ("Long-Lead Awareness"): one 11pt bold line, ~20 characters wide. */
+	static final int MPO_POINT_LIMIT = 22;
 
 	/** Proposal card body (~130 characters in the sample). */
 	static final int MPO_OVERVIEW_LIMIT = 150;

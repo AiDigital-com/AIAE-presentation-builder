@@ -94,7 +94,7 @@ public class StubSlidesProvider implements SlidesProvider {
 	}
 
 	@Override
-	public void applyBoldMarkup(String presentationId, String userGoogleAccessToken) {
+	public void applyDeckMarkup(String presentationId, String userGoogleAccessToken) {
 		// No-op: the stub never clones a real deck, so there is no markup to apply.
 	}
 

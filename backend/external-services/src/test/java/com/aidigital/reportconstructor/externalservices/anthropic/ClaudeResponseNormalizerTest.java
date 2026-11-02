@@ -279,9 +279,9 @@ class ClaudeResponseNormalizerTest {
 
 	@Test
 	void shouldPreferSentenceEndingPeriodOverALaterCommaForStrategicOverviewTest() {
-		// Given: a period sits just past position 180, and a comma sits further along but still inside
-		// the 240-char cut window
-		String longOverview = "a".repeat(190) + "." + "b".repeat(20) + "," + "c".repeat(50);
+		// Given: a period sits just past position 90, and a comma sits further along but still inside
+		// the 120-char cut window
+		String longOverview = "a".repeat(95) + "." + "b".repeat(10) + "," + "c".repeat(50);
 
 		// When:
 		String out = normalizer.limitStrategicOverview(longOverview);

@@ -125,7 +125,7 @@ class EomPromptBuilderTest {
 		assertThat(prompt).contains("\"strategic_insights\": array");
 		assertThat(prompt).contains("Exactly 4 objects: {\"point\": string, \"overview\": string}");
 		assertThat(prompt).contains("MAX 20 CHARACTERS ABSOLUTE HARD LIMIT");
-		assertThat(prompt).contains("MAX 230 CHARACTERS");
+		assertThat(prompt).contains("MAX 110 CHARACTERS");
 		assertThat(prompt).contains("Exactly 2 complete sentences");
 		assertThat(prompt).contains("Return ONLY the JSON object");
 	}
@@ -589,7 +589,7 @@ class EomPromptBuilderTest {
 		assertThat(prompt).contains("\"audience_age\": string");
 		assertThat(prompt).contains("\"audience_segments\": string");
 		assertThat(prompt).contains("MAX 20 CHARACTERS ABSOLUTE HARD LIMIT");
-		assertThat(prompt).contains("MAX 230 CHARACTERS");
+		assertThat(prompt).contains("MAX 110 CHARACTERS");
 	}
 
 	@Test

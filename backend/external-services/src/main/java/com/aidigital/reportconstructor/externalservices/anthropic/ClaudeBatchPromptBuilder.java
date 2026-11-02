@@ -61,13 +61,19 @@ public class ClaudeBatchPromptBuilder {
 	// reply. Quoted to Claude through COMPRESSION_PROMPT_BUFFER_RATIO like every other prompt, so a reply that
 	// lands slightly over the number it was given still fits the real budget and skips the compression call.
 	private static final int RESULTS_OVERVIEW_LIMIT = 380;
-	private static final int THOUGHTS_TOTAL_LIMIT = 700;
-	private static final int PERFORMANCE_STORY_LIMIT = 470;
+	private static final int THOUGHTS_TOTAL_LIMIT = 400;
+	private static final int PERFORMANCE_STORY_LIMIT = 230;
 	private static final int RECOMMENDATION_TITLE_LIMIT = 28;
 	private static final int RECOMMENDATION_TEXT_LIMIT = 125;
 	private static final int F_OPPORTUNITY_LIMIT = 180;
 	private static final int F_FACT_LIMIT = 140;
 	private static final int F_STORYTELLING_LIMIT = 320;
+
+	/**
+	 * How far below {@link ClaudeResponseNormalizer#STRATEGIC_OVERVIEW_LIMIT} the strategic-overview budget is
+	 * quoted to Claude, so a reply that lands slightly over still fits the enforced cap.
+	 */
+	private static final int STRATEGIC_OVERVIEW_PROMPT_SLACK = 10;
 
 	/**
 	 * Substrings marking a completion-led tactic as audio, so Claude sees its completion rate as ACR not VCR.
@@ -290,8 +296,8 @@ public class ClaudeBatchPromptBuilder {
 	 */
 	String audienceSegmentsSpec() {
 		return "  \"audience_segments\": string,   // ≤" + audienceSegmentsLimit() + " chars. WHO is targeted — "
-				+ "natural phrase like \"Affluent auto-intenders, HHI $100K+\". No platforms/budgets/KPIs. "
-				+ "null if no info.\n";
+				+ "1-3 short segment names, comma-separated, e.g. \"Luxury Travel, Honeymoons & Romantic Getaways\" "
+				+ "(each one is its own chip on the slide). No platforms/budgets/KPIs. null if no info.\n";
 	}
 
 	/**
@@ -302,6 +308,16 @@ public class ClaudeBatchPromptBuilder {
 	 */
 	int audienceSegmentsLimit() {
 		return ClaudeResponseNormalizer.AUDIENCE_SEGMENTS_LIMIT;
+	}
+
+	/**
+	 * The strategic-overview budget quoted in every prompt that asks for or realigns {@code strategic_insights},
+	 * derived from the cap enforced on the reply so the two can never drift apart.
+	 *
+	 * @return the maximum number of characters to ask for in one insight's {@code overview}
+	 */
+	int strategicOverviewPromptLimit() {
+		return ClaudeResponseNormalizer.STRATEGIC_OVERVIEW_LIMIT - STRATEGIC_OVERVIEW_PROMPT_SLACK;
 	}
 
 	/**
@@ -329,7 +345,8 @@ public class ClaudeBatchPromptBuilder {
 				+ "string}.\n"
 				+ "                                // CRITICAL for 'point': MAX 20 CHARACTERS ABSOLUTE HARD "
 				+ "LIMIT.\n"
-				+ "                                // For 'overview': MAX 230 CHARACTERS.\n"
+				+ "                                // For 'overview': MAX " + strategicOverviewPromptLimit()
+				+ " CHARACTERS.\n"
 				+ "                                // Each overview = strategic intention/approach + WHY this "
 				+ "choice made sense for THIS client/campaign. Unique angles, past tense, Business English. No "
 				+ "filler.\n";
@@ -386,7 +403,8 @@ public class ClaudeBatchPromptBuilder {
 						"string}.\n"
 						+ "                                // CRITICAL for 'point': MAX 20 CHARACTERS ABSOLUTE HARD " +
 						"LIMIT.\n"
-						+ "                                // For 'overview': MAX 230 CHARACTERS.\n"
+						+ "                                // For 'overview': MAX " + strategicOverviewPromptLimit()
+						+ " CHARACTERS.\n"
 						+ "                                // Each overview = strategic intention/approach + WHY " +
 								"this " +
 						"choice made sense "
@@ -2469,7 +2487,7 @@ public class ClaudeBatchPromptBuilder {
 	 * The aligned {@code thoughts_on_performance} schema line.
 	 *
 	 * <p>The draft's last thought is the campaign story, which is longer than the analytical paragraphs
-	 * before it and is called out as such: told only "≤220 chars each", the alignment pass rewrites the
+	 * before it and is called out as such: told only the analytical paragraphs' budget, the alignment pass rewrites the
 	 * story down to a fifth analytical bullet and the slide loses the narrative the previous batch wrote.
 	 *
 	 * @param thoughtCount how many thought strings the draft carried, which the reply must match exactly
@@ -2478,7 +2496,8 @@ public class ClaudeBatchPromptBuilder {
 	 */
 	String alignThoughtsSchema(int thoughtCount, int storyLimit) {
 		return "  \"thoughts_on_performance\": array, // EXACTLY " + thoughtCount
-				+ " strings, same order as the draft: the analytical paragraphs at ≤220 chars each, then the "
+				+ " strings, same order as the draft: the analytical paragraphs at ≤"
+				+ ClaudeResponseNormalizer.THOUGHT_LIMIT + " chars each, then the "
 				+ "LAST one is the campaign story — keep it a narrative of ≤" + storyLimit + " chars, do not "
 				+ "shorten it into another bullet. Together they must read as the campaign "
 				+ "headline expanded — no contradictions with the overviews above.\n";
@@ -2600,7 +2619,7 @@ public class ClaudeBatchPromptBuilder {
 		}
 		if (insightCount > 0) {
 			schema.add("  \"strategic_insights\": array,     // EXACTLY " + insightCount
-					+ " objects {\"point\": string (≤20 chars), \"overview\": string (≤230 chars)}, in the same "
+					+ " objects {\"point\": string (≤20 chars), \"overview\": string (≤" + strategicOverviewPromptLimit() + " chars)}, in the same "
 					+ "order as the draft. Each must stay a distinct facet of the ONE campaign storyline.\n");
 		}
 

@@ -71,7 +71,7 @@ class RealSlidesProviderTest {
 				creds, props, driveSharer, shareRecipients, retrier,
 				new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(), new SummaryTableRowTrimmer(),
 				new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
-				new BoldMarkupRequestBuilder());
+				new DeckMarkupRequestBuilder());
 	}
 
 	private RealSlidesProvider newMasterTacticProvider(String tacticMasterId, String thoughtsMasterId) {
@@ -96,7 +96,7 @@ class RealSlidesProviderTest {
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
 				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
-				new BoldMarkupRequestBuilder());
+				new DeckMarkupRequestBuilder());
 	}
 
 	private RealSlidesProvider newTitleProvider(List<String> eomDropSlideTitles) {
@@ -123,7 +123,7 @@ class RealSlidesProviderTest {
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
 				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
-				new BoldMarkupRequestBuilder());
+				new DeckMarkupRequestBuilder());
 	}
 
 	private Page slide(String objectId) {
@@ -203,7 +203,7 @@ class RealSlidesProviderTest {
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
 				retrier, new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
-				new BoldMarkupRequestBuilder());
+				new DeckMarkupRequestBuilder());
 
 		List<TableRow> rows = new java.util.ArrayList<>();
 		rows.add(tableRow("Platforms"));
@@ -964,7 +964,7 @@ class RealSlidesProviderTest {
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
 				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
-				new BoldMarkupRequestBuilder());
+				new DeckMarkupRequestBuilder());
 	}
 
 	private Page eomSlide(String objectId, String... texts) {
@@ -1088,7 +1088,7 @@ class RealSlidesProviderTest {
 				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(new EomDeckProperties()),
 				new MpoDeckPolicy(mpoDeckProps), new EomSlideFinder(),
-				new BoldMarkupRequestBuilder());
+				new DeckMarkupRequestBuilder());
 
 		// When-Then: only the MPO EOM deck takes the EOM model; a standard EOM deck and any EOC deck do not
 		assertThat(provider.eomDeck("EOM", TemplateVariant.MPO)).isTrue();

@@ -1,5 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
+import com.aidigital.reportconstructor.service.reports.ports.DeckMarkup;
+import com.google.api.services.slides.v1.model.DeleteObjectRequest;
 import com.google.api.services.slides.v1.model.DeleteTextRequest;
 import com.google.api.services.slides.v1.model.Page;
 import com.google.api.services.slides.v1.model.PageElement;
@@ -14,7 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Turns {@code **key phrase**} markers in a finished deck into real bold text.
+ * Applies the markup placeholder values carry to a finished deck: {@code **key phrase**} markers become real
+ * bold text, and a shape whose whole text is {@link DeckMarkup#HIDE_SHAPE} is removed.
  *
  * <p>{@code replaceAllText} can only carry plain text, and the replaced text takes the style of the token it
  * replaced — so a thought written into a bold placeholder came out bold end to end, and one written into a
@@ -24,9 +27,12 @@ import java.util.List;
  *
  * <p>A marker left without its pair — the closing one cut off by a length cap — is deleted and nothing is
  * bolded for it, so a stray {@code **} never reaches the client.
+ *
+ * <p>An optional chip (an audience segment the campaign does not have) is written as
+ * {@link DeckMarkup#HIDE_SHAPE}; its shape is deleted so the slide shows no empty pill.
  */
 @Component
-public class BoldMarkupRequestBuilder {
+public class DeckMarkupRequestBuilder {
 
 	/** The marker the copy wraps a bold phrase in. */
 	static final String MARKER = "**";
@@ -47,7 +53,7 @@ public class BoldMarkupRequestBuilder {
 	 * @param slides the deck's slides, read with each shape's text runs and their start indices
 	 * @return the requests, empty when no shape carries a marker
 	 */
-	public List<Request> boldMarkupRequests(List<Page> slides) {
+	public List<Request> deckMarkupRequests(List<Page> slides) {
 		List<Request> requests = new ArrayList<>();
 		if (slides == null) {
 			return requests;
@@ -74,6 +80,9 @@ public class BoldMarkupRequestBuilder {
 		if (element.getShape() == null || element.getShape().getText() == null) {
 			return List.of();
 		}
+		if (DeckMarkup.HIDE_SHAPE.equals(shapeText(element.getShape().getText().getTextElements()).strip())) {
+			return List.of(new Request().setDeleteObject(new DeleteObjectRequest().setObjectId(element.getObjectId())));
+		}
 		List<Integer> markers = markerIndices(element.getShape().getText().getTextElements());
 		if (markers.isEmpty()) {
 			return List.of();
@@ -98,6 +107,24 @@ public class BoldMarkupRequestBuilder {
 			requests.add(deleteMarker(objectId, openIndex));
 		}
 		return requests;
+	}
+
+	/**
+	 * Joins a shape's text runs into its full text.
+	 *
+	 * @param textElements the shape's text elements, may be {@code null}
+	 * @return the shape's text, empty when it has none
+	 */
+	String shapeText(List<TextElement> textElements) {
+		StringBuilder text = new StringBuilder();
+		if (textElements != null) {
+			for (TextElement te : textElements) {
+				if (te.getTextRun() != null && te.getTextRun().getContent() != null) {
+					text.append(te.getTextRun().getContent());
+				}
+			}
+		}
+		return text.toString();
 	}
 
 	/**
