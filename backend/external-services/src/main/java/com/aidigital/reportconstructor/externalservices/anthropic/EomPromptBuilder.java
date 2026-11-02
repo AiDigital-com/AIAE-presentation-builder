@@ -188,7 +188,7 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 						+ "\"overview\": string}.\n"
 						+ "                                // CRITICAL for 'point': MAX 20 CHARACTERS ABSOLUTE HARD "
 						+ "LIMIT.\n"
-						+ "                                // For 'overview': MAX " + strategicOverviewPromptLimit()
+						+ "                                // For 'overview': MAX " + OVERVIEW_PROMPT_LIMIT
 						+ " CHARACTERS.\n"
 						+ "                                // Each overview = a SHIFT visible in this reporting "
 						+ "month — a metric that moved against the previous months, a tactic that changed "
@@ -246,8 +246,7 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 				+ "string}.\n"
 				+ "                                // CRITICAL for 'point': MAX 20 CHARACTERS ABSOLUTE HARD "
 				+ "LIMIT.\n"
-				+ "                                // For 'overview': MAX " + strategicOverviewPromptLimit()
-				+ " CHARACTERS.\n"
+				+ "                                // For 'overview': MAX " + OVERVIEW_PROMPT_LIMIT + " CHARACTERS.\n"
 				+ "                                // Each overview = a notable pattern in THIS reporting month's "
 				+ "delivery — plus WHY it is happening and what it means for the rest of the flight. The campaign "
 				+ "is STILL RUNNING: never write a closing verdict. Unique angles, Business English, no filler.\n";

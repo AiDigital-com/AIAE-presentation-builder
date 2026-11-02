@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -564,7 +565,7 @@ class CampaignResolversTest {
 		// Then: the reach carried on the result is the summed one, and {{reach}} shows that same number
 		assertThat(freq.reachPlan()).isBetween(160000.0 * 0.72, 160000.0 * 0.88);
 		Resolved reach = resolvers.resolveReach(estimates, List.of(), List.of(), freq.reachPlan());
-		assertThat(reach.value()).isEqualTo(String.format("%,d", Math.round(freq.reachPlan())));
+		assertThat(reach.value()).isEqualTo(String.format(Locale.US, "%,d", Math.round(freq.reachPlan())));
 		assertThat(reach.label()).contains("summed over the reported tactics");
 	}
 

@@ -35,6 +35,16 @@ public class ClaudeResponseNormalizer {
 	 */
 	public static final int STRATEGIC_OVERVIEW_LIMIT = 120;
 
+	/** How far below {@link #STRATEGIC_OVERVIEW_LIMIT} the overview budget is quoted to Claude. */
+	static final int STRATEGIC_OVERVIEW_PROMPT_SLACK = 10;
+
+	/**
+	 * The strategic-overview budget quoted in every prompt that asks for or realigns {@code strategic_insights}
+	 * — a little under the enforced cap, so a reply that lands slightly over still fits it.
+	 */
+	public static final int STRATEGIC_OVERVIEW_PROMPT_LIMIT =
+			STRATEGIC_OVERVIEW_LIMIT - STRATEGIC_OVERVIEW_PROMPT_SLACK;
+
 	/**
 	 * Position a sentence-ending period must sit past for {@link #limitStrategicOverview} to cut there rather
 	 * than at a word boundary, so the cut keeps most of the budget.
