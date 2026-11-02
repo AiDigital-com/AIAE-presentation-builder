@@ -2,6 +2,7 @@ package com.aidigital.reportconstructor.service.reports.helpers;
 
 import com.aidigital.reportconstructor.service.reports.dto.CampaignData;
 import com.aidigital.reportconstructor.service.reports.dto.GeneratePayload;
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
 
 import java.util.List;
 import java.util.Map;
@@ -66,9 +67,12 @@ public interface ReportGenerationChartHelper {
 	 * @param slideUrl        URL of the generated Google Slides deck
 	 * @param tacticCount     number of active tactics (clamped 1..28)
 	 * @param reportType      the deck's report type, which decides which slides may be trimmed
+	 * @param templateVariant the deck's design, which decides the slide ids the trim works against
 	 * @param userGoogleToken OAuth token for Google Slides API, or null when unavailable
 	 */
-	void trimUnusedTactics(String slideUrl, int tacticCount, String reportType, String userGoogleToken);
+	void trimUnusedTactics(
+			String slideUrl, int tacticCount, String reportType, TemplateVariant templateVariant,
+			String userGoogleToken);
 
 	/**
 	 * Builds the deck's main tactic slides from the template's single master tactic slide — one copy per
@@ -88,13 +92,14 @@ public interface ReportGenerationChartHelper {
 	 * @param tacticCount      number of active tactics (clamped 1..28)
 	 * @param flatReplacements resolved placeholder values keyed by token, used to fill each copy
 	 * @param reportType       report template code ({@code "EOC"}/{@code "EOM"}); selects the slide model
+	 * @param templateVariant  deck design (standard or MPO); with {@code reportType} selects the slide model
 	 * @param userGoogleToken  OAuth token for Google Slides API, or null when unavailable
 	 * @return the warnings to attach to the job; empty when the slides were inserted (or the template has no
 	 *         master and the step does not apply)
 	 */
 	List<String> addTacticSlides(
 			String slideUrl, int tacticCount, Map<String, String> flatReplacements, String reportType,
-			String userGoogleToken);
+			TemplateVariant templateVariant, String userGoogleToken);
 
 	/**
 	 * Inserts the Step-3 per-tactic breakdown slides into the built deck for the "Slides from Sheet"
@@ -142,23 +147,28 @@ public interface ReportGenerationChartHelper {
 	 *
 	 * @param slideUrl        URL of the generated Google Slides deck
 	 * @param reportType      report template code ({@code "EOC"}/{@code "EOM"}); selects the slide model
+	 * @param templateVariant deck design (standard or MPO); with {@code reportType} selects the slide model
 	 * @param userGoogleToken OAuth token for Google Slides API, or null when unavailable
 	 */
-	void deleteMasterSlides(String slideUrl, String reportType, String userGoogleToken);
+	void deleteMasterSlides(
+			String slideUrl, String reportType, TemplateVariant templateVariant, String userGoogleToken);
 
 	/**
 	 * Dashes every {@code {{token}}} still standing in the finished deck, and reports what was dashed as
 	 * job warnings so a token the pipeline has no resolver for is visible without reading the deck.
 	 *
-	 * <p>Runs last, after every pass that writes text. Non-fatal: a deck that cannot be swept is delivered
-	 * exactly as it would have been without this pass.
+	 * <p>Runs last, after every pass that writes text, and first turns the copy's {@code **key phrase**}
+	 * markers into bold text. Non-fatal: a deck that cannot be swept is delivered exactly as it would have
+	 * been without this pass.
 	 *
 	 * @param slideUrl        the finished deck's URL
 	 * @param reportType      report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
+	 * @param templateVariant requested deck design, may be {@code null} (read as standard)
 	 * @param userGoogleToken optional signed-in user's Google OAuth token
 	 * @return one warning per dashed token, empty when the deck was fully filled
 	 */
-	List<String> dashUnresolvedTokens(String slideUrl, String reportType, String userGoogleToken);
+	List<String> dashUnresolvedTokens(
+			String slideUrl, String reportType, TemplateVariant templateVariant, String userGoogleToken);
 
 	/**
 	 * Removes the slides the given report type must never ship. The EOM deck is built from a copy of the

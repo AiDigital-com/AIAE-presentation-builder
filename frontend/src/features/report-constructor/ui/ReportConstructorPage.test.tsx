@@ -2,11 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
-import type { ReportResume } from "@/shared/api/types";
+import type { ReportResume, SheetReadResult } from "@/shared/api/types";
 import { ReportConstructorPage } from "./ReportConstructorPage";
 
 const resumeQuery = vi.fn();
 const readSheetSummary = vi.fn();
+const readSheetTab = vi.fn();
 const adopt = vi.fn();
 const navigate = vi.fn();
 let search = "";
@@ -37,7 +38,11 @@ vi.mock("../api/useReportJob", () => ({
 }));
 vi.mock("@/shared/api/sheets", async () => {
     const actual = await vi.importActual<typeof import("@/shared/api/sheets")>("@/shared/api/sheets");
-    return { ...actual, readSheetSummary: (url: string) => readSheetSummary(url) };
+    return {
+        ...actual,
+        readSheetSummary: (url: string) => readSheetSummary(url),
+        readSheetTab: (url: string, tab: string) => readSheetTab(url, tab),
+    };
 });
 
 /**
@@ -296,6 +301,29 @@ describe("ReportConstructorPage — adopting a filled sheet", () => {
         expect(adopt.mock.calls[0][0]).toEqual({
             sheetUrl: "https://docs.google.com/spreadsheets/d/abc/edit",
             reportType: "EOC",
+            templateVariant: "STANDARD",
+        });
+    });
+
+    it("should adopt a sheet for the MPO design when picked on its tab test", () => {
+        // Given: the user chose the MPO templates tab before continuing
+        resumeQuery.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+        renderPage();
+        fireEvent.click(screen.getByRole("tab", { name: /mpo templates/i }));
+        fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+        fireEvent.click(screen.getByRole("button", { name: /use my sheet/i }));
+        fireEvent.change(screen.getByLabelText("Link to the sheet you filled in yourself"), {
+            target: { value: "https://docs.google.com/spreadsheets/d/abc/edit" },
+        });
+
+        // When
+        fireEvent.click(screen.getByRole("button", { name: /use this sheet/i }));
+
+        // Then: the draft is registered for the MPO design, so resuming it later keeps that template
+        expect(adopt.mock.calls[0][0]).toEqual({
+            sheetUrl: "https://docs.google.com/spreadsheets/d/abc/edit",
+            reportType: "EOC",
+            templateVariant: "MPO",
         });
     });
 
@@ -348,5 +376,108 @@ describe("ReportConstructorPage — adopting a filled sheet", () => {
         // When-Then: the action is disabled rather than failing on the server
         expect((screen.getByRole("button", { name: /use this sheet/i }) as HTMLButtonElement).disabled).toBe(true);
         expect(adopt).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * Builds a sheet read result, overriding what the test is about.
+ *
+ * @param over the fields under test
+ * @returns the read result
+ */
+function sheetRead(over: Partial<SheetReadResult> = {}): SheetReadResult {
+    return {
+        ok: true,
+        tab: "Paid Search",
+        title: "Acme Google Ads",
+        sheetId: "ads1",
+        rows: 12,
+        cols: 8,
+        tabs: ["Paid Search"],
+        headers: ["Campaign", "Clicks"],
+        preview: [],
+        rawRows: [["Campaign", "Clicks"], ["Brand", "1124"]],
+        ...over,
+    } as SheetReadResult;
+}
+
+describe("ReportConstructorPage — MPO performance channels", () => {
+    afterEach(() => {
+        vi.clearAllMocks();
+        search = "";
+    });
+
+    /**
+     * Opens the data-inputs step from the given template tab.
+     *
+     * @param tab the step-1 template tab to pick first
+     */
+    function goToDataInputsOn(tab: RegExp) {
+        resumeQuery.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+        renderPage();
+        fireEvent.click(screen.getByRole("tab", { name: tab }));
+        fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    }
+
+    it("should not offer the performance-channel inputs on the standard templates test", () => {
+        // Given / When
+        goToDataInputsOn(/standard templates/i);
+
+        // Then: today's inputs are unchanged
+        expect(screen.queryByText("Performance channels")).toBeNull();
+        expect(screen.queryByLabelText(/paid search/i)).toBeNull();
+    });
+
+    it("should offer optional Paid Search and Paid Social inputs on the MPO templates test", () => {
+        // Given / When
+        goToDataInputsOn(/mpo templates/i);
+
+        // Then
+        expect(screen.getByText("Performance channels")).toBeTruthy();
+        expect(screen.getByText(/paid search \(google ads\) export/i)).toBeTruthy();
+        expect(screen.getByText(/paid social \(meta\) export/i)).toBeTruthy();
+    });
+
+    it("should read a Paid Search export from its default tab test", async () => {
+        // Given
+        readSheetTab.mockResolvedValue(sheetRead());
+        goToDataInputsOn(/mpo templates/i);
+        const input = screen.getAllByPlaceholderText("https://docs.google.com/spreadsheets/…")[2];
+        fireEvent.change(input, { target: { value: "https://docs.google.com/spreadsheets/d/ads1/edit" } });
+
+        // When
+        fireEvent.click(screen.getAllByRole("button", { name: /^connect$/i })[2]);
+
+        // Then: the export's own tab is read and shown as connected
+        await waitFor(() =>
+            expect(readSheetTab).toHaveBeenCalledWith("https://docs.google.com/spreadsheets/d/ads1/edit", "Paid Search")
+        );
+        expect(await screen.findByText("Acme Google Ads · Paid Search · 12 rows")).toBeTruthy();
+    });
+
+    it("should let the user pick the tab when the export has no Paid Social tab test", async () => {
+        // Given: a Meta export whose data sits on a tab named after the ad account
+        readSheetTab.mockImplementation(async (_url: string, tab: string) =>
+            tab === "Paid Social"
+                ? sheetRead({ ok: false, error: "tab_not_found", tabs: ["Meta - Azure Cove", "Notes"] })
+                : sheetRead({ tab, title: "Azure Cove Meta", rows: 6 })
+        );
+        goToDataInputsOn(/mpo templates/i);
+        const input = screen.getAllByPlaceholderText("https://docs.google.com/spreadsheets/…")[3];
+        fireEvent.change(input, { target: { value: "https://docs.google.com/spreadsheets/d/meta1/edit" } });
+        fireEvent.click(screen.getAllByRole("button", { name: /^connect$/i })[3]);
+        expect(await screen.findByText(/pick the tab that holds the paid social export/i)).toBeTruthy();
+
+        // When
+        fireEvent.click(screen.getByRole("button", { name: /use this tab/i }));
+
+        // Then: the first listed tab is read and connected
+        await waitFor(() =>
+            expect(readSheetTab).toHaveBeenLastCalledWith(
+                "https://docs.google.com/spreadsheets/d/meta1/edit",
+                "Meta - Azure Cove"
+            )
+        );
+        expect(await screen.findByText("Azure Cove Meta · Meta - Azure Cove · 6 rows")).toBeTruthy();
     });
 });

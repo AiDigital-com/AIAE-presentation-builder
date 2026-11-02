@@ -27,11 +27,12 @@ public interface TacticConclusionAssembler {
 	 * @param tacticNames       1-based tactic number → display name, so the thoughts talk about the right channel
 	 * @param qualifyingTactics the tactic numbers that passed the gate (from {@link BreakdownThoughtsGate})
 	 * @param bullets           the per-section slide copy the breakdown calls produced, keyed by tactic
+	 * @param compact           whether the deck is the MPO design, whose thoughts boxes take shorter copy
 	 * @return one {@link TacticThoughtsInput} per qualifying conclusion, in the conclusions' order
 	 */
 	List<TacticThoughtsInput> toThoughtsInputs(
 			List<TacticConclusion> conclusions, Map<Integer, String> tacticNames, Set<Integer> qualifyingTactics,
-			BreakdownBullets bullets);
+			BreakdownBullets bullets, boolean compact);
 
 	/**
 	 * Builds the Step-4 campaign digests, one per tactic. A tactic that produced Step-3 {@code thoughts} carries

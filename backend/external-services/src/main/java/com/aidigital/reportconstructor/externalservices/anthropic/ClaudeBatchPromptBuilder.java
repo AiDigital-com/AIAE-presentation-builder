@@ -17,6 +17,7 @@ import com.aidigital.reportconstructor.service.reports.dto.CreativeTakeawayInput
 import com.aidigital.reportconstructor.service.reports.dto.GeoInsightInput;
 import com.aidigital.reportconstructor.service.reports.dto.GeoRow;
 import com.aidigital.reportconstructor.service.reports.dto.GeoTable;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.dto.PublisherObservationInput;
 import com.aidigital.reportconstructor.service.reports.dto.PublisherRow;
 import com.aidigital.reportconstructor.service.reports.dto.StrategicInsight;
@@ -28,6 +29,7 @@ import com.aidigital.reportconstructor.service.reports.dto.TacticThoughtsInput;
 import com.aidigital.reportconstructor.service.reports.dto.Totals;
 import com.aidigital.reportconstructor.service.reports.engine.Fmt;
 import com.aidigital.reportconstructor.service.reports.engine.Pivot;
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
@@ -51,7 +53,7 @@ import java.util.Optional;
 @ConditionalOnExpression("'${external.anthropic.api-key:}' != ''")
 public class ClaudeBatchPromptBuilder {
 
-	private static final double COMPRESSION_PROMPT_BUFFER_RATIO = 0.8;
+	private static final double COMPRESSION_PROMPT_BUFFER_RATIO = ClaudeCompressionPromptBuilder.PROMPT_BUFFER_RATIO;
 
 	/** Tactics per results-overview group; the deck carries one summary + overview slide per group. */
 	private static final int TACTICS_PER_GROUP = 7;
@@ -60,8 +62,6 @@ public class ClaudeBatchPromptBuilder {
 	// reply. Quoted to Claude through COMPRESSION_PROMPT_BUFFER_RATIO like every other prompt, so a reply that
 	// lands slightly over the number it was given still fits the real budget and skips the compression call.
 	private static final int RESULTS_OVERVIEW_LIMIT = 380;
-	private static final int THOUGHTS_TOTAL_LIMIT = 700;
-	private static final int PERFORMANCE_STORY_LIMIT = 470;
 	private static final int RECOMMENDATION_TITLE_LIMIT = 28;
 	private static final int RECOMMENDATION_TEXT_LIMIT = 125;
 	private static final int F_OPPORTUNITY_LIMIT = 180;
@@ -138,6 +138,26 @@ public class ClaudeBatchPromptBuilder {
 	public ClaudeBatchPromptBuilder(ClaudeResponseNormalizer normalizer, Fmt fmt) {
 		this.normalizer = normalizer;
 		this.fmt = fmt;
+	}
+
+	/**
+	 * Returns a builder of the same flavour that quotes the budgets of the given normalizer, so a run's
+	 * prompts ask for exactly what its replies are capped at. A subclass returns its own type.
+	 *
+	 * @param limited the normalizer bound to the run's deck design
+	 * @return a builder whose prompts quote {@code limited}'s budgets
+	 */
+	ClaudeBatchPromptBuilder withNormalizer(ClaudeResponseNormalizer limited) {
+		return new ClaudeBatchPromptBuilder(limited, fmt);
+	}
+
+	/**
+	 * The character budgets this builder's prompts quote: the ones its normalizer caps the replies at.
+	 *
+	 * @return the run's copy budgets
+	 */
+	NarrativeCopyLimits copyLimits() {
+		return normalizer.getCopyLimits();
 	}
 
 	/**
@@ -289,8 +309,8 @@ public class ClaudeBatchPromptBuilder {
 	 */
 	String audienceSegmentsSpec() {
 		return "  \"audience_segments\": string,   // ≤" + audienceSegmentsLimit() + " chars. WHO is targeted — "
-				+ "natural phrase like \"Affluent auto-intenders, HHI $100K+\". No platforms/budgets/KPIs. "
-				+ "null if no info.\n";
+				+ "1-3 short segment names, comma-separated, e.g. \"Luxury Travel, Honeymoons & Romantic Getaways\" "
+				+ "(each one is its own chip on the slide). No platforms/budgets/KPIs. null if no info.\n";
 	}
 
 	/**
@@ -328,7 +348,8 @@ public class ClaudeBatchPromptBuilder {
 				+ "string}.\n"
 				+ "                                // CRITICAL for 'point': MAX 20 CHARACTERS ABSOLUTE HARD "
 				+ "LIMIT.\n"
-				+ "                                // For 'overview': MAX 230 CHARACTERS.\n"
+				+ "                                // For 'overview': MAX "
+				+ copyLimits().getStrategicOverviewPromptLimit() + " CHARACTERS.\n"
 				+ "                                // Each overview = strategic intention/approach + WHY this "
 				+ "choice made sense for THIS client/campaign. Unique angles, past tense, Business English. No "
 				+ "filler.\n";
@@ -385,7 +406,9 @@ public class ClaudeBatchPromptBuilder {
 						"string}.\n"
 						+ "                                // CRITICAL for 'point': MAX 20 CHARACTERS ABSOLUTE HARD " +
 						"LIMIT.\n"
-						+ "                                // For 'overview': MAX 230 CHARACTERS.\n"
+						+ "                                // For 'overview': MAX "
+						+ copyLimits().getStrategicOverviewPromptLimit()
+						+ " CHARACTERS.\n"
 						+ "                                // Each overview = strategic intention/approach + WHY " +
 								"this " +
 						"choice made sense "
@@ -1505,6 +1528,7 @@ public class ClaudeBatchPromptBuilder {
 				+ tacticThoughtsAngles()
 				+ tacticThoughtsStorySpec(storyLimit)
 				+ tacticThoughtsOutputRules()
+				+ (input.compact() ? MpoPromptSpec.MPO_THOUGHTS_EMPHASIS : "")
 				+ "=== CAMPAIGN BRIEF ===\n" + (brief == null ? "" : brief) + "\n\n"
 				+ AnthropicMessagesClient.CACHE_BREAKPOINT + "=== TACTIC CONCLUSIONS ===\n" + dataBlock;
 		return Optional.of(prompt);
@@ -1687,6 +1711,99 @@ public class ClaudeBatchPromptBuilder {
 	}
 
 	/**
+	 * Builds the prompt for the copy only the MPO deck design carries: the media-plan slide's HHI tile and two
+	 * proposal cards, the four-stage funnel slide, and the recommendations headline. The figures come from the
+	 * resolved deck values, so every number the funnel quotes is one the deck already prints.
+	 *
+	 * @param input the campaign and per-tactic figures, as the deck prints them
+	 * @param brief free-text campaign brief the copy must stay faithful to
+	 * @return the prompt, or empty when there are no figures to reason over
+	 */
+	public Optional<String> buildMpoNarrativePrompt(MpoNarrativeInput input, String brief) {
+		if (input == null || (linesOf(input.campaignFacts()).isEmpty() && linesOf(input.tacticFacts()).isEmpty())) {
+			return Optional.empty();
+		}
+		String prompt = MpoPromptSpec.MPO_NARRATIVE_ROLE
+				+ mpoNarrativeFieldsSpec()
+				+ MpoPromptSpec.MPO_NARRATIVE_OUTPUT_RULES
+				+ "=== CAMPAIGN BRIEF ===\n" + (brief == null ? "" : brief) + "\n\n"
+				+ AnthropicMessagesClient.CACHE_BREAKPOINT
+				+ "=== CAMPAIGN FIGURES (as printed in the deck) ===\n" + linesOf(input.campaignFacts()) + "\n"
+				+ "=== TACTICS ===\n" + linesOf(input.tacticFacts()) + "\n"
+				+ "=== RESULTS OVERVIEWS TO TIGHTEN ===\n" + linesOf(numberedOverviews(input.resultsOverviews()));
+		return Optional.of(prompt);
+	}
+
+	/**
+	 * Numbers the tactic groups' results overviews for the prompt, leaving out groups that have none.
+	 *
+	 * @param overviews one entry per group, group 1 first; an entry may be {@code null}
+	 * @return {@code "Group N: text"} lines, or a single line saying there are none
+	 */
+	List<String> numberedOverviews(List<String> overviews) {
+		List<String> lines = new ArrayList<>();
+		for (int g = 0; overviews != null && g < overviews.size(); g++) {
+			String overview = overviews.get(g);
+			if (overview != null && !overview.isBlank()) {
+				lines.add("Group " + (g + 1) + ": " + overview.trim());
+			}
+		}
+		return lines.isEmpty() ? List.of("(none)") : lines;
+	}
+
+	/**
+	 * The spec for every MPO narrative field: what it says and how long it is.
+	 *
+	 * @return the fields spec, ending in a blank line
+	 */
+	String mpoNarrativeFieldsSpec() {
+		return "Write these fields:\n"
+				+ "\"audience_hhi\" (at most " + bufferedLimit(MpoPromptSpec.MPO_HHI_LIMIT)
+				+ " characters) — the household-income "
+				+ "target the plan buys, e.g. \"$150K+\". Only if the brief or the figures state one; otherwise "
+				+ "an empty string. Never guess an income.\n"
+				+ "\"proposal_points\" — exactly " + MpoPromptSpec.MPO_PROPOSAL_POINTS
+				+ " objects {\"point\", \"overview\"}: the "
+				+ "two pillars of the media proposal. \"point\" is a bold heading (at most "
+				+ bufferedLimit(MpoPromptSpec.MPO_POINT_LIMIT) + " characters, Title Case, no full stop); "
+				+ "\"overview\" is one sentence (at most " + bufferedLimit(MpoPromptSpec.MPO_OVERVIEW_LIMIT)
+				+ " characters) on what that pillar set out to do.\n"
+				+ "\"funnel_stages\" — exactly " + MpoPromptSpec.MPO_FUNNEL_STAGES
+				+ " objects, upper funnel first (e.g. dream, "
+				+ "consideration, interest, booking), each placing the campaign's tactics at one stage:\n"
+				+ "  \"stage\" — the stage name in capitals, 1-3 words (at most "
+				+ bufferedLimit(MpoPromptSpec.MPO_STAGE_LIMIT) + " characters), e.g. \"THE DREAM\";\n"
+				+ "  \"label\" — the stage's caption (at most " + bufferedLimit(MpoPromptSpec.MPO_STAGE_LABEL_LIMIT)
+				+ " characters): its headline figure or its job, e.g. \"98% Completion Rate\";\n"
+				+ "  \"title\" — a short imperative headline ending in a full stop (at most "
+				+ bufferedLimit(MpoPromptSpec.MPO_FUNNEL_TITLE_LIMIT) + " characters), e.g. \"Capture the market.\";\n"
+				+ "  \"data\" — the evidence (at most " + bufferedLimit(MpoPromptSpec.MPO_FUNNEL_DATA_LIMIT)
+				+ " characters): the "
+				+ "tactic and figure behind this stage, e.g. \"1.06M CTV impressions at a 98.23% VCR.\";\n"
+				+ "  \"story\" — what that evidence means for the client (at most "
+				+ bufferedLimit(MpoPromptSpec.MPO_FUNNEL_STORY_LIMIT) + " characters), one sentence.\n"
+				+ "\"recommendations_headline\" (at most " + bufferedLimit(MpoPromptSpec.MPO_HEADLINE_LIMIT)
+				+ " characters) — the "
+				+ "recommendations slide's headline in capitals: the one move the recommendations add up to, in "
+				+ "the client's language, e.g. \"TURNING CURIOSITY INTO BOOKINGS\".\n"
+				+ "\"results_overviews\" — exactly " + MpoPromptSpec.MPO_RESULTS_GROUPS
+				+ " strings, one per group in group order: "
+				+ "each listed overview rewritten to at most " + bufferedLimit(MpoPromptSpec.MPO_RESULTS_OVERVIEW_LIMIT)
+				+ " characters, keeping its verdict and its two most important figures exactly as written; an empty "
+				+ "string for a group that is not listed.\n\n";
+	}
+
+	/**
+	 * Renders prompt lines one per row.
+	 *
+	 * @param lines the lines, may be {@code null}
+	 * @return the lines joined by newlines, ending in a newline when not empty
+	 */
+	String linesOf(List<String> lines) {
+		return lines == null || lines.isEmpty() ? "" : String.join("\n", lines) + "\n";
+	}
+
+	/**
 	 * States who is writing and what the slide is, for the channel-slide pacing narrative call.
 	 *
 	 * @return the role paragraph, ending in a blank line
@@ -1847,7 +1964,7 @@ public class ClaudeBatchPromptBuilder {
 		String groupRanges = String.join("; ", groupRangeList);
 
 		int overviewPrompt = bufferedLimit(RESULTS_OVERVIEW_LIMIT);
-		int thoughtsPrompt = bufferedLimit(THOUGHTS_TOTAL_LIMIT);
+		int thoughtsPrompt = bufferedLimit(copyLimits().getThoughtsTotalLimit());
 		int recTitlePrompt = bufferedLimit(RECOMMENDATION_TITLE_LIMIT);
 		int recTextPrompt = bufferedLimit(RECOMMENDATION_TEXT_LIMIT);
 		int fOpportunityPrompt = bufferedLimit(F_OPPORTUNITY_LIMIT);
@@ -1873,7 +1990,7 @@ public class ClaudeBatchPromptBuilder {
 						+ "{\n"
 						+ resultsOverviewsSpec(groupNums, groupRanges, overviewPrompt)
 						+ thoughtsOnPerformanceSpec(thoughtsPrompt)
-						+ performanceStorySpec(bufferedLimit(PERFORMANCE_STORY_LIMIT))
+						+ performanceStorySpec(bufferedLimit(copyLimits().getStoryLimit()))
 						+ "  \"optimization_recommendations\": array, // EXACTLY 4 objects {\"title\": ≤"
 						+ recTitlePrompt
 						+ " chars Title Case imperative, \"text\": ≤" + recTextPrompt
@@ -2063,51 +2180,6 @@ public class ClaudeBatchPromptBuilder {
 			}
 		}
 		return block.toString();
-	}
-
-	/**
-	 * Builds the Batch D (compression) prompt asking Claude to shrink each oversized field to its character
-	 * budget while preserving meaning, or empty when there are no fields to compress. The limit quoted to
-	 * Claude is {@link #COMPRESSION_PROMPT_BUFFER_RATIO} of the field's real budget — not the budget we
-	 * actually enforce — so the rewrite has headroom to still fit after the hard-truncation safety net runs.
-	 *
-	 * @param fields oversized fields to compress, each carrying its own raw text and character budget
-	 * @return the compression prompt requesting a JSON object keyed by each field's {@code key}, or empty when
-	 * {@code fields} is empty
-	 */
-	public Optional<String> buildCompressionPrompt(List<ClaudeCompressionField> fields) {
-		if (fields.isEmpty()) {
-			return Optional.empty();
-		}
-		List<String> entries = new ArrayList<>();
-		List<String> keys = new ArrayList<>();
-		for (ClaudeCompressionField field : fields) {
-			int promptLimit = Math.max(1, (int) (field.maxChars() * COMPRESSION_PROMPT_BUFFER_RATIO));
-			keys.add("\"" + field.key() + "\"");
-			entries.add("- key: \"" + field.key() + "\", limit: " + promptLimit + " characters\n"
-					+ "  text: \"" + field.text().replace("\"", "'") + "\"");
-		}
-		return Optional.of(
-				"You are editing client-facing campaign-report copy that is too long for its layout slot.\n\n"
-						+ "For EACH field below, REWRITE it as a complete, self-contained thought that fits within " +
-						"its character limit — do not just truncate the original. Preserve the key meaning and " +
-						"business message as closely as possible: cut whole secondary clauses or examples before " +
-						"cutting the main point, then re-word what remains so it reads as a finished sentence.\n\n"
-						+ "Fields:\n" + String.join("\n", entries) + "\n\n"
-						+ "Return ONLY a JSON object mapping each key to its rewritten text, with no other keys:\n"
-						+ "{" + String.join(", ", keys) + "}\n\n"
-						+ "Rules:\n"
-						+ "- Every value's length MUST be at or under that field's character limit — count " +
-						"characters, not words.\n"
-						+ "- CRITICAL: every value MUST end with a period (or other sentence-ending punctuation) " +
-						"and read as a complete thought. NEVER end mid-clause, mid-list, or on a dangling comma, " +
-						"dash, or conjunction (e.g. \"and\", \"to ensure\", \"such as\"). If the full original idea " +
-						"does not fit, drop an entire trailing clause/example rather than trimming it down to a " +
-						"fragment.\n"
-						+ "- Never cut off mid-word.\n"
-						+ "- Keep the same language (English) and tense as the original text.\n"
-						+ "- Return ONLY the JSON object — no markdown, no backticks, no explanation."
-		);
 	}
 
 	/**
@@ -2374,7 +2446,7 @@ public class ClaudeBatchPromptBuilder {
 	 * The aligned {@code thoughts_on_performance} schema line.
 	 *
 	 * <p>The draft's last thought is the campaign story, which is longer than the analytical paragraphs
-	 * before it and is called out as such: told only "≤220 chars each", the alignment pass rewrites the
+	 * before it and is called out as such: told only the analytical paragraphs' budget, the alignment pass rewrites the
 	 * story down to a fifth analytical bullet and the slide loses the narrative the previous batch wrote.
 	 *
 	 * @param thoughtCount how many thought strings the draft carried, which the reply must match exactly
@@ -2383,7 +2455,8 @@ public class ClaudeBatchPromptBuilder {
 	 */
 	String alignThoughtsSchema(int thoughtCount, int storyLimit) {
 		return "  \"thoughts_on_performance\": array, // EXACTLY " + thoughtCount
-				+ " strings, same order as the draft: the analytical paragraphs at ≤220 chars each, then the "
+				+ " strings, same order as the draft: the analytical paragraphs at ≤"
+				+ copyLimits().getThoughtLimit() + " chars each, then the "
 				+ "LAST one is the campaign story — keep it a narrative of ≤" + storyLimit + " chars, do not "
 				+ "shorten it into another bullet. Together they must read as the campaign "
 				+ "headline expanded — no contradictions with the overviews above.\n";
@@ -2505,8 +2578,10 @@ public class ClaudeBatchPromptBuilder {
 		}
 		if (insightCount > 0) {
 			schema.add("  \"strategic_insights\": array,     // EXACTLY " + insightCount
-					+ " objects {\"point\": string (≤20 chars), \"overview\": string (≤230 chars)}, in the same "
-					+ "order as the draft. Each must stay a distinct facet of the ONE campaign storyline.\n");
+					+ " objects {\"point\": string (≤20 chars), \"overview\": string (≤"
+					+ copyLimits().getStrategicOverviewPromptLimit()
+					+ " chars)}, in the same order as the draft. Each must stay a distinct facet of the ONE "
+					+ "campaign storyline.\n");
 		}
 
 		Map<Integer, String> overviews = results == null ? null : results.resultsOverviews();
@@ -2535,7 +2610,7 @@ public class ClaudeBatchPromptBuilder {
 			}
 		}
 		if (thoughtCount > 0) {
-			schema.add(alignThoughtsSchema(thoughtCount, bufferedLimit(PERFORMANCE_STORY_LIMIT)));
+			schema.add(alignThoughtsSchema(thoughtCount, bufferedLimit(copyLimits().getStoryLimit())));
 		}
 
 		String fOpportunity = results == null ? null : results.fOpportunity();

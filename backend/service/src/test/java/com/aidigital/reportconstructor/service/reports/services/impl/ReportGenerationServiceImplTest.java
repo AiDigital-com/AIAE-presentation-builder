@@ -4,7 +4,14 @@ import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
 import com.aidigital.reportconstructor.service.reports.diagnostics.impl.ClaudeFailureLogImpl;
+import com.aidigital.reportconstructor.service.reports.dto.BreakdownSelection;
 import com.aidigital.reportconstructor.service.reports.dto.GeneratePayload;
+import com.aidigital.reportconstructor.service.reports.dto.MpoFunnelStage;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrative;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrativeInput;
+import com.aidigital.reportconstructor.service.reports.dto.MpoProposalPoint;
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeSheetBatch;
 import com.aidigital.reportconstructor.service.reports.dto.GenerationTarget;
 import com.aidigital.reportconstructor.service.reports.dto.ProgressView;
@@ -24,7 +31,10 @@ import com.aidigital.reportconstructor.service.reports.helpers.ReportResumeState
 import com.aidigital.reportconstructor.service.reports.helpers.impl.SheetTacticCountHelperImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.BreakdownSelectionResolverImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.BreakdownThoughtsGateImpl;
+import com.aidigital.reportconstructor.service.reports.helpers.impl.DeckStyleTokenHelperImpl;
+import com.aidigital.reportconstructor.service.reports.helpers.impl.SheetRowHelperImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.ImpressionContributionHelperImpl;
+import com.aidigital.reportconstructor.service.reports.helpers.impl.MpoNarrativeAssemblerImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.PacingNarrativeAssemblerImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.ReportNumberParserImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.TacticConclusionAssemblerImpl;
@@ -70,6 +80,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -124,7 +135,7 @@ class ReportGenerationServiceImplTest {
 
 	@BeforeEach
 	void setUp() {
-		lenient().when(claudeClients.forReportType(any())).thenReturn(claude);
+		lenient().when(claudeClients.forReport(any(), any())).thenReturn(claude);
 		service = new ReportGenerationServiceImpl(
 				jobProgress, warnings, chartHelper, sheetHelper, publisherBreakdown, creativeBreakdown, geoBreakdown, audienceBreakdown, deviceBreakdown, placeholderReader, sheetCampaign, placeholders,
 				claudeClients, slides, userGoogleTokens, self, claudeDefaults, fileNamer,
@@ -134,7 +145,8 @@ class ReportGenerationServiceImplTest {
 				new BreakdownSelectionResolverImpl(), new BreakdownThoughtsGateImpl(),
 				new TacticConclusionAssemblerImpl(), sheetChartData, tacticExtraction,
 				new ImpressionContributionHelperImpl(new ReportNumberParserImpl(), new Fmt()), resumeState,
-				new SheetTacticCountHelperImpl(), new PacingNarrativeAssemblerImpl());
+				new SheetTacticCountHelperImpl(), new PacingNarrativeAssemblerImpl(), new MpoNarrativeAssemblerImpl(),
+				new DeckStyleTokenHelperImpl(new SheetRowHelperImpl()));
 	}
 
 	@Test
@@ -217,12 +229,14 @@ class ReportGenerationServiceImplTest {
 		when(placeholders.buildFlatReplacements(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt()))
 				.thenReturn(new LinkedHashMap<>());
 		when(fileNamer.buildFileName(any(), any(), any())).thenReturn("deck-file");
-		when(slides.createDeck(eq("7"), eq("deck-file"), any(), any(), isNull())).thenReturn("http://deck");
+		when(slides.createDeck(eq("7"), eq("deck-file"), any(), any(), eq(TemplateVariant.STANDARD), isNull())).thenReturn("http://deck");
 		when(chartHelper.buildCharts(eq("http://deck"), any(), any(), any(), isNull())).thenReturn(List.of());
 		when(warnings.serializeWarnings(List.of())).thenReturn("[]");
 
 		service.run(7L, payload, "clerk-1", "user@x.com", GenerationTarget.SLIDES);
 
+		// The standard deck's copy is written to the standard templates' budgets
+		verify(claudeClients).forReport("standard", NarrativeCopyLimits.STANDARD);
 		verify(chartHelper).trimUnusedTactics("http://deck", payload, null);
 		verify(jobProgress).markJobDone(7L, "http://deck", "[]");
 		// The deck placeholder map is bounded to the real tactic count (here the collector yields none, so 1),
@@ -258,7 +272,9 @@ class ReportGenerationServiceImplTest {
 		// Unused slots' leftover tokens are blanked by a single regex pass in createSheet.
 		verify(placeholders).buildFlatReplacements(
 				any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), eq(1));
-		verifyNoInteractions(slides);
+		// The sheet's copy is sized for the deck it will feed — the only thing asked of the slides provider
+		verify(slides).carriesMpoNarrative("standard", TemplateVariant.STANDARD);
+		verifyNoMoreInteractions(slides);
 		verifyNoInteractions(chartHelper);
 	}
 
@@ -321,7 +337,7 @@ class ReportGenerationServiceImplTest {
 		when(placeholders.buildFlatReplacements(
 				any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt())).thenReturn(narrative);
 		when(fileNamer.buildFileName(any(), any(), any())).thenReturn("deck-file");
-		when(slides.createDeck(eq("11"), eq("deck-file"), any(), any(), isNull())).thenReturn("http://deck");
+		when(slides.createDeck(eq("11"), eq("deck-file"), any(), any(), eq(TemplateVariant.STANDARD), isNull())).thenReturn("http://deck");
 		// Step 2 reads (no Claude call): each section returns no enabled tactics, so no tokens and no writes.
 		when(publisherBreakdown.readPublisherInputs(eq("http://sheet"), isNull(), any(), isNull()))
 				.thenReturn(new BreakdownSectionInputs<>(Set.of(), Map.of(), Map.of(), List.of()));
@@ -351,16 +367,183 @@ class ReportGenerationServiceImplTest {
 		// Then: it reconstructs campaign context from the sheet, then merges narrative UNDER the sheet values
 		verify(sheetCampaign).read(sheetValues, 2, "standard", null);
 		ArgumentCaptor<Map<String, String>> deckMap = ArgumentCaptor.forClass(Map.class);
-		verify(slides).createDeck(eq("11"), eq("deck-file"), deckMap.capture(), any(), isNull());
+		verify(slides).createDeck(eq("11"), eq("deck-file"), deckMap.capture(), any(), eq(TemplateVariant.STANDARD), isNull());
 		assertThat(deckMap.getValue())
 				.containsEntry("{{client_name}}", "Acme")
 				.containsEntry("{{recommendation 1}}", "Do X");
-		verify(chartHelper).trimUnusedTactics("http://deck", 2, "standard", null);
+		verify(chartHelper).trimUnusedTactics("http://deck", 2, "standard", TemplateVariant.STANDARD, null);
 		verify(chartHelper).buildChartsFromSheet(eq("http://deck"), eq(grid), any(), eq(2), isNull());
 		verify(jobProgress).markJobDone(11L, "http://deck", "[]");
 		// And: the raw-grid collection and the offline Claude batches never run — no duplicate work
 		verify(placeholders, never()).collectData(any());
 		verify(claude, never()).batchStrategicNarrative(any(), any(), any());
+	}
+
+	@Test
+	void shouldCloneTheDeckOnTheRequestedMpoDesignTest() {
+		// Given: a step-2 request on the MPO design
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, "http://sheet", null, Boolean.TRUE, TemplateVariant.MPO);
+		List<List<String>> grid = List.of(List.of("Tactic name"), List.of("CTV"));
+		Map<String, String> sheetValues = Map.of("{{client_name}}", "Acme", "{{tactic 1}}", "CTV");
+		when(sheetHelper.readSheetGrid("http://sheet", null)).thenReturn(grid);
+		when(placeholderReader.readPlaceholders(grid)).thenReturn(sheetValues);
+		when(claude.isLive()).thenReturn(false);
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.MPO)).thenReturn(true);
+		when(placeholders.buildFlatReplacements(
+				any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt())).thenReturn(Map.of());
+		when(fileNamer.buildFileName(any(), any(), any())).thenReturn("deck-file");
+		when(slides.createDeck(eq("12"), eq("deck-file"), any(), eq("EOC"), eq(TemplateVariant.MPO), isNull()))
+				.thenReturn("http://deck");
+		when(publisherBreakdown.readPublisherInputs(eq("http://sheet"), isNull(), any(), isNull()))
+				.thenReturn(new BreakdownSectionInputs<>(Set.of(), Map.of(), Map.of(), List.of()));
+		when(creativeBreakdown.readCreativeInputs(eq("http://sheet"), isNull(), any(), isNull()))
+				.thenReturn(new BreakdownSectionInputs<>(Set.of(), Map.of(), Map.of(), List.of()));
+		when(geoBreakdown.readGeoInputs(eq("http://sheet"), isNull(), any(), isNull()))
+				.thenReturn(new BreakdownSectionInputs<>(Set.of(), Map.of(), Map.of(), List.of()));
+		when(audienceBreakdown.readAudienceInputs(eq("http://sheet"), isNull(), any(), isNull()))
+				.thenReturn(new BreakdownSectionInputs<>(Set.of(), Map.of(), Map.of(), List.of()));
+		when(deviceBreakdown.readDeviceInputs(eq("http://sheet"), isNull(), any(), isNull()))
+				.thenReturn(new BreakdownSectionInputs<>(Set.of(), Map.of(), Map.of(), List.of()));
+		when(publisherBreakdown.writePublisherObservations(any(), any(), any(), any(), any()))
+				.thenReturn(List.of());
+		when(creativeBreakdown.writeCreativeTakeaways(any(), any(), any(), any(), any())).thenReturn(List.of());
+		when(geoBreakdown.writeGeoInsights(any(), any(), any(), any(), any())).thenReturn(List.of());
+		when(audienceBreakdown.writeAudienceInsights(any(), any(), any(), any(), any())).thenReturn(List.of());
+		when(deviceBreakdown.writeDeviceInsights(any(), any(), any(), any(), any())).thenReturn(List.of());
+		when(claudeDefaults.emptyResults())
+				.thenReturn(new ClaudeResults(Map.of(), List.of(), Map.of(), List.of(), null, null, null));
+		when(chartHelper.buildChartsFromSheet(eq("http://deck"), eq(grid), any(), eq(1), isNull()))
+				.thenReturn(List.of());
+		when(warnings.serializeWarnings(List.of())).thenReturn("[]");
+
+		// When
+		service.run(12L, payload, "clerk-1", "user@x.com", GenerationTarget.SLIDES_FROM_SHEET);
+
+		// Then: the provider is asked for the MPO design, and the job completes on the deck it returned
+		verify(slides).createDeck(eq("12"), eq("deck-file"), any(), eq("EOC"), eq(TemplateVariant.MPO), isNull());
+		// And: the copy is written to the MPO boxes' budgets
+		verify(claudeClients).forReport("EOC", NarrativeCopyLimits.COMPACT);
+		verify(jobProgress).markJobDone(12L, "http://deck", "[]");
+	}
+
+	@Test
+	void shouldPickTacticsPastTheBreakdownGateWhenTheDeckCarriesThoughtsTest() {
+		// Given: tactic 1 enables three breakdowns, tactic 2 only two, and the deck has a thoughts slide
+		List<BreakdownSelection> selections = List.of(
+				new BreakdownSelection(1, List.of("tp", "ca", "geo")),
+				new BreakdownSelection(2, List.of("aud", "dev")));
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), selections, "", null, "http://sheet", null);
+		when(slides.carriesTacticThoughts("EOC", TemplateVariant.STANDARD)).thenReturn(true);
+
+		// When:
+		Set<Integer> qualifying = service.thoughtsTactics(payload, 2);
+
+		// Then: only the tactic past the "> 2 breakdowns" gate gets the thoughts call
+		assertThat(qualifying).containsExactly(1);
+	}
+
+	@Test
+	void shouldBackBreakdownTokensWithTheDeckMapTest() {
+		// Given: a breakdown map without the tactic tokens the MPO audience slide reuses, and a deck map with them
+		Map<String, String> breakdownValues = Map.of("{{aud_1_1}}", "Auto Intenders", "{{tactic 1}}", "DISPLAY");
+		Map<String, String> flatReplacements = Map.of(
+				"{{tactic 1 reach}}", "372,967", "{{tactic 1 KPI}}", "0.19%", "{{tactic 1}}", "Display");
+
+		// When:
+		Map<String, String> merged = service.withDeckFallback(breakdownValues, flatReplacements);
+
+		// Then: the missing tactic tokens come from the deck map, and a breakdown value still wins
+		assertThat(merged)
+				.containsEntry("{{tactic 1 reach}}", "372,967")
+				.containsEntry("{{tactic 1 KPI}}", "0.19%")
+				.containsEntry("{{aud_1_1}}", "Auto Intenders")
+				.containsEntry("{{tactic 1}}", "DISPLAY");
+	}
+
+	@Test
+	void shouldPickNoTacticsWhenTheDeckHasNoThoughtsSlideTest() {
+		// Given: the same selections, on a template without the thoughts slide
+		List<BreakdownSelection> selections = List.of(
+				new BreakdownSelection(1, List.of("tp", "ca", "geo")),
+				new BreakdownSelection(2, List.of("aud", "dev")));
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), selections, "", null, "http://sheet", null);
+		when(slides.carriesTacticThoughts("EOC", TemplateVariant.STANDARD)).thenReturn(false);
+
+		// When:
+		Set<Integer> qualifying = service.thoughtsTactics(payload, 2);
+
+		// Then: no thoughts call is paid for
+		assertThat(qualifying).isEmpty();
+	}
+
+	@Test
+	void shouldSkipTheMpoNarrativeOnADeckNotClonedFromAnMpoTemplateTest() {
+		// Given: a standard deck, which has no MPO-only slots
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.STANDARD);
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.STANDARD)).thenReturn(false);
+		Map<String, String> flat = new LinkedHashMap<>(Map.of("{{client_name}}", "Acme"));
+
+		// When:
+		service.fillMpoNarrative(claude, flat, 1, payload, true, "brief");
+
+		// Then: the call is never paid for and no MPO token is written
+		verify(claude, never()).mpoNarrative(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+		assertThat(flat).containsOnlyKeys("{{client_name}}");
+	}
+
+	@Test
+	void shouldWriteTheMpoNarrativeOnAnMpoDeckTest() {
+		// Given: an MPO deck whose map already carries the figures the narrative is written against
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.MPO);
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.MPO)).thenReturn(true);
+		Map<String, String> flat = new LinkedHashMap<>(Map.of("{{client_name}}", "Acme", "{{tactic 1}}", "CTV"));
+		MpoNarrativeInput expectedInput = new MpoNarrativeAssemblerImpl().toInput(flat, 1);
+		MpoNarrative narrative = new MpoNarrative("$150K+",
+				List.of(new MpoProposalPoint("Long-Lead Awareness", "Stay first choice.")),
+				List.of(new MpoFunnelStage("THE DREAM", "98% VCR", "Build the universe.", "1.06M CTV impressions.",
+						"The story was heard in full.")),
+				"TURNING CURIOSITY INTO BOOKINGS", List.of());
+		when(claude.mpoNarrative(eq(expectedInput), eq("brief"))).thenReturn(narrative);
+
+		// When:
+		service.fillMpoNarrative(claude, flat, 1, payload, true, "brief");
+
+		// Then: the reply lands on its tokens, and the slots it left empty are dashed rather than raw
+		assertThat(flat)
+				.containsEntry("{{audience_hhi}}", "$150K+")
+				.containsEntry("{{proposal point 1}}", "Long-Lead Awareness")
+				.containsEntry("{{funnel stage 1}}", "THE DREAM")
+				.containsEntry("{{funnel data 1}}", "1.06M CTV impressions.")
+				.containsEntry("{{recommendations headline}}", "TURNING CURIOSITY INTO BOOKINGS")
+				.containsEntry("{{proposal point 2}}", "—")
+				.containsEntry("{{funnel story 4}}", "—");
+	}
+
+	@Test
+	void shouldDashTheMpoNarrativeOnADryRunTest() {
+		// Given: an MPO deck, but no live Claude client
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.MPO);
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.MPO)).thenReturn(true);
+		Map<String, String> flat = new LinkedHashMap<>();
+
+		// When:
+		service.fillMpoNarrative(claude, flat, 1, payload, false, "brief");
+
+		// Then: no call, and every MPO slot reads as "no figure" instead of its own token name
+		verify(claude, never()).mpoNarrative(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+		assertThat(flat).containsEntry("{{audience_hhi}}", "—").containsEntry("{{funnel title 3}}", "—");
 	}
 
 	@Test

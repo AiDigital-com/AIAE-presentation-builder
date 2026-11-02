@@ -28,6 +28,7 @@ import com.aidigital.reportconstructor.service.reports.dto.ClaudeStrategic;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeTactical;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeUsage;
 import com.aidigital.reportconstructor.service.reports.dto.GeneratePayload;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrative;
 import com.aidigital.reportconstructor.service.reports.dto.GenerationTarget;
 import com.aidigital.reportconstructor.service.reports.dto.ProgressView;
 import com.aidigital.reportconstructor.service.reports.dto.SheetChartData;
@@ -46,15 +47,18 @@ import com.aidigital.reportconstructor.service.reports.helpers.CreativeBreakdown
 import com.aidigital.reportconstructor.service.reports.helpers.DeviceBreakdownHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.GeoBreakdownHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.ImpressionContributionHelper;
+import com.aidigital.reportconstructor.service.reports.helpers.MpoNarrativeAssembler;
 import com.aidigital.reportconstructor.service.reports.helpers.PacingNarrativeAssembler;
 import com.aidigital.reportconstructor.service.reports.helpers.PublisherBreakdownHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportSheetHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.BreakdownSelectionResolver;
 import com.aidigital.reportconstructor.service.reports.helpers.BreakdownThoughtsGate;
+import com.aidigital.reportconstructor.service.reports.helpers.DeckStyleTokenHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.SheetCampaignReader;
 import com.aidigital.reportconstructor.service.reports.helpers.SheetPlaceholderReader;
 import com.aidigital.reportconstructor.service.reports.helpers.TacticConclusionAssembler;
 import com.aidigital.reportconstructor.service.reports.dto.Tactic;
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
 import com.aidigital.reportconstructor.service.reports.helpers.SheetChartDataReader;
 import com.aidigital.reportconstructor.service.reports.helpers.TacticExtractionHelper;
 import com.aidigital.reportconstructor.service.reports.ports.ClaudeClient;
@@ -62,6 +66,7 @@ import com.aidigital.reportconstructor.service.reports.ports.ClaudeClientFlavors
 import com.aidigital.reportconstructor.service.reports.ports.SlidesProvider;
 import com.aidigital.reportconstructor.service.reports.ports.UserGoogleTokenProvider;
 import com.aidigital.reportconstructor.service.reports.services.PlaceholderResolverService;
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.aidigital.reportconstructor.service.reports.services.ReportGenerationService;
 import com.aidigital.reportconstructor.service.reports.diagnostics.ClaudeFailureLog;
 import com.aidigital.reportconstructor.service.reports.diagnostics.ClaudeFailureScope;
@@ -177,6 +182,9 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	private final SheetTacticCountHelper tacticCounter;
 	/** Builds the EOM channel slides' pacing-narrative inputs from the placeholder map, and writes the replies back. */
 	private final PacingNarrativeAssembler pacingNarrative;
+	private final MpoNarrativeAssembler mpoNarrative;
+	/** Derives the MPO-style template's campaign period, geo summary and top-content KPI from the final map. */
+	private final DeckStyleTokenHelper deckStyleTokens;
 
 	/**
 	 * Validates the brief, then enqueues the job and launches the build through the
@@ -244,8 +252,10 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 
 			jobProgress.markJobRunningAtStep(jobId, 2, "Resolving placeholders");
 
-			// EOC and EOM send different prompt text for the same calls; the report type picks which.
-			ClaudeClient claude = claudeClients.forReportType(payload.reportType());
+			// EOC and EOM send different prompt text for the same calls; the report type picks which, and the
+			// deck design picks how long the campaign-level copy may run.
+			ClaudeClient claude = claudeClients.forReport(payload.reportType(), NarrativeCopyLimits.forDeck(
+					slides.carriesMpoNarrative(payload.reportType(), payload.templateVariant())));
 			boolean live = claude.isLive();
 			// The brief is user-pasted and unbounded, and every batch below repeats it as context. Digest it
 			// once here and feed the digest everywhere instead: the campaign facts the copy must stay faithful
@@ -328,18 +338,23 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 			// SHEET branch above — the workbook has no such column, and every token added to the sheet's
 			// find-replace map costs a request on a write that already timed out once when it grew too large.
 			contributions.fillContributions(flatReplacements, flatTacticCount);
+			deckStyleTokens.fillDeckStyleTokens(flatReplacements, flatTacticCount);
 			// The EOM pacing dashboard, derived here for the same reason and in the same place: the workbook
 			// carries no such columns, so these tokens are deck-only.
 			fillEomDashboards(flatReplacements, flatTacticCount, payload.reportType());
 			// The EOM channel slides' key takeaways, written last of all: they reason over the METRIC table
 			// the two lines above have just finished filling, so the copy cannot contradict the figures it
 			// sits on.
-			fillPacingNarrative(claude, flatReplacements, flatTacticCount, payload.reportType(), live,
-					usageScope, brief);
+			fillPacingNarrative(claude, flatReplacements, flatTacticCount, payload.reportType(),
+					payload.templateVariant(), live, usageScope, brief);
+			// The MPO-only copy (HHI, proposal cards, funnel, recommendations headline), written after every other
+			// value so its evidence lines quote the figures the deck prints. A no-op for a standard deck.
+			fillMpoNarrative(claude, flatReplacements, flatTacticCount, payload, live, brief);
 
 			jobProgress.markJobRunningAtStep(jobId, 6, "Building slide deck");
 			String slideUrl = slides.createDeck(
-					String.valueOf(jobId), fileName, flatReplacements, payload.reportType(), userGoogleToken);
+					String.valueOf(jobId), fileName, flatReplacements, payload.reportType(),
+					payload.templateVariant(), userGoogleToken);
 
 			List<String> deckWarnings = assembleDeck(
 					jobId, slideUrl, flatTacticCount, flatReplacements, payload, data, userGoogleToken);
@@ -409,11 +424,12 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		// 28-slot template, where the trim below removes the surplus slots instead.
 		List<String> tacticSlideWarnings =
 				chartHelper.addTacticSlides(
-						slideUrl, flatTacticCount, flatReplacements, payload.reportType(), userGoogleToken);
+						slideUrl, flatTacticCount, flatReplacements, payload.reportType(), payload.templateVariant(),
+						userGoogleToken);
 		chartHelper.trimUnusedTactics(slideUrl, payload, userGoogleToken);
 		// Template master slides must never ship. This flow inserts no breakdowns, but it does duplicate
 		// the tactic master above, which would otherwise arrive full of raw {{tactic n …}} tokens.
-		chartHelper.deleteMasterSlides(slideUrl, payload.reportType(), userGoogleToken);
+		chartHelper.deleteMasterSlides(slideUrl, payload.reportType(), payload.templateVariant(), userGoogleToken);
 		// EOC-only story slides the EOM deck inherited from the template it was copied from.
 		chartHelper.deleteReportTypeSlides(slideUrl, payload.reportType(), userGoogleToken);
 
@@ -425,8 +441,8 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		deckWarnings.addAll(chartWarnings);
 		// Last pass over the finished deck: any token still standing had no value anywhere in the
 		// pipeline, and shipping its own name is worse than shipping a dash.
-		deckWarnings.addAll(
-				chartHelper.dashUnresolvedTokens(slideUrl, payload.reportType(), userGoogleToken));
+		deckWarnings.addAll(chartHelper.dashUnresolvedTokens(
+				slideUrl, payload.reportType(), payload.templateVariant(), userGoogleToken));
 		return deckWarnings;
 	}
 
@@ -515,8 +531,10 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 			log.info("[report] job {} slides-from-sheet context tacticCount={} tactics={}",
 					jobId, tacticCount, describeTactics(data));
 		}
-		// EOC and EOM send different prompt text for the same calls; the report type picks which.
-		ClaudeClient claude = claudeClients.forReportType(payload.reportType());
+		// EOC and EOM send different prompt text for the same calls; the report type picks which, and the deck
+		// design picks how long the campaign-level copy may run.
+		ClaudeClient claude = claudeClients.forReport(payload.reportType(), NarrativeCopyLimits.forDeck(
+				slides.carriesMpoNarrative(payload.reportType(), payload.templateVariant())));
 		boolean live = claude.isLive();
 		// Every call below repeats this text as context, so it is bounded to the digest budget before any of them
 		// sees it. The sheet's {{RFP info}} normally already holds step 1's digest, but it is a user-editable cell,
@@ -575,12 +593,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		// Breakdown token map: the section data tokens first, then the Claude section tokens written from the
 		// per-section calls. Each section only emits tokens for its own tactics, so the merge cannot collide.
 		// The warnings collect every tactic whose section shipped without its Claude copy.
-		Map<String, String> breakdownValues = new LinkedHashMap<>();
-		breakdownValues.putAll(pub.dataValues());
-		breakdownValues.putAll(cre.dataValues());
-		breakdownValues.putAll(geo.dataValues());
-		breakdownValues.putAll(aud.dataValues());
-		breakdownValues.putAll(dev.dataValues());
+		Map<String, String> breakdownValues = mergeSectionDataValues(sections);
 		List<String> jobWarnings = new ArrayList<>(
 				writeBreakdownInsights(breakdownValues, pub, cre, geo, aud, dev, bullets, prelim));
 
@@ -588,13 +601,12 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		// (the same gate the thoughts slide uses). One call per tactic, all dispatched at once so they run in
 		// parallel like Step 2's section calls. Written into the breakdown token map so the slide picks them up
 		// when it is duplicated.
-		Map<Integer, Set<BreakdownType>> enabledByTactic = qualifyingSelections(payload, tacticCount);
-		Set<Integer> qualifying = thoughtsGate.qualifyingTactics(enabledByTactic);
+		Set<Integer> qualifying = thoughtsTactics(payload, tacticCount);
 		Map<Integer, String> namesByTactic = tacticNames(prelim, tacticCount);
 		List<TacticThoughts> thoughts = List.of();
 		if (live && !qualifying.isEmpty()) {
-			List<TacticThoughtsInput> thoughtsInputs = conclusionAssembler.toThoughtsInputs(
-					conclusions, namesByTactic, qualifying, bullets);
+			List<TacticThoughtsInput> thoughtsInputs = conclusionAssembler.toThoughtsInputs(conclusions, namesByTactic,
+					qualifying, bullets, slides.carriesMpoNarrative(payload.reportType(), payload.templateVariant()));
 			thoughts = joinThoughts(dispatchThoughts(claude, thoughtsInputs, usageScope, brief));
 		}
 		writeThoughtsTokens(breakdownValues, qualifying, thoughts, prelim);
@@ -625,13 +637,35 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		// The tactic slide's contribution legend, derived last so it reads the same impressions the deck
 		// prints — which on this flow are the ones the user reviewed on the sheet, not the parsed originals.
 		contributions.fillContributions(flatReplacements, tacticCount);
+		deckStyleTokens.fillDeckStyleTokens(flatReplacements, tacticCount);
 		// The EOM channel slides' key takeaways, written last of all: they reason over the METRIC table the
 		// map now carries, so the copy cannot contradict the figures it sits on.
-		fillPacingNarrative(claude, flatReplacements, tacticCount, payload.reportType(), live, usageScope, brief);
+		fillPacingNarrative(claude, flatReplacements, tacticCount, payload.reportType(), payload.templateVariant(),
+				live, usageScope, brief);
+		// The MPO-only copy, last for the same reason: it quotes the reviewed figures the map now carries.
+		fillMpoNarrative(claude, flatReplacements, tacticCount, payload, live, brief);
 
 		buildDeckFromSheet(
 				jobId, payload, userEmail, grid, flatReplacements, breakdownValues, tacticCount,
 				userGoogleToken, jobWarnings);
+	}
+
+	/**
+	 * Merges every breakdown section's data tokens into one ordered, mutable token map.
+	 *
+	 * <p>Each section only emits tokens for its own tactics, so the merge cannot collide.
+	 *
+	 * @param sections the breakdown section reads for the run
+	 * @return a new mutable map holding the publisher, creative, geo, audience and device data tokens
+	 */
+	Map<String, String> mergeSectionDataValues(BreakdownSectionBundle sections) {
+		Map<String, String> values = new LinkedHashMap<>();
+		values.putAll(sections.publisher().dataValues());
+		values.putAll(sections.creative().dataValues());
+		values.putAll(sections.geo().dataValues());
+		values.putAll(sections.audience().dataValues());
+		values.putAll(sections.device().dataValues());
+		return values;
 	}
 
 	/**
@@ -660,6 +694,25 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		return claude.batchAlignCampaign(strategic, results, breakdownDigest, brief, data.flightDates());
 	}
 
+
+	/**
+	 * Builds the token map the breakdown copies are filled from: every breakdown token, backed by the deck's
+	 * resolved map for any token the breakdown sections do not emit themselves.
+	 *
+	 * <p>The copies are duplicated after the deck-wide placeholder pass has run, so a tactic token a breakdown
+	 * master reuses from the main tactic slide (the MPO audience slide's {@code {{tactic n reach}}} or
+	 * {@code {{tactic n KPI}}}) would otherwise only be renumbered and ship raw. A breakdown value still wins
+	 * over the deck's value for the same token.
+	 *
+	 * @param breakdownValues  the breakdown slides' own tokens
+	 * @param flatReplacements the deck's resolved token map
+	 * @return a new map holding both, breakdown values taking precedence
+	 */
+	Map<String, String> withDeckFallback(Map<String, String> breakdownValues, Map<String, String> flatReplacements) {
+		Map<String, String> merged = new LinkedHashMap<>(flatReplacements);
+		merged.putAll(breakdownValues);
+		return merged;
+	}
 
 	/**
 	 * Reads all five breakdown sections from the reviewed workbook at once.
@@ -806,18 +859,22 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		String fileName = fileNamer.buildFileName(
 				payload.reportType(), flatReplacements.get(CLIENT_NAME_TOKEN), userEmail);
 		String slideUrl = slides.createDeck(
-				String.valueOf(jobId), fileName, flatReplacements, payload.reportType(), userGoogleToken);
+				String.valueOf(jobId), fileName, flatReplacements, payload.reportType(),
+				payload.templateVariant(), userGoogleToken);
 		// Main tactic slides: on a master-model template the deck arrives with one generic tactic slide, which
 		// is duplicated into exactly `tacticCount` filled slides here. Runs before the breakdowns, which anchor
 		// their copies after each tactic's main slide, and before the trim, which then has no tactic slides
 		// left to delete. A no-op on the legacy 28-slot template.
 		jobWarnings.addAll(chartHelper.addTacticSlides(
-				slideUrl, tacticCount, flatReplacements, payload.reportType(), userGoogleToken));
-		chartHelper.trimUnusedTactics(slideUrl, tacticCount, payload.reportType(), userGoogleToken);
+				slideUrl, tacticCount, flatReplacements, payload.reportType(), payload.templateVariant(),
+				userGoogleToken));
+		chartHelper.trimUnusedTactics(
+				slideUrl, tacticCount, payload.reportType(), payload.templateVariant(), userGoogleToken);
 		// Per-tactic breakdown + thoughts slides: duplicate the selected masters, fill their tokens (already in
 		// breakdownValues, including the {{thoughts on tactic n performance}} tokens for the > 2-breakdown
 		// tactics), and place them after the tactic's main slide. Non-fatal — the deck still ships on failure.
-		chartHelper.addBreakdownSlides(slideUrl, payload, tacticCount, breakdownValues, userGoogleToken);
+		chartHelper.addBreakdownSlides(slideUrl, payload, tacticCount,
+				withDeckFallback(breakdownValues, flatReplacements), userGoogleToken);
 		// Give each audience/device breakdown slide its own live chart: the master's embedded chart is
 		// duplicated pointing at a shared, empty source workbook, so this relinks every copy to a per-tactic
 		// copy of that workbook filled with the tactic's impressions. Runs after the slides exist; non-fatal.
@@ -826,7 +883,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		// Remove the breakdown/thoughts master template slides. Unconditional and independent of whether any
 		// breakdown slides were inserted — the masters must never ship, even when Step 3 selected no
 		// breakdowns. Runs after the charts so every copy has finished duplicating from the masters.
-		chartHelper.deleteMasterSlides(slideUrl, payload.reportType(), userGoogleToken);
+		chartHelper.deleteMasterSlides(slideUrl, payload.reportType(), payload.templateVariant(), userGoogleToken);
 		// Slides an EOM deck must never ship (the frequency & velocity play, the awareness / market-share
 		// slide): the EOM template is a copy of the EOC one, so they arrive with it and are deleted here.
 		chartHelper.deleteReportTypeSlides(slideUrl, payload.reportType(), userGoogleToken);
@@ -839,7 +896,8 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		jobWarnings.addAll(chartWarnings);
 		// Last pass over the finished deck: any token still standing had no value anywhere in the pipeline,
 		// and shipping its own name is worse than shipping a dash.
-		jobWarnings.addAll(chartHelper.dashUnresolvedTokens(slideUrl, payload.reportType(), userGoogleToken));
+		jobWarnings.addAll(chartHelper.dashUnresolvedTokens(
+				slideUrl, payload.reportType(), payload.templateVariant(), userGoogleToken));
 
 		// Every reply Claude sent that the pipeline could not use, in the order it happened: the parse failure
 		// or the wrong item count that left a slide blank, verbatim enough to act on without the server log.
@@ -977,23 +1035,54 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param claude      the run's report-type-specific Claude client
 	 * @param flat        the resolved placeholder map, mutated in place
 	 * @param tacticCount number of real tactics in the campaign
-	 * @param reportType  report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
-	 * @param live        whether this run calls Claude at all
-	 * @param usageScope  the usage scope each call is billed to
-	 * @param brief       free-text campaign brief passed through to every call
+	 * @param reportType      report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
+	 * @param templateVariant requested deck design; a deck cloned from the MPO template gets the copy written
+	 *                        to its channel slide's shorter slots
+	 * @param live            whether this run calls Claude at all
+	 * @param usageScope      the usage scope each call is billed to
+	 * @param brief           free-text campaign brief passed through to every call
 	 */
 	void fillPacingNarrative(
-			ClaudeClient claude, Map<String, String> flat, int tacticCount, String reportType, boolean live,
-			ClaudeUsageScope usageScope, String brief) {
+			ClaudeClient claude, Map<String, String> flat, int tacticCount, String reportType,
+			TemplateVariant templateVariant, boolean live, ClaudeUsageScope usageScope, String brief) {
 		if (!EOM_REPORT_TYPE.equals(reportType)) {
 			return;
 		}
 		List<TacticPacing> narratives = List.of();
 		if (live) {
-			List<TacticPacingInput> inputs = pacingNarrative.toInputs(flat, tacticCount);
+			boolean compact = slides.carriesMpoNarrative(reportType, templateVariant);
+			List<TacticPacingInput> inputs = pacingNarrative.toInputs(flat, tacticCount).stream()
+					.map(in -> new TacticPacingInput(
+							in.tacticNum(), in.tacticName(), in.kpiType(), in.metrics(), compact))
+					.toList();
 			narratives = joinPacing(dispatchPacing(claude, inputs, usageScope, brief));
 		}
 		pacingNarrative.write(flat, tacticCount, narratives);
+	}
+
+	/**
+	 * Generates and writes the copy only the MPO deck design carries: the HHI tile, the two proposal cards, the
+	 * four-stage funnel slide and the recommendations headline. One call per report.
+	 *
+	 * <p>Asked of the slides provider first, so the call is only paid for when the deck is really cloned from an
+	 * MPO template — an MPO request that fell back to the standard template has no slot for this copy. A dry
+	 * run, or a call that comes back unusable, dashes the tokens rather than leaving them raw.
+	 *
+	 * @param claude      the run's report-type-specific Claude client
+	 * @param flat        the resolved placeholder map, mutated in place
+	 * @param tacticCount number of real tactics in the campaign
+	 * @param payload     the generation request, whose report type and design decide whether this runs
+	 * @param live        whether this run calls Claude at all
+	 * @param brief       free-text campaign brief passed through to the call
+	 */
+	void fillMpoNarrative(
+			ClaudeClient claude, Map<String, String> flat, int tacticCount, GeneratePayload payload, boolean live,
+			String brief) {
+		if (!slides.carriesMpoNarrative(payload.reportType(), payload.templateVariant())) {
+			return;
+		}
+		MpoNarrative narrative = live ? claude.mpoNarrative(mpoNarrative.toInput(flat, tacticCount), brief) : null;
+		mpoNarrative.write(flat, narrative);
 	}
 
 	/**
@@ -1074,6 +1163,23 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 			}
 		});
 		return out;
+	}
+
+	/**
+	 * Picks the tactics the Step-3 "thoughts on tactic performance" calls run for: those past the
+	 * "&gt; 2 breakdowns" gate, and none at all when the deck being built has no thoughts slide.
+	 *
+	 * @param payload     the inbound generation payload carrying the breakdown selections and report type
+	 * @param tacticCount the active tactic count
+	 * @return the qualifying 1-based tactic numbers, empty when the deck carries no thoughts slide
+	 */
+	Set<Integer> thoughtsTactics(GeneratePayload payload, int tacticCount) {
+		// A template without the thoughts slide (the MPO-style EOC deck) has nowhere to put this copy, so no
+		// tactic qualifies and the calls are never paid for.
+		if (!slides.carriesTacticThoughts(payload.reportType(), payload.templateVariant())) {
+			return Set.of();
+		}
+		return thoughtsGate.qualifyingTactics(qualifyingSelections(payload, tacticCount));
 	}
 
 	/**

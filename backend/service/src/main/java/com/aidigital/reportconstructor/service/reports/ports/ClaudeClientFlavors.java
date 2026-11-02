@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.ports;
 
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.aidigital.reportconstructor.service.reports.enums.ReportFlavor;
 
 /**
@@ -20,6 +21,15 @@ public interface ClaudeClientFlavors {
 	 * @return the client for that report type, never {@code null}
 	 */
 	ClaudeClient forReportType(String reportTypeCode);
+
+	/**
+	 * Resolves the client for a report type, bound to the copy budgets of the deck the run builds.
+	 *
+	 * @param reportTypeCode the report type code, resolved as {@link #forReportType(String)} does
+	 * @param limits         the character budgets of the run's deck design
+	 * @return the client for that report type and deck, never {@code null}
+	 */
+	ClaudeClient forReport(String reportTypeCode, NarrativeCopyLimits limits);
 
 	/**
 	 * Resolves the client for an already-typed flavour.

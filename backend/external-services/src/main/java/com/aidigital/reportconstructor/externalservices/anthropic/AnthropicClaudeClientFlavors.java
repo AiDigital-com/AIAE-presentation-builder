@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.anthropic;
 
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.aidigital.reportconstructor.service.reports.enums.ReportFlavor;
 import com.aidigital.reportconstructor.service.reports.ports.ClaudeClient;
 import com.aidigital.reportconstructor.service.reports.ports.ClaudeClientFlavors;
@@ -36,6 +37,11 @@ public class AnthropicClaudeClientFlavors implements ClaudeClientFlavors {
 	@Override
 	public ClaudeClient forReportType(String reportTypeCode) {
 		return forFlavor(flavorOf(reportTypeCode));
+	}
+
+	@Override
+	public ClaudeClient forReport(String reportTypeCode, NarrativeCopyLimits limits) {
+		return forReportType(reportTypeCode).withCopyLimits(limits);
 	}
 
 	@Override

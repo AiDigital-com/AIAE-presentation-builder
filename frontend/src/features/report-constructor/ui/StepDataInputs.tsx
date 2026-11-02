@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { isGoogleSheetUrl } from "@/shared/api/sheets";
-import { useWizard } from "@/shared/wizard/WizardContext";
+import { useState, type ReactNode } from "react";
+import { isGoogleSheetUrl, PAID_SEARCH_TAB, PAID_SOCIAL_TAB, readSheetTab } from "@/shared/api/sheets";
+import { useWizard, type PaidChannel } from "@/shared/wizard/WizardContext";
 import { pacingReadyCount } from "../lib/pacing";
 import { IconArrowLeft, IconArrowRight, IconCheck, IconSpinner } from "./icons";
+import { useToast } from "./ToastContext";
 
 export interface InputErrors {
     brief: boolean;
@@ -97,16 +98,22 @@ interface MediaTabPickerProps {
     pulling: boolean;
     onPick(url: string, tab: string): void;
     onDismiss(): void;
+    /** What the user is choosing a tab for; defaults to the media-plan wording. */
+    message?: ReactNode;
 }
 
 /** Fallback tab chooser shown when no "Proposal"/"Estimates" tab was auto-detected. */
-function MediaTabPicker({ picker, pulling, onPick, onDismiss }: MediaTabPickerProps) {
+function MediaTabPicker({ picker, pulling, onPick, onDismiss, message }: MediaTabPickerProps) {
     const [tab, setTab] = useState(picker.tabs[0] ?? "");
     return (
         <div className="rc-tabpick">
             <div className="rc-tabpick__text">
-                We couldn't find a standard media-plan tab. Pick the tab that holds the media plan — we'll check it has
-                the <strong>Media</strong> and budget columns before loading it.
+                {message ?? (
+                    <>
+                        We couldn't find a standard media-plan tab. Pick the tab that holds the media plan — we'll
+                        check it has the <strong>Media</strong> and budget columns before loading it.
+                    </>
+                )}
             </div>
             <div className="rc-tabpick__row">
                 <select
@@ -133,6 +140,106 @@ function MediaTabPicker({ picker, pulling, onPick, onDismiss }: MediaTabPickerPr
                     Cancel
                 </button>
             </div>
+        </div>
+    );
+}
+
+interface PaidChannelSpec {
+    id: PaidChannel;
+    name: string;
+    label: string;
+    defaultTab: string;
+}
+
+const PAID_CHANNELS: PaidChannelSpec[] = [
+    { id: "search", name: "Paid Search", label: "Paid Search (Google Ads) export — Google Sheet link", defaultTab: PAID_SEARCH_TAB },
+    { id: "social", name: "Paid Social", label: "Paid Social (Meta) export — Google Sheet link", defaultTab: PAID_SOCIAL_TAB },
+];
+
+/**
+ * Optional MPO-only exports for the Paid Search and Paid Social sections. Each export is read from a
+ * tab named after its channel; a workbook without that tab gets the same picker the media plan uses.
+ */
+function PaidChannelInputs() {
+    const w = useWizard();
+    const { showToast } = useToast();
+    const [pulling, setPulling] = useState<PaidChannel | null>(null);
+    const [picker, setPicker] = useState<{ channel: PaidChannel; url: string; tabs: string[] } | null>(null);
+
+    async function read(spec: PaidChannelSpec, url: string, tab: string) {
+        setPulling(spec.id);
+        try {
+            const r = await readSheetTab(url, tab);
+            if (!r.ok) {
+                if (r.error === "tab_not_found" && r.tabs.length > 0) {
+                    setPicker({ channel: spec.id, url, tabs: r.tabs });
+                    return;
+                }
+                showToast(r.error || "Could not read sheet", true);
+                return;
+            }
+            setPicker(null);
+            w.connectPaidChannel(spec.id, {
+                title: r.title ?? "",
+                tab: r.tab,
+                sheetId: r.sheetId ?? "",
+                rows: r.rows,
+                cols: r.cols,
+                tabsCount: r.tabs.length,
+                headers: r.headers,
+                preview: r.preview,
+                rawRows: r.rawRows,
+            });
+            showToast(`${spec.name}: ${r.title} — ${r.rows} rows loaded`);
+        } catch (e) {
+            showToast(e instanceof Error ? e.message : "Could not read sheet", true);
+        } finally {
+            setPulling(null);
+        }
+    }
+
+    return (
+        <div className="rc-paid">
+            <div className="rc-paid__head">
+                <span className="rc-paid__title">Performance channels</span>
+                <span className="rc-paid__badge">Optional</span>
+            </div>
+            <p className="rc-paid__sub">
+                Connect the exports that feed the MPO deck's Paid Search and Paid Social sections. Leave them
+                empty if the campaign ran no performance channels.
+            </p>
+            {PAID_CHANNELS.map((spec) => {
+                const connected = w.paidChannels[spec.id];
+                return (
+                    <div key={spec.id}>
+                        <ConnectRow
+                            label={spec.label}
+                            placeholder="https://docs.google.com/spreadsheets/…"
+                            connected={connected ? `${connected.title} · ${connected.tab} · ${connected.rows} rows` : null}
+                            pulling={pulling === spec.id}
+                            onConnect={(url) => {
+                                setPicker(null);
+                                void read(spec, url, spec.defaultTab);
+                            }}
+                            onDisconnect={() => w.disconnectPaidChannel(spec.id)}
+                        />
+                        {picker?.channel === spec.id && (
+                            <MediaTabPicker
+                                picker={picker}
+                                pulling={pulling === spec.id}
+                                onPick={(url, tab) => void read(spec, url, tab)}
+                                onDismiss={() => setPicker(null)}
+                                message={
+                                    <>
+                                        No <strong>{spec.defaultTab}</strong> tab in that workbook. Pick the tab that
+                                        holds the {spec.name} export.
+                                    </>
+                                }
+                            />
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }
@@ -256,6 +363,7 @@ export function StepDataInputs({
     const changeLogDone = w.changeLog.trim().length > 0;
     const marketDone = w.marketVolume.trim().length > 0;
     const isEom = w.reportType === "EOM";
+    const isMpo = w.templateVariant === "MPO";
     // EOM decks carry no market-volume slide, so the field is hidden (and not required) for that type.
     const needsMarketVolume = !isEom;
     const datesDone = !!w.dateStart && !!w.dateEnd;
@@ -421,6 +529,8 @@ export function StepDataInputs({
                         {errors.dates && <div className="rc-field__error">Flight dates are required.</div>}
                     </div>
 
+                    {isMpo && <PaidChannelInputs />}
+
                     {bothConnected && (
                         <div className={`rc-match${w.matchConfirmed ? " rc-match--done" : ""}`}>
                             <div className="rc-match__text">
@@ -502,6 +612,15 @@ export function StepDataInputs({
                             value={w.elevate ? "Connected" : "Waiting"}
                         />
                         <StatusRow label="Flight dates" done={datesDone} value={datesDone ? "Set" : "Waiting"} />
+                        {isMpo &&
+                            PAID_CHANNELS.map((spec) => (
+                                <StatusRow
+                                    key={spec.id}
+                                    label={spec.name}
+                                    done={!!w.paidChannels[spec.id]}
+                                    value={w.paidChannels[spec.id] ? "Connected" : "Optional"}
+                                />
+                            ))}
                         {isEom && (
                             <StatusRow
                                 label="Pacing & rates"

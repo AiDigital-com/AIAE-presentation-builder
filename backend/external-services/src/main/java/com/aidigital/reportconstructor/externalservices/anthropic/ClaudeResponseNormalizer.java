@@ -1,6 +1,8 @@
 package com.aidigital.reportconstructor.externalservices.anthropic;
 
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.fasterxml.jackson.databind.JsonNode;
+import lombok.Getter;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -32,29 +34,38 @@ public class ClaudeResponseNormalizer {
 	/** Characters the EOM north-star headline fits, upper-cased, on one line. */
 	private static final int NORTH_STAR_LIMIT = 80;
 
-	/** Characters the EOM north-star supporting paragraph fits. */
-	private static final int EXTENDED_NORTH_STAR_LIMIT = 340;
-
-	/** Characters the EOM horizon block fits. */
-	private static final int HORIZON_LIMIT = 150;
-
-	/** Characters one EOM pacing-dashboard key takeaway fits under its table. */
-	public static final int PACING_TAKEAWAY_LIMIT = 140;
+	/**
+	 * The character budgets this normalizer caps campaign-level copy at — the standard templates' unless the
+	 * run builds an MPO deck (see {@link #withCopyLimits}). The prompt builders quote the same profile.
+	 */
+	@Getter
+	private final NarrativeCopyLimits copyLimits;
 
 	/**
-	 * Characters one heading of the EOM "what we did this month" slide fits — the label above an
-	 * observation, an action or an expected impact.
+	 * Creates the normalizer Spring injects, capping copy at the standard templates' budgets.
 	 */
-	public static final int WHAT_WE_DID_HEADING_LIMIT = 60;
+	public ClaudeResponseNormalizer() {
+		this(NarrativeCopyLimits.STANDARD);
+	}
 
-	/** Characters one paragraph of the EOM "what we did this month" slide fits under its heading. */
-	public static final int WHAT_WE_DID_TEXT_LIMIT = 200;
+	/**
+	 * Creates a normalizer capping campaign-level copy at the given budgets.
+	 *
+	 * @param copyLimits the budgets of the deck design the copy is written for
+	 */
+	public ClaudeResponseNormalizer(NarrativeCopyLimits copyLimits) {
+		this.copyLimits = copyLimits;
+	}
 
-	/** Characters the EOM "focus next month" slide's updated-projection block fits. */
-	public static final int UPDATED_PROJECTION_LIMIT = 250;
-
-	/** Characters one carry-forward, pivot or test line of the EOM "focus next month" slide fits. */
-	public static final int FOCUS_ITEM_LIMIT = 70;
+	/**
+	 * Returns a normalizer identical to this one but capping campaign-level copy at the given budgets.
+	 *
+	 * @param limits the budgets of the deck design the copy is written for
+	 * @return a normalizer bound to {@code limits}
+	 */
+	public ClaudeResponseNormalizer withCopyLimits(NarrativeCopyLimits limits) {
+		return new ClaudeResponseNormalizer(limits);
+	}
 
 	/**
 	 * Function/connector words that read as unfinished when a sentence is cut right after them, so they are
@@ -354,41 +365,43 @@ public class ClaudeResponseNormalizer {
 	}
 
 	/**
-	 * Normalizes the EOM {@code extended_north_star} copy with a {@link #EXTENDED_NORTH_STAR_LIMIT}-character
-	 * budget via {@link #normalizeC}, so it reads as a finished thought.
+	 * Normalizes the EOM {@code extended_north_star} copy to the profile's
+	 * {@link NarrativeCopyLimits#getExtendedNorthStarLimit() budget} via {@link #normalizeC}, so it reads as a
+	 * finished thought.
 	 *
 	 * @param val raw extended-north-star text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
 	public String limitExtendedNorthStar(String val) {
-		return normalizeC(val, EXTENDED_NORTH_STAR_LIMIT);
+		return normalizeC(val, copyLimits.getExtendedNorthStarLimit());
 	}
 
 	/**
-	 * Normalizes the EOM {@code horizon} copy with a {@link #HORIZON_LIMIT}-character budget via
-	 * {@link #normalizeC}.
+	 * Normalizes the EOM {@code horizon} copy to the profile's {@link NarrativeCopyLimits#getHorizonLimit() budget}
+	 * via {@link #normalizeC}.
 	 *
 	 * @param val raw horizon text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
 	public String limitHorizon(String val) {
-		return normalizeC(val, HORIZON_LIMIT);
+		return normalizeC(val, copyLimits.getHorizonLimit());
 	}
 
 	/**
-	 * Normalizes one EOM pacing-dashboard key takeaway with a {@link #PACING_TAKEAWAY_LIMIT}-character
-	 * budget via {@link #normalizeC}, so it reads as a finished sentence inside the slide's takeaway strip.
+	 * Normalizes one EOM pacing-dashboard key takeaway to the profile's
+	 * {@link NarrativeCopyLimits#getPacingTakeawayLimit() budget} via {@link #normalizeC}, so it reads as a
+	 * finished sentence inside the slide's takeaway strip.
 	 *
 	 * @param val raw takeaway text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
 	public String limitPacingTakeaway(String val) {
-		return normalizeC(val, PACING_TAKEAWAY_LIMIT);
+		return normalizeC(val, copyLimits.getPacingTakeawayLimit());
 	}
 
 	/**
-	 * Caps one heading of the EOM "what we did this month" slide at {@link #WHAT_WE_DID_HEADING_LIMIT}
-	 * characters.
+	 * Caps one heading of the EOM "what we did this month" slide at the profile's
+	 * {@link NarrativeCopyLimits#getWhatWeDidHeadingLimit() budget}.
 	 *
 	 * <p>Held to the same shape as the north-star headline rather than to {@link #normalizeC}: it is a label
 	 * above a paragraph, not a sentence, so it is cut back to a word boundary and never gains a closing
@@ -402,8 +415,8 @@ public class ClaudeResponseNormalizer {
 			return null;
 		}
 		String text = val.trim().replaceAll("\\s+", " ");
-		if (text.length() > WHAT_WE_DID_HEADING_LIMIT) {
-			String cut = text.substring(0, WHAT_WE_DID_HEADING_LIMIT);
+		if (text.length() > copyLimits.getWhatWeDidHeadingLimit()) {
+			String cut = text.substring(0, copyLimits.getWhatWeDidHeadingLimit());
 			int ls = cut.lastIndexOf(' ');
 			text = stripTrailingComma(ls > 0 ? cut.substring(0, ls).trim() : cut.trim());
 		}
@@ -412,31 +425,32 @@ public class ClaudeResponseNormalizer {
 	}
 
 	/**
-	 * Normalizes one paragraph of the EOM "what we did this month" slide with a
-	 * {@link #WHAT_WE_DID_TEXT_LIMIT}-character budget via {@link #normalizeC}, so it reads as a finished
-	 * sentence inside its block.
+	 * Normalizes one paragraph of the EOM "what we did this month" slide to the profile's
+	 * {@link NarrativeCopyLimits#getWhatWeDidTextLimit() budget} via {@link #normalizeC}, so it reads as a
+	 * finished sentence inside its block.
 	 *
 	 * @param val raw paragraph text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
 	public String limitWhatWeDidText(String val) {
-		return normalizeC(val, WHAT_WE_DID_TEXT_LIMIT);
+		return normalizeC(val, copyLimits.getWhatWeDidTextLimit());
 	}
 
 	/**
-	 * Normalizes the EOM {@code updated_projection} copy with an {@link #UPDATED_PROJECTION_LIMIT}-character
-	 * budget via {@link #normalizeC}, so it reads as a finished answer inside its block.
+	 * Normalizes the EOM {@code updated_projection} copy to the profile's
+	 * {@link NarrativeCopyLimits#getUpdatedProjectionLimit() budget} via {@link #normalizeC}, so it reads as a
+	 * finished answer inside its block.
 	 *
 	 * @param val raw projection text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
 	public String limitUpdatedProjection(String val) {
-		return normalizeC(val, UPDATED_PROJECTION_LIMIT);
+		return normalizeC(val, copyLimits.getUpdatedProjectionLimit());
 	}
 
 	/**
-	 * Caps one carry-forward, pivot or test line of the EOM "focus next month" slide at
-	 * {@link #FOCUS_ITEM_LIMIT} characters.
+	 * Caps one carry-forward, pivot or test line of the EOM "focus next month" slide at the profile's
+	 * {@link NarrativeCopyLimits#getFocusItemLimit() budget}.
 	 *
 	 * <p>Held to the same shape as a heading rather than to {@link #normalizeC}: these are one-line action
 	 * items in a bulleted column ("hold weight on the top markets"), not sentences, so they are cut back to a
@@ -450,8 +464,8 @@ public class ClaudeResponseNormalizer {
 			return null;
 		}
 		String text = val.trim().replaceAll("\\s+", " ");
-		if (text.length() > FOCUS_ITEM_LIMIT) {
-			String cut = text.substring(0, FOCUS_ITEM_LIMIT);
+		if (text.length() > copyLimits.getFocusItemLimit()) {
+			String cut = text.substring(0, copyLimits.getFocusItemLimit());
 			int ls = cut.lastIndexOf(' ');
 			text = stripTrailingComma(ls > 0 ? cut.substring(0, ls).trim() : cut.trim());
 		}
@@ -498,10 +512,13 @@ public class ClaudeResponseNormalizer {
 	}
 
 	/**
-	 * Caps the Batch A strategic overview at 240 characters, preferring the last real sentence-ending
-	 * {@code .} (decimal points excluded) past position 180 (so the result reads as a finished thought)
-	 * over a hard cut, then falling back to the last word boundary (never mid-word) and rewriting the tail
-	 * to end on a complete sentence (see {@link #finishSentence}) when no qualifying period is found.
+	 * Caps the Batch A strategic overview at the profile's
+	 * {@link NarrativeCopyLimits#getStrategicOverviewLimit() budget}, preferring the last real sentence-ending
+	 * {@code .} (decimal points excluded) past its
+	 * {@link NarrativeCopyLimits#getStrategicOverviewMinSentenceEnd() threshold} (so the result reads as a
+	 * finished thought) over a hard cut, then falling back to the last word boundary (never mid-word) and
+	 * rewriting the tail to end on a complete sentence (see {@link #finishSentence}) when no qualifying period
+	 * is found.
 	 *
 	 * @param overview raw strategic-overview text from the model (may be null)
 	 * @return the trimmed overview, or an empty string when {@code overview} is null
@@ -511,10 +528,10 @@ public class ClaudeResponseNormalizer {
 			return "";
 		}
 		overview = overview.trim();
-		if (overview.length() > 240) {
-			String cut = overview.substring(0, 240);
+		if (overview.length() > copyLimits.getStrategicOverviewLimit()) {
+			String cut = overview.substring(0, copyLimits.getStrategicOverviewLimit());
 			int lastPeriod = lastSentencePeriod(cut);
-			if (lastPeriod > 180) {
+			if (lastPeriod > copyLimits.getStrategicOverviewMinSentenceEnd()) {
 				overview = overview.substring(0, lastPeriod + 1).trim();
 			} else {
 				int ls = cut.lastIndexOf(' ');

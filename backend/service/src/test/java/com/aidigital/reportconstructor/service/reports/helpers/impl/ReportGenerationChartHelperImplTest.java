@@ -12,6 +12,7 @@ import com.aidigital.reportconstructor.service.reports.dto.FlightDates;
 import com.aidigital.reportconstructor.service.reports.dto.GeneratePayload;
 import com.aidigital.reportconstructor.service.reports.dto.LineItemMapping;
 import com.aidigital.reportconstructor.service.reports.dto.SheetChartData;
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
 import com.aidigital.reportconstructor.service.reports.dto.Totals;
 import com.aidigital.reportconstructor.service.reports.engine.Pivot;
 import com.aidigital.reportconstructor.service.reports.helpers.BreakdownSelectionResolver;
@@ -28,6 +29,7 @@ import com.aidigital.reportconstructor.service.reports.ports.SlidesProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -43,6 +45,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -72,6 +75,22 @@ class ReportGenerationChartHelperImplTest {
 	ReportGenerationChartHelperImpl helper;
 
 	@Test
+	void shouldApplyTheBoldMarkupBeforeDashingTheUnresolvedTokensTest() {
+		// Given: a finished deck with nothing left to dash
+		String url = "https://docs.google.com/presentation/d/deck123/edit";
+		when(slides.dashUnresolvedTokens("deck123", "EOM", TemplateVariant.MPO, "token")).thenReturn(List.of());
+
+		// When:
+		List<String> warnings = helper.dashUnresolvedTokens(url, "EOM", TemplateVariant.MPO, "token");
+
+		// Then: the emphasis markers were turned into bold text on the same deck, and nothing was dashed
+		InOrder order = inOrder(slides);
+		order.verify(slides).applyDeckMarkup("deck123", "token");
+		order.verify(slides).dashUnresolvedTokens("deck123", "EOM", TemplateVariant.MPO, "token");
+		assertThat(warnings).isEmpty();
+	}
+
+	@Test
 	void shouldExtractPresentationIdFromSlideUrlTest() {
 		assertThat(helper.extractPresentationId("https://docs.google.com/presentation/d/abc-123_9/edit"))
 				.isEqualTo("abc-123_9");
@@ -83,16 +102,16 @@ class ReportGenerationChartHelperImplTest {
 		// Given: a provider that fails, and a tactic count above the template ceiling
 		Map<String, String> values = Map.of("{{tactic 1}}", "Display");
 		doThrow(new IllegalStateException("slides down"))
-				.when(slides).addTacticSlides("pres-1", 28, values, "EOC", "token");
+				.when(slides).addTacticSlides("pres-1", 28, values, "EOC", TemplateVariant.STANDARD, "token");
 
 		// When: the deck's tactic slides are built
 		List<String> warnings =
-				helper.addTacticSlides("https://docs.google.com/presentation/d/pres-1/edit", 99, values, "EOC", "token");
+				helper.addTacticSlides("https://docs.google.com/presentation/d/pres-1/edit", 99, values, "EOC", TemplateVariant.STANDARD, "token");
 
 		// Then: the count reached the provider clamped to 28, and the failure did not propagate — the deck
 		// still ships, missing tactic slides rather than nothing at all — but it is reported as a job warning
 		// carrying the provider's reason, not swallowed into the server log
-		verify(slides).addTacticSlides("pres-1", 28, values, "EOC", "token");
+		verify(slides).addTacticSlides("pres-1", 28, values, "EOC", TemplateVariant.STANDARD, "token");
 		assertThat(warnings).hasSize(1);
 		assertThat(warnings.getFirst()).contains("28 tactic(s)").contains("slides down");
 	}
@@ -101,7 +120,7 @@ class ReportGenerationChartHelperImplTest {
 	void shouldReportNoWarningWhenTacticSlidesAreBuiltTest() {
 		// Given-When: a provider that inserts the slides without failing
 		List<String> warnings = helper.addTacticSlides(
-				"https://docs.google.com/presentation/d/pres-1/edit", 2, Map.of(), "EOC", "token");
+				"https://docs.google.com/presentation/d/pres-1/edit", 2, Map.of(), "EOC", TemplateVariant.STANDARD, "token");
 
 		// Then: nothing is reported on the job
 		assertThat(warnings).isEmpty();
@@ -110,10 +129,10 @@ class ReportGenerationChartHelperImplTest {
 	@Test
 	void shouldSkipAddingTacticSlidesWhenTheSlideUrlCarriesNoPresentationIdTest() {
 		// Given-When: a slide url the presentation id cannot be parsed out of
-		List<String> warnings = helper.addTacticSlides("not-a-slides-url", 3, Map.of(), "EOC", "token");
+		List<String> warnings = helper.addTacticSlides("not-a-slides-url", 3, Map.of(), "EOC", TemplateVariant.STANDARD, "token");
 
 		// Then: the provider is never called with a bogus deck id
-		verify(slides, never()).addTacticSlides(any(), anyInt(), any(), any(), any());
+		verify(slides, never()).addTacticSlides(any(), anyInt(), any(), any(), any(), any());
 		assertThat(warnings).isEmpty();
 	}
 
@@ -128,7 +147,7 @@ class ReportGenerationChartHelperImplTest {
 		helper.addBreakdownSlides("https://docs.google.com/presentation/d/pres-1/edit", payload, 5, Map.of(), "token");
 
 		// Then: the slides provider is never asked to add breakdown slides
-		verify(slides, never()).addBreakdownSlides(any(), any(), any(), any(), any());
+		verify(slides, never()).addBreakdownSlides(any(), any(), any(), any(), any(), any());
 	}
 
 	@Test
@@ -152,7 +171,7 @@ class ReportGenerationChartHelperImplTest {
 		// Then: only tactic 1 (within the active count) is passed to the provider; tactic 3 is dropped
 		Map<Integer, Set<BreakdownType>> expected = new LinkedHashMap<>();
 		expected.put(1, EnumSet.of(BreakdownType.TOP_PUBLISHERS));
-		verify(slides).addBreakdownSlides(eq("pres-1"), eq(expected), eq(Map.of()), eq("standard"), eq("token"));
+		verify(slides).addBreakdownSlides(eq("pres-1"), eq(expected), eq(Map.of()), eq("standard"), eq(TemplateVariant.STANDARD), eq("token"));
 	}
 
 	@Test
@@ -170,7 +189,7 @@ class ReportGenerationChartHelperImplTest {
 		helper.addBreakdownSlides("https://docs.google.com/presentation/d/pres-1/edit", payload, 2, Map.of(), "token");
 
 		// Then: nothing is inserted
-		verify(slides, never()).addBreakdownSlides(any(), any(), any(), any(), any());
+		verify(slides, never()).addBreakdownSlides(any(), any(), any(), any(), any(), any());
 	}
 
 	@Test
@@ -297,7 +316,7 @@ class ReportGenerationChartHelperImplTest {
 
 		helper.trimUnusedTactics("https://docs.google.com/presentation/d/deck-id/edit", payload, "token");
 
-		verify(slides).trimTactics(eq("deck-id"), eq(3), eq("standard"), eq("token"));
+		verify(slides).trimTactics(eq("deck-id"), eq(3), eq("standard"), eq(TemplateVariant.STANDARD), eq("token"));
 	}
 
 	@Test
@@ -305,10 +324,10 @@ class ReportGenerationChartHelperImplTest {
 		// Given: an explicit tactic count (the "Slides from Sheet" flow has no Media Plan)
 
 		// When: the deck is trimmed by explicit count
-		helper.trimUnusedTactics("https://docs.google.com/presentation/d/deck-id/edit", 2, "EOC", "token");
+		helper.trimUnusedTactics("https://docs.google.com/presentation/d/deck-id/edit", 2, "EOC", TemplateVariant.STANDARD, "token");
 
 		// Then: the count is passed through, without consulting the Media Plan extractor
-		verify(slides).trimTactics(eq("deck-id"), eq(2), eq("EOC"), eq("token"));
+		verify(slides).trimTactics(eq("deck-id"), eq(2), eq("EOC"), eq(TemplateVariant.STANDARD), eq("token"));
 		verifyNoInteractions(tacticExtraction);
 	}
 

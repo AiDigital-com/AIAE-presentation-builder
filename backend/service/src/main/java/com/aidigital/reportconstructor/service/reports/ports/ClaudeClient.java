@@ -6,6 +6,8 @@ import com.aidigital.reportconstructor.service.reports.dto.CampaignFrequencies;
 import com.aidigital.reportconstructor.service.reports.dto.CreativeTakeawayInput;
 import com.aidigital.reportconstructor.service.reports.dto.DeviceInsightInput;
 import com.aidigital.reportconstructor.service.reports.dto.GeoInsightInput;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrative;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.dto.PublisherObservationInput;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeNarrative;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeResults;
@@ -20,6 +22,7 @@ import com.aidigital.reportconstructor.service.reports.dto.TacticThoughts;
 import com.aidigital.reportconstructor.service.reports.dto.TacticThoughtsInput;
 
 import com.aidigital.reportconstructor.service.reports.engine.Pivot;
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 
 import java.util.List;
 import java.util.Map;
@@ -39,6 +42,15 @@ public interface ClaudeClient {
 	 * @return true when the client is hitting the real Anthropic API.
 	 */
 	boolean isLive();
+
+	/**
+	 * Returns a client identical to this one except that its campaign-level copy — what the prompts ask for
+	 * and what the replies are capped at — follows the given deck design's character budgets.
+	 *
+	 * @param limits the budgets of the deck the run builds
+	 * @return a client bound to those budgets; this client itself when it generates no copy
+	 */
+	ClaudeClient withCopyLimits(NarrativeCopyLimits limits);
 
 	/**
 	 * One tactic's "Top Publishers" slide copy, produced by a small dedicated call. Common contract for every
@@ -235,6 +247,17 @@ public interface ClaudeClient {
 	 * @return the tactic's pacing narrative, or {@code null} when the call produced no usable reply
 	 */
 	TacticPacing tacticPacing(TacticPacingInput input, String brief);
+
+	/**
+	 * The copy only the MPO deck design carries: the media-plan slide's HHI tile and two proposal cards, the
+	 * four-stage funnel slide, and the recommendations slide's headline. One call per report, run after every
+	 * other value is resolved so the funnel's evidence lines quote the figures the deck already prints.
+	 *
+	 * @param input the campaign and per-tactic figures, as the deck prints them
+	 * @param brief free-text campaign brief the copy must stay faithful to
+	 * @return the MPO copy, or {@code null} when the call produced no usable reply
+	 */
+	MpoNarrative mpoNarrative(MpoNarrativeInput input, String brief);
 
 	/**
 	 * Step 4 of the restructured slides-from-sheet flow — the campaign-level results call. It fills the

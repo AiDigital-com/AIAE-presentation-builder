@@ -182,6 +182,22 @@
 .rc-actions--split { justify-content: space-between; }
 .rc-actions__group { display: flex; align-items: center; gap: 12px; }
 
+/* ─────────────────────────── Screen 1 — template tabs ─────────────────────────── */
+.rc-tabs {
+  display: flex; gap: 4px; width: fit-content; padding: 4px; margin-bottom: 20px;
+  background: var(--rc-gray-wash); border-radius: 56px;
+}
+.rc-tabs__tab {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border: 0; border-radius: 56px;
+  background: transparent; font-family: var(--rc-font); font-size: 13px; font-weight: 600; color: var(--rc-mute);
+  cursor: pointer; white-space: nowrap; transition: background 0.15s ease, color 0.15s ease;
+}
+.rc-tabs__tab--active { background: var(--white); color: var(--rc-blue); box-shadow: var(--shadow-soft); }
+.rc-tabs__badge {
+  font-family: var(--rc-display); font-weight: 700; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--rc-ink); background: var(--rc-lime); padding: 2px 8px; border-radius: 999px;
+}
+
 /* ─────────────────────────── Screen 1 — type cards ─────────────────────────── */
 .rc-typegrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .rc-typecard {
@@ -271,6 +287,19 @@
   font-size: 13px; font-weight: 600; color: var(--rc-mute); cursor: pointer;
 }
 .rc-tabpick__dismiss:hover { color: var(--rc-slate); }
+
+/* MPO performance-channel exports (Paid Search / Paid Social) */
+.rc-paid {
+  margin-bottom: 22px; padding: 18px 20px 4px; border: 1px dashed var(--rc-card-border); border-radius: 14px;
+  background: var(--white);
+}
+.rc-paid__head { display: flex; align-items: center; gap: 8px; }
+.rc-paid__title { font-weight: 700; font-size: 15px; color: var(--rc-ink); }
+.rc-paid__badge {
+  font-size: 11px; font-weight: 600; color: var(--rc-mute); background: var(--rc-line);
+  padding: 2px 8px; border-radius: 999px;
+}
+.rc-paid__sub { margin: 4px 0 14px; color: var(--rc-mute); font-size: 13px; line-height: 1.45; }
 
 /* "I already have a filled sheet" — the way past this whole step, so it reads as a card of its
    own above the form rather than as one more field in it. */

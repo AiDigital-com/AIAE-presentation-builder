@@ -186,6 +186,8 @@ function PageInner() {
         if (!draft || seededRef.current) return;
         seededRef.current = true;
         if (draft.reportType) w.setReportType(draft.reportType);
+        // A draft saved before the template choice existed carries none; it was built on the standard deck.
+        w.setTemplateVariant(draft.templateVariant ?? "STANDARD");
         w.setBrief(draft.brief ?? "");
         w.setChangeLog(draft.changeLog ?? "");
         w.setMarketVolume(draft.marketVolume ?? "");
@@ -216,7 +218,7 @@ function PageInner() {
     // it is adopted — seeding straight from the response would lose it on the first refresh.
     function adoptSheet(url: string) {
         adoptMutation.mutate(
-            { sheetUrl: url, reportType: w.reportType },
+            { sheetUrl: url, reportType: w.reportType, templateVariant: w.templateVariant },
             {
                 onSuccess: (draft) => {
                     showToast("Sheet adopted — review it before generating");
@@ -571,12 +573,23 @@ function PageInner() {
             brief: w.brief,
             changeLog: w.changeLog,
             reportType: w.reportType,
+            templateVariant: w.templateVariant,
             marketVolume: w.marketVolume,
             sheetRows: w.mediaPlan?.sheetRows ?? [],
             adjRows: w.elevate?.adjRows ?? [],
             audienceRows: w.mediaPlan?.audienceRows ?? [],
             estimatesRows: w.mediaPlan?.estimatesRows ?? [],
             geoRows: w.mediaPlan?.geoRows ?? [],
+            // The performance-channel exports only exist on the MPO design; a standard deck never carries them,
+            // even if the user connected one before switching back to the standard tab.
+            ...(w.templateVariant === "MPO"
+                ? {
+                      paidSearchRows: w.paidChannels.search?.rawRows,
+                      paidSocialRows: w.paidChannels.social?.rawRows,
+                      paidSearchUrl: sheetUrlFromId(w.paidChannels.search?.sheetId),
+                      paidSocialUrl: sheetUrlFromId(w.paidChannels.social?.sheetId),
+                  }
+                : {}),
             lineItemMapping: w.mapping ? toPayloadMapping(w.activeMapping) : undefined,
             // Step-3 breakdown toggles → the backend clears the sections a tactic didn't enable on the
             // generated sheet's "Breakdowns" tab. One entry per mapped tactic (empty list = none enabled).

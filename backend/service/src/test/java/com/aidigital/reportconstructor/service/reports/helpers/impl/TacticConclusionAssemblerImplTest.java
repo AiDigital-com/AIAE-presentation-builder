@@ -33,7 +33,7 @@ class TacticConclusionAssemblerImplTest {
 
 		// When: thoughts inputs are assembled for the qualifying set {2}
 		List<TacticThoughtsInput> inputs =
-				assembler.toThoughtsInputs(List.of(one, two), names, Set.of(2), bullets);
+				assembler.toThoughtsInputs(List.of(one, two), names, Set.of(2), bullets, false);
 
 		// Then: only tactic 2's input is produced, carrying its name, overview and its own section bullets
 		assertThat(inputs).hasSize(1);
@@ -52,7 +52,7 @@ class TacticConclusionAssemblerImplTest {
 		BreakdownBullets bullets = new BreakdownBullets(Map.of(), Map.of(), Map.of(), Map.of(), Map.of());
 
 		// When: thoughts inputs are assembled from null
-		List<TacticThoughtsInput> inputs = assembler.toThoughtsInputs(null, Map.of(), Set.of(1), bullets);
+		List<TacticThoughtsInput> inputs = assembler.toThoughtsInputs(null, Map.of(), Set.of(1), bullets, false);
 
 		// Then: the result is empty
 		assertThat(inputs).isEmpty();

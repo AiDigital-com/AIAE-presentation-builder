@@ -63,6 +63,44 @@ class TacticResolversTest {
 	}
 
 	@Test
+	void resolveTacticTopCreativeCompletions_shouldReadTheTopCreativesCompletedViewsTest() {
+		// Given: a video tactic whose top creative completed 457,614 views
+		Tactic tactic = new Tactic(
+				"CTV", "Video", null,
+				0, 518_250, 0, 457_614, null, 88.3, null, null,
+				null, null, null, null, null,
+				"Azure GRP 30 sec", 518_250.0, 0.0,
+				null, null, null, null, null, null, null,
+				457_614.0
+		);
+		CampaignData data = new CampaignData(
+				null, null, null, null, null, null, null, null, null, null, null,
+				new Totals(0, 0, 0, 0, null, null),
+				Map.of(1, tactic), null
+		);
+
+		// When:
+		Resolved r = resolvers.resolveTacticTopCreativeCompletions(1, List.of(), List.of(), data);
+
+		// Then:
+		assertThat(r.source()).isEqualTo("adj");
+		assertThat(r.value()).isEqualTo("457,614");
+	}
+
+	@Test
+	void resolveTacticTopCreativeCompletions_shouldPreferAManualAdjustmentTest() {
+		// Given:
+		List<List<String>> adj = List.of(List.of("Tactic 1 top creative completions:", "400,000"));
+
+		// When:
+		Resolved r = resolvers.resolveTacticTopCreativeCompletions(1, List.of(), adj, null);
+
+		// Then:
+		assertThat(r.source()).isEqualTo("adj");
+		assertThat(r.value()).isEqualTo("400,000");
+	}
+
+	@Test
 	void resolveTacticVolume_prefersManualAdjustmentOverride() {
 		List<List<String>> adj = List.of(List.of("Tactic 1 volume:", "250K"));
 		Resolved r = resolvers.resolveTacticVolume(1, "Display", "1000000", List.of(), adj);

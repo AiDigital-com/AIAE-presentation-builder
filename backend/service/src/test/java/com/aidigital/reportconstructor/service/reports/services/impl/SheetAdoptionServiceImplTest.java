@@ -8,6 +8,7 @@ import com.aidigital.reportconstructor.service.reports.dto.GenerationTarget;
 import com.aidigital.reportconstructor.service.reports.dto.ReportResume;
 import com.aidigital.reportconstructor.service.reports.dto.ReportResumeState;
 import com.aidigital.reportconstructor.service.reports.dto.Tactic;
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
 import com.aidigital.reportconstructor.service.reports.helpers.BreakdownInferenceHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportFileNamer;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportJobProgressHelper;
@@ -107,7 +108,7 @@ class SheetAdoptionServiceImplTest {
 		when(jobProgress.createQueuedJob("user-1", "EOC")).thenReturn(job);
 
 		// When: the sheet is adopted
-		ReportResume resume = service().adopt("user-1", "clerk-1", "a@b.com", SHEET, "EOC");
+		ReportResume resume = service().adopt("user-1", "clerk-1", "a@b.com", SHEET, "EOC", null);
 
 		// Then: the job is stamped as a done SHEET build pointing at the user's own workbook
 		verify(jobProgress).recordJobContext(7L, "a@b.com", GenerationTarget.SHEET.name(), null, null);
@@ -133,7 +134,7 @@ class SheetAdoptionServiceImplTest {
 		when(jobProgress.createQueuedJob("user-1", "EOC")).thenReturn(job);
 
 		// When
-		ReportResume resume = service().adopt("user-1", "clerk-1", "a@b.com", SHEET, "EOC");
+		ReportResume resume = service().adopt("user-1", "clerk-1", "a@b.com", SHEET, "EOC", null);
 
 		// Then: the state is built from the sheet, with no invented date window
 		ArgumentCaptor<ReportResumeState> stored = ArgumentCaptor.forClass(ReportResumeState.class);
@@ -145,7 +146,26 @@ class SheetAdoptionServiceImplTest {
 		assertThat(state.breakdownSelections()).isSameAs(inferred);
 		assertThat(state.tacticNames()).containsExactly("Display", "CTV");
 		assertThat(state.dateFilter()).isNull();
+		assertThat(state.templateVariant()).isEqualTo(TemplateVariant.STANDARD);
 		assertThat(resume.state()).isSameAs(state);
+	}
+
+	@Test
+	void shouldRememberTheMpoDesignTheSheetWasAdoptedForTest() {
+		// Given: a workbook adopted from the MPO templates tab
+		stubWorkbook(new LinkedHashMap<>(), "Display");
+		when(breakdownInference.infer(SHEET, 1, null)).thenReturn(List.of());
+		ReportJobEntity job = new ReportJobEntity();
+		job.setId(9L);
+		when(jobProgress.createQueuedJob("user-1", "EOM")).thenReturn(job);
+
+		// When
+		service().adopt("user-1", "clerk-1", "a@b.com", SHEET, "EOM", TemplateVariant.MPO);
+
+		// Then: the draft keeps the design, so resuming it builds the deck on the MPO template
+		ArgumentCaptor<ReportResumeState> stored = ArgumentCaptor.forClass(ReportResumeState.class);
+		verify(resumeState).serialize(stored.capture());
+		assertThat(stored.getValue().templateVariant()).isEqualTo(TemplateVariant.MPO);
 	}
 
 	@Test
@@ -154,7 +174,7 @@ class SheetAdoptionServiceImplTest {
 		when(sheetHelper.readSheetGrid(eq(SHEET), eq(null))).thenReturn(List.of());
 
 		// When-Then: the user is told before any job row exists
-		assertThatThrownBy(() -> service().adopt("user-1", "clerk-1", "a@b.com", SHEET, "EOC"))
+		assertThatThrownBy(() -> service().adopt("user-1", "clerk-1", "a@b.com", SHEET, "EOC", null))
 				.isInstanceOf(AppException.class)
 				.hasMessageContaining("Could not read");
 		verify(jobProgress, never()).createQueuedJob("user-1", "EOC");
@@ -169,7 +189,7 @@ class SheetAdoptionServiceImplTest {
 		when(tacticCounter.countFromPlaceholders(values)).thenReturn(0);
 
 		// When-Then: rejected up front rather than three Claude batches later
-		assertThatThrownBy(() -> service().adopt("user-1", "clerk-1", "a@b.com", SHEET, "EOC"))
+		assertThatThrownBy(() -> service().adopt("user-1", "clerk-1", "a@b.com", SHEET, "EOC", null))
 				.isInstanceOf(AppException.class)
 				.hasMessageContaining("no tactics found");
 		verify(jobProgress, never()).createQueuedJob("user-1", "EOC");
@@ -178,7 +198,7 @@ class SheetAdoptionServiceImplTest {
 	@Test
 	void shouldRejectABlankSheetUrlTest() {
 		// When-Then: nothing is read and nothing is written
-		assertThatThrownBy(() -> service().adopt("user-1", "clerk-1", "a@b.com", "  ", "EOC"))
+		assertThatThrownBy(() -> service().adopt("user-1", "clerk-1", "a@b.com", "  ", "EOC", null))
 				.isInstanceOf(AppException.class)
 				.hasMessageContaining("Sheet URL is required");
 		verify(sheetHelper, never()).readSheetGrid("  ", null);

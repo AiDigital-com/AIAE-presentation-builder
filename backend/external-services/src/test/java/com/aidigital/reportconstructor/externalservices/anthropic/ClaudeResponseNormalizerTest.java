@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.anthropic;
 
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -384,5 +385,23 @@ class ClaudeResponseNormalizerTest {
 		assertThat(out).doesNotEndWith(" with.");
 		assertThat(out).doesNotEndWith(" and.");
 		assertThat(out).doesNotEndWith(" the.");
+	}
+
+	@Test
+	void shouldCapTheStrategicOverviewAtTheMpoBudgetForTheCompactProfileTest() {
+		// Given: a normalizer bound to the MPO deck, a period just past position 75, and a comma after it
+		// still inside the 100-character cut window
+		ClaudeResponseNormalizer compact = new ClaudeResponseNormalizer().withCopyLimits(NarrativeCopyLimits.COMPACT);
+		String longOverview = "a".repeat(95) + "." + "b".repeat(10) + "," + "c".repeat(50);
+
+		// When:
+		String out = compact.limitStrategicOverview(longOverview);
+		String standard = normalizer.limitStrategicOverview(longOverview);
+
+		// Then: the MPO cap cuts at the period, while the standard template's wider box keeps the whole text
+		assertThat(out).isEqualTo("a".repeat(95) + ".");
+		assertThat(standard).isEqualTo(longOverview);
+		assertThat(compact.getCopyLimits()).isEqualTo(NarrativeCopyLimits.COMPACT);
+		assertThat(normalizer.getCopyLimits()).isEqualTo(NarrativeCopyLimits.STANDARD);
 	}
 }

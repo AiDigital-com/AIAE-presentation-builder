@@ -6,6 +6,8 @@ import com.aidigital.reportconstructor.service.reports.dto.CampaignFrequencies;
 import com.aidigital.reportconstructor.service.reports.dto.CreativeTakeawayInput;
 import com.aidigital.reportconstructor.service.reports.dto.DeviceInsightInput;
 import com.aidigital.reportconstructor.service.reports.dto.GeoInsightInput;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrative;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.dto.PublisherObservationInput;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeNarrative;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeResults;
@@ -20,6 +22,7 @@ import com.aidigital.reportconstructor.service.reports.dto.TacticThoughts;
 import com.aidigital.reportconstructor.service.reports.dto.TacticThoughtsInput;
 import com.aidigital.reportconstructor.service.reports.engine.Pivot;
 import com.aidigital.reportconstructor.service.reports.engine.ReportClaudeDefaults;
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.aidigital.reportconstructor.service.reports.ports.ClaudeClient;
 import org.springframework.stereotype.Component;
 
@@ -46,6 +49,12 @@ public class StubClaudeClient implements ClaudeClient {
 	@Override
 	public boolean isLive() {
 		return false;
+	}
+
+	@Override
+	public ClaudeClient withCopyLimits(NarrativeCopyLimits limits) {
+		// No live model: there is no copy for the budgets to shape, so every deck design shares this client.
+		return this;
 	}
 
 	@Override
@@ -117,6 +126,12 @@ public class StubClaudeClient implements ClaudeClient {
 	@Override
 	public TacticPacing tacticPacing(TacticPacingInput input, String brief) {
 		// The stub writes no narrative: a dry run's channel slides show the dash the sweep leaves behind.
+		return null;
+	}
+
+	@Override
+	public MpoNarrative mpoNarrative(MpoNarrativeInput input, String brief) {
+		// The stub writes no narrative: a dry run's MPO slots show the dash the assembler leaves behind.
 		return null;
 	}
 

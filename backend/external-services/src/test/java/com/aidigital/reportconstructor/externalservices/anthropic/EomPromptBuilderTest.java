@@ -25,6 +25,7 @@ import com.aidigital.reportconstructor.service.reports.dto.TacticThoughtsInput;
 import com.aidigital.reportconstructor.service.reports.dto.Totals;
 import com.aidigital.reportconstructor.service.reports.engine.Fmt;
 import com.aidigital.reportconstructor.service.reports.engine.Pivot;
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -487,7 +488,7 @@ class EomPromptBuilderTest {
 		// Given: the Step-3 call for one tactic that ran a publisher breakdown
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				1, "CTV", "CTV paced to 101% of the month's impression target.",
-				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of());
+				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of(), false);
 
 		// When:
 		String prompt = builder.buildTacticThoughtsPrompt(input, "Drive awareness.", 200, 470).orElseThrow();
@@ -513,7 +514,7 @@ class EomPromptBuilderTest {
 		// Given: an EOC run of the same call
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				1, "CTV", "CTV delivered 101% of its impression plan.",
-				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of());
+				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of(), false);
 
 		// When:
 		String prompt = eoc.buildTacticThoughtsPrompt(input, "Drive awareness.", 200, 470).orElseThrow();
@@ -804,7 +805,7 @@ class EomPromptBuilderTest {
 		// Given: the Step-3 call for one tactic
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				1, "CTV", "CTV paced to 101% of the month's impression target.",
-				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of());
+				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of(), false);
 
 		// When:
 		String prompt = builder.buildTacticThoughtsPrompt(input, "Drive awareness.", 200, 470).orElseThrow();
@@ -823,7 +824,7 @@ class EomPromptBuilderTest {
 		// Given: an EOC run of the same call
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				1, "CTV", "CTV delivered 101% of its impression plan.",
-				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of());
+				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of(), false);
 
 		// When:
 		String prompt = eoc.buildTacticThoughtsPrompt(input, "Drive awareness.", 200, 470).orElseThrow();
@@ -1020,5 +1021,30 @@ class EomPromptBuilderTest {
 		assertThat(batchA).doesNotContain("updated_projection");
 		assertThat(batchD).doesNotContain("carry_forward");
 		assertThat(batchD).doesNotContain("new_test");
+	}
+
+	@Test
+	void shouldQuoteTheMpoBudgetsWhenBoundToTheCompactProfileTest() {
+		// Given: the EOM builder bound to the MPO deck's budgets, the way an MPO run's client builds it
+		EomPromptBuilder compact = new EomPromptBuilder(new ClaudeResponseNormalizer(), new Fmt())
+				.withNormalizer(new ClaudeResponseNormalizer(NarrativeCopyLimits.COMPACT));
+
+		// When:
+		String insights = compact.batchAStrategicInsightsSpec();
+		String northStar = compact.northStarSchema();
+		String pacing = compact.pacingTakeawaysSchema(1);
+		String whatWeDid = compact.whatWeDidSchema();
+		String projection = compact.updatedProjectionSchema();
+		String focus = compact.focusNextMonthSchema();
+
+		// Then: every EOM slot is asked for at the MPO box's size, not the standard template's
+		assertThat(insights).contains("MAX 90 CHARACTERS");
+		assertThat(northStar).contains("\"extended_north_star\": string, // MAX 200 chars.");
+		assertThat(northStar).contains("\"horizon\": string,            // MAX 60 chars.");
+		assertThat(compact.audienceSegmentsLimit()).isEqualTo(60);
+		assertThat(pacing).contains("MAX 110 CHARACTERS EACH");
+		assertThat(whatWeDid).contains("MAX 28 CHARACTERS EACH, the three texts MAX 85 CHARACTERS EACH");
+		assertThat(projection).contains("\"updated_projection\": string,   // MAX 190 chars");
+		assertThat(focus).contains("\"carry_forward\": array,         // EXACTLY 3 strings, MAX 60 CHARACTERS");
 	}
 }

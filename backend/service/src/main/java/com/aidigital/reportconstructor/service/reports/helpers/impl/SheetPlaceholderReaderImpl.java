@@ -183,7 +183,8 @@ public class SheetPlaceholderReaderImpl implements SheetPlaceholderReader {
 			Map.entry("Female", " female"),
 			Map.entry("Creative Name:", " top creative name"),
 			Map.entry("Impressions:", " top creative imps"),
-			Map.entry("Clicks:", " top creative clicks"));
+			Map.entry("Clicks:", " top creative clicks"),
+			Map.entry("Completed Views:", " top creative completions"));
 
 	/**
 	 * Header cell that anchors a per-tactic metric table — the workbook block that faces the deck's

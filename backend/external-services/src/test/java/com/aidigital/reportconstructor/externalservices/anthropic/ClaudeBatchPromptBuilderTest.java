@@ -1,6 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.anthropic;
 
 import com.aidigital.reportconstructor.service.reports.dto.CampaignData;
+import com.aidigital.reportconstructor.service.reports.dto.MpoNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.dto.CampaignFrequencies;
 import com.aidigital.reportconstructor.service.reports.dto.CreativeRow;
 import com.aidigital.reportconstructor.service.reports.dto.CreativeTable;
@@ -282,11 +283,31 @@ class ClaudeBatchPromptBuilderTest {
 	}
 
 	@Test
+	void shouldAskForOneMarkedKeyPhraseOnlyForTheMpoThoughtsSlideTest() {
+		// Given: the same tactic, once for the MPO design and once for the standard template
+		TacticThoughtsInput mpo = new TacticThoughtsInput(
+				1, "CTV", "CTV delivered 101% of its impression plan.",
+				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of(), true);
+		TacticThoughtsInput standard = new TacticThoughtsInput(
+				1, "CTV", "CTV delivered 101% of its impression plan.",
+				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of(), false);
+
+		// When:
+		String mpoPrompt = builder.buildTacticThoughtsPrompt(mpo, "Drive awareness.", 120, 230).orElseThrow();
+		String standardPrompt = builder.buildTacticThoughtsPrompt(standard, "Drive awareness.", 220, 470)
+				.orElseThrow();
+
+		// Then: only the MPO prompt asks for the ** key phrase the deck turns into bold text
+		assertThat(mpoPrompt).contains(MpoPromptSpec.MPO_THOUGHTS_EMPHASIS);
+		assertThat(standardPrompt).doesNotContain("EMPHASIS");
+	}
+
+	@Test
 	void tacticThoughtsPrompt_forbidsThePreambleThatAteTheOutputBudget() {
 		// Given: one tactic's Step-2 conclusions, the only input the Step-3 thoughts call reasons over
 		TacticThoughtsInput input = new TacticThoughtsInput(
 				1, "CTV", "CTV delivered 101% of its impression plan.",
-				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of());
+				List.of("Hulu carried the largest share."), List.of(), List.of(), List.of(), List.of(), false);
 
 		// When: the Step-3 per-tactic thoughts prompt is built
 		String prompt = builder.buildTacticThoughtsPrompt(input, "Drive awareness.", 220, 470).orElseThrow();
@@ -327,6 +348,36 @@ class ClaudeBatchPromptBuilderTest {
 
 		assertThat(builder.buildTacticPacingPrompt(input, "brief", 230, 140)).isEmpty();
 		assertThat(builder.buildTacticPacingPrompt(null, "brief", 230, 140)).isEmpty();
+	}
+
+	@Test
+	void shouldBuildTheMpoNarrativePromptFromTheDeckFiguresTest() {
+		// Given:
+		MpoNarrativeInput input = new MpoNarrativeInput(
+				List.of("Client: Azure Cove", "Total impressions: 2,093,156"),
+				List.of("Tactic 1 — CTV: impressions 1.06M; KPI VCR 98.23%"),
+				java.util.Arrays.asList(null, "Group two overview that runs long.", null, null));
+
+		// When:
+		String prompt = builder.buildMpoNarrativePrompt(input, "Drive luxury bookings.").orElseThrow();
+
+		// Then: the figures and brief are quoted, and every field the deck needs is asked for by name
+		assertThat(prompt).contains("Client: Azure Cove", "Total impressions: 2,093,156",
+				"Tactic 1 — CTV: impressions 1.06M; KPI VCR 98.23%", "Drive luxury bookings.");
+		assertThat(prompt).contains("\"audience_hhi\"", "\"proposal_points\"", "\"funnel_stages\"",
+				"\"recommendations_headline\"", "exactly 2 objects", "exactly 4 objects");
+		// And: the long group overview is handed over under its group number, to be tightened to the MPO box
+		assertThat(prompt).contains("Group 2: Group two overview that runs long.", "\"results_overviews\"",
+				"at most 160 characters");
+		// And: an income is never guessed
+		assertThat(prompt).contains("Never guess an income.");
+	}
+
+	@Test
+	void shouldSkipTheMpoNarrativePromptWithoutFiguresTest() {
+		// Given-When-Then:
+		assertThat(builder.buildMpoNarrativePrompt(new MpoNarrativeInput(List.of(), List.of(), List.of()), "brief")).isEmpty();
+		assertThat(builder.buildMpoNarrativePrompt(null, "brief")).isEmpty();
 	}
 
 	@Test

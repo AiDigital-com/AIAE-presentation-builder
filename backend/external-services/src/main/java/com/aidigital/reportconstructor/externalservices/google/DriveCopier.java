@@ -1,6 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
 import com.google.api.services.drive.Drive;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -10,10 +11,18 @@ import java.util.List;
  * Drive folder creation and template spreadsheet copies for the chart engine.
  */
 @Component
+@RequiredArgsConstructor
 public class DriveCopier {
+
+	private static final String FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
+
+	private final GoogleProperties props;
 
 	/**
 	 * Creates a Google Drive folder (shared-drive aware) to hold the per-report chart spreadsheet copies.
+	 * The folder is placed inside {@code external.google.slides-target-folder-id} when that is set, so the
+	 * chart copies land next to the generated deck instead of in the service account's own Drive, which
+	 * has no storage quota; when it is blank the folder keeps Drive's default location.
 	 *
 	 * @param drive authenticated Google Drive API client used to issue the create call
 	 * @param name  display name for the new folder
@@ -23,7 +32,11 @@ public class DriveCopier {
 	public String createFolder(Drive drive, String name) throws IOException {
 		com.google.api.services.drive.model.File folder = new com.google.api.services.drive.model.File()
 				.setName(name)
-				.setMimeType("application/vnd.google-apps.folder");
+				.setMimeType(FOLDER_MIME_TYPE);
+		String parentId = props.getSlidesTargetFolderId();
+		if (parentId != null && !parentId.isBlank()) {
+			folder.setParents(List.of(parentId.trim()));
+		}
 		return drive.files().create(folder).setFields("id").setSupportsAllDrives(true).execute().getId();
 	}
 

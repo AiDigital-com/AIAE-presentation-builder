@@ -9,6 +9,7 @@ import com.aidigital.reportconstructor.service.reports.dto.GenerationTarget;
 import com.aidigital.reportconstructor.service.reports.dto.ReportResume;
 import com.aidigital.reportconstructor.service.reports.dto.ReportResumeState;
 import com.aidigital.reportconstructor.service.reports.dto.Tactic;
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
 import com.aidigital.reportconstructor.service.reports.helpers.BreakdownInferenceHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportFileNamer;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportJobProgressHelper;
@@ -58,7 +59,8 @@ public class SheetAdoptionServiceImpl implements SheetAdoptionService {
 
 	@Override
 	public ReportResume adopt(
-			String userId, String clerkUserId, String userEmail, String sheetUrl, String reportType) {
+			String userId, String clerkUserId, String userEmail, String sheetUrl, String reportType,
+			TemplateVariant templateVariant) {
 		if (sheetUrl == null || sheetUrl.isBlank()) {
 			throw new AppException(ErrorReason.C002, "Sheet URL is required");
 		}
@@ -91,7 +93,8 @@ public class SheetAdoptionServiceImpl implements SheetAdoptionService {
 				null,
 				Boolean.TRUE,
 				breakdowns,
-				tacticNames(data, tacticCount));
+				tacticNames(data, tacticCount),
+				templateVariant == null ? TemplateVariant.STANDARD : templateVariant);
 
 		ReportJobEntity job = jobProgress.createQueuedJob(userId, reportType);
 		// Recorded as a finished SHEET build because that is exactly what it is from here on: a

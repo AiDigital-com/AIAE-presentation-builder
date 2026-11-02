@@ -91,7 +91,7 @@ class ReportHistoryServiceImplTest {
 		draftSheet.setPayloadJson("{\"reportType\":\"EOM\"}");
 		draftSheet.setMediaPlanUrl("https://plan");
 		ReportResumeState stored = new ReportResumeState(
-				"EOM", "brief", null, null, null, null, null, List.of("Display"));
+				"EOM", "brief", null, null, null, null, null, List.of("Display"), null);
 		ReportJobProgressHelper jobs = mock(ReportJobProgressHelper.class);
 		ReportResumeStateHelper resumeState = mock(ReportResumeStateHelper.class);
 		when(jobs.loadJobForOwner("user-1", 1L)).thenReturn(draftSheet);

@@ -16,6 +16,8 @@ import java.util.List;
  * @param geoBullets       the tactic's "Geo analysis" strings, or {@code null} when the section is off
  * @param audienceFields   the tactic's "Audience analysis" strings, or {@code null} when the section is off
  * @param deviceFields     the tactic's "Device breakdown" strings, or {@code null} when the section is off
+ * @param compact          whether the deck is the MPO design, whose thoughts boxes hold far shorter copy than
+ *                         the standard template's
  */
 public record TacticThoughtsInput(
 		int tacticNum,
@@ -25,6 +27,7 @@ public record TacticThoughtsInput(
 		List<String> creativeBullets,
 		List<String> geoBullets,
 		List<String> audienceFields,
-		List<String> deviceFields
+		List<String> deviceFields,
+		boolean compact
 ) {
 }

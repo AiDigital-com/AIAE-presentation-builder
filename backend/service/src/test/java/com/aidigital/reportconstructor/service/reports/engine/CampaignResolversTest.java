@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -564,7 +565,7 @@ class CampaignResolversTest {
 		// Then: the reach carried on the result is the summed one, and {{reach}} shows that same number
 		assertThat(freq.reachPlan()).isBetween(160000.0 * 0.72, 160000.0 * 0.88);
 		Resolved reach = resolvers.resolveReach(estimates, List.of(), List.of(), freq.reachPlan());
-		assertThat(reach.value()).isEqualTo(String.format("%,d", Math.round(freq.reachPlan())));
+		assertThat(reach.value()).isEqualTo(String.format(Locale.US, "%,d", Math.round(freq.reachPlan())));
 		assertThat(reach.label()).contains("summed over the reported tactics");
 	}
 
@@ -600,6 +601,21 @@ class CampaignResolversTest {
 		// Then:
 		assertThat(r.value()).isEqualTo("+2%");
 		assertThat(r.source()).isEqualTo("adj");
+	}
+
+	@Test
+	void shouldAbbreviateAnImpressionsPaceOfAThousandPercentOrMoreTest() {
+		// Given: 4.4M delivered against a 1,218-impression plan, a lift of roughly 361,000%
+		CampaignData data = new CampaignData(
+				null, null, null, null, null, null, null, null, null, null, null,
+				new Totals(0, 4_400_000, 0, 0, null, null),
+				Map.of(1, planImpsTactic(1_218d)), null);
+
+		// When:
+		Resolved r = pacingResolvers.resolveTotalImpsPace(List.of(), List.of(), data);
+
+		// Then: the figure keeps its magnitude but fits the cover tile
+		assertThat(r.value()).isEqualTo("+361K%");
 	}
 
 	@Test

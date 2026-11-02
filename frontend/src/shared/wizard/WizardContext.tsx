@@ -10,7 +10,7 @@ import {
     useState,
     type ReactNode,
 } from "react";
-import type { MappingEntry, ReportType, Rows2D } from "../api/types";
+import type { MappingEntry, ReportType, Rows2D, TemplateVariant } from "../api/types";
 
 export interface ConnectedSheet {
     title: string;
@@ -34,12 +34,22 @@ export interface ElevateState extends ConnectedSheet {
     adjRows: Rows2D; // Basic; sheetId doubles as bqSheetId (presence gate)
 }
 
+// MPO performance channels, each fed by an optional sheet export (Google Ads / Meta).
+export type PaidChannel = "search" | "social";
+
+export interface PaidChannelState extends ConnectedSheet {
+    rawRows: Rows2D;
+}
+
 type OptionalTabs = Pick<MediaPlanState, "audienceRows" | "estimatesRows" | "geoRows">;
 
 interface WizardContextValue {
     brief: string;
     changeLog: string;
     reportType: ReportType;
+    // Deck design, picked by the template tab on step 1. Independent of the report type and of the
+    // connected sheets, so switching it never invalidates anything entered later in the wizard.
+    templateVariant: TemplateVariant;
     marketVolume: string;
     // When false the per-tactic dayparting (weekdays/weekends) and gender split (male/female) are written
     // to the deck as an em-dash instead of being estimated by Claude — those DSP metrics aren't always
@@ -47,6 +57,9 @@ interface WizardContextValue {
     estimateDaypartGender: boolean;
     mediaPlan: MediaPlanState | null;
     elevate: ElevateState | null;
+    // Optional MPO-only exports. Independent of the media plan and Elevate, so connecting one never
+    // invalidates the line-item match; kept when the user switches tabs, but only sent for MPO.
+    paidChannels: Record<PaidChannel, PaidChannelState | null>;
     mapping: MappingEntry[] | null;
     // Media-plan rows the user dropped on the matching screen (by their original tacticNum). A media
     // plan often carries line items this report is not about; a dropped row keeps its place in
@@ -71,6 +84,7 @@ interface WizardContextValue {
     setBrief(value: string): void;
     setChangeLog(value: string): void;
     setReportType(value: ReportType): void;
+    setTemplateVariant(value: TemplateVariant): void;
     setMarketVolume(value: string): void;
     setEstimateDaypartGender(value: boolean): void;
     connectMediaPlan(value: MediaPlanState): void;
@@ -78,6 +92,8 @@ interface WizardContextValue {
     disconnectMediaPlan(): void;
     connectElevate(value: ElevateState): void;
     disconnectElevate(): void;
+    connectPaidChannel(channel: PaidChannel, value: PaidChannelState): void;
+    disconnectPaidChannel(channel: PaidChannel): void;
     setMapping(mapping: MappingEntry[]): void;
     /** Drops a media-plan row from the report, or puts it back; identified by its original tacticNum. */
     toggleTacticExcluded(tacticNum: number): void;
@@ -98,10 +114,15 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     const [brief, setBriefState] = useState("");
     const [changeLog, setChangeLogState] = useState("");
     const [reportType, setReportTypeState] = useState<ReportType>("EOC");
+    const [templateVariant, setTemplateVariantState] = useState<TemplateVariant>("STANDARD");
     const [marketVolume, setMarketVolumeState] = useState("");
     const [estimateDaypartGender, setEstimateDaypartGenderState] = useState(true);
     const [mediaPlan, setMediaPlan] = useState<MediaPlanState | null>(null);
     const [elevate, setElevate] = useState<ElevateState | null>(null);
+    const [paidChannels, setPaidChannels] = useState<Record<PaidChannel, PaidChannelState | null>>({
+        search: null,
+        social: null,
+    });
     const [mapping, setMappingState] = useState<MappingEntry[] | null>(null);
     const [excludedTactics, setExcludedTactics] = useState<number[]>([]);
     const [matchConfirmed, setMatchConfirmed] = useState(false);
@@ -140,10 +161,12 @@ export function WizardProvider({ children }: { children: ReactNode }) {
             brief,
             changeLog,
             reportType,
+            templateVariant,
             marketVolume,
             estimateDaypartGender,
             mediaPlan,
             elevate,
+            paidChannels,
             mapping,
             excludedTactics,
             activeMapping,
@@ -156,6 +179,7 @@ export function WizardProvider({ children }: { children: ReactNode }) {
             setBrief: setBriefState,
             setChangeLog: setChangeLogState,
             setReportType: setReportTypeState,
+            setTemplateVariant: setTemplateVariantState,
             setMarketVolume: setMarketVolumeState,
             setEstimateDaypartGender: setEstimateDaypartGenderState,
             connectMediaPlan: (v) => {
@@ -178,6 +202,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
                 invalidateMatch();
                 invalidateDates();
             },
+            connectPaidChannel: (channel, v) => setPaidChannels((prev) => ({ ...prev, [channel]: v })),
+            disconnectPaidChannel: (channel) => setPaidChannels((prev) => ({ ...prev, [channel]: null })),
             setMapping: (m) => {
                 setMappingState(m);
                 // A fresh match rebuilds the tactic list, so the old row numbers no longer mean anything.
@@ -220,10 +246,12 @@ export function WizardProvider({ children }: { children: ReactNode }) {
             brief,
             changeLog,
             reportType,
+            templateVariant,
             marketVolume,
             estimateDaypartGender,
             mediaPlan,
             elevate,
+            paidChannels,
             mapping,
             excludedTactics,
             activeMapping,

@@ -9,6 +9,9 @@ export const MEDIA_PLAN_PRIMARY_TAB = "Proposal";
 export const MEDIA_PLAN_FALLBACK_TAB = "Estimates";
 export const MEDIA_PLAN_OPTIONAL_TABS = ["Audience&Inventory", "Estimates", "Geo"] as const;
 export const ELEVATE_TAB = "Basic";
+// Default tabs for the MPO performance-channel exports; a workbook without them gets a tab picker.
+export const PAID_SEARCH_TAB = "Paid Search";
+export const PAID_SOCIAL_TAB = "Paid Social";
 
 /** Legacy gate: "Pull data" is enabled only for a Google Sheets URL. */
 export function isGoogleSheetUrl(url: string): boolean {
