@@ -73,7 +73,7 @@ public class RealClaudeClient implements ClaudeClient {
 
 	private static final int PROPOSAL_LIMIT = 400;
 	private static final int STRATEGIC_POINT_LIMIT = 22;
-	private static final int RESULTS_OVERVIEW_LIMIT = 380;
+	private static final int RESULTS_OVERVIEW_LIMIT = 200;
 
 	/** Pacing-dashboard takeaway slots the EOM template carries, one per dashboard slide. */
 	private static final int PACING_TAKEAWAY_SLOTS = 4;
@@ -124,10 +124,14 @@ public class RealClaudeClient implements ClaudeClient {
 	 * demands — so the model either overran the budget (paying for a compression call) or dropped the numbers
 	 * to fit, which is the one thing the "no generic language" principle forbids.
 	 *
+	 * <p>160 then overran the new design: its bullet boxes hold two lines (about 58 characters each) before the
+	 * next card starts, so a 150-character bullet wrapped to three and spilled over. 115 is what the design's
+	 * own sample copy uses, the {@code [[lead phrase]]} markers included, and still reaches Claude as 92.
+	 *
 	 * <p>Deliberately not shared with geo and the audience/device short fields: those slide fields are narrower
 	 * and keep their own budgets.
 	 */
-	private static final int SECTION_BULLET_LIMIT = 160;
+	private static final int SECTION_BULLET_LIMIT = 115;
 
 	/** Character budget of one {@code {{publishers_observation_N_x}}} bullet on the slide. */
 	private static final int PUBLISHER_OBSERVATION_LIMIT = SECTION_BULLET_LIMIT;
@@ -149,10 +153,17 @@ public class RealClaudeClient implements ClaudeClient {
 	private static final int CREATIVE_TAKEAWAY_COUNT = 4;
 
 	/**
-	 * Character budget of each geo string on the slide — the four {@code {{geo_insight_N.x}}} bullets and
-	 * the {@code {{geo_N_reco}}} recommendation all share the same 140-character budget.
+	 * Character budget of each "what the map tells us" insight ({@code {{geo_insight_N.x}}}). Each bullet has
+	 * room for two lines (about 52 characters a line, narrower than the creative card) before it runs into the
+	 * next one; a 111-character insight already wrapped to three.
 	 */
-	private static final int GEO_INSIGHT_LIMIT = 140;
+	private static final int GEO_INSIGHT_LIMIT = 100;
+
+	/**
+	 * Character budget of the geo recommendation ({@code {{geo_N_reco}}}). Its box holds two lines and the
+	 * template's own "Recommendation:" label takes part of the first, so it is shorter than an insight.
+	 */
+	private static final int GEO_RECO_LIMIT = 90;
 
 	/**
 	 * Strings per tactic on the "Geo analysis" slide: three "what the map tells us" insight bullets plus one
@@ -169,11 +180,17 @@ public class RealClaudeClient implements ClaudeClient {
 	private static final int AUDIENCE_TAKEAWAY_LIMIT = 256;
 
 	/**
-	 * Character budget of the "Audience analysis" slide's three shorter fields — "what worked"
-	 * ({@code {{aud_N_worked}}}), the watch-out ({@code {{aud_N_flag}}}) and the recommended action
-	 * ({@code {{aud_N_reco}}}).
+	 * Character budget of the "Audience analysis" slide's "what worked" ({@code {{aud_N_worked}}}) and
+	 * watch-out ({@code {{aud_N_flag}}}) bullets. Each sits under its own heading with room for ONE line of
+	 * body text (about 65 characters) before the next heading starts; a second line covers that heading.
 	 */
-	private static final int AUDIENCE_SHORT_LIMIT = 120;
+	private static final int AUDIENCE_SHORT_LIMIT = 65;
+
+	/**
+	 * Character budget of the "Audience analysis" slide's recommended action ({@code {{aud_N_reco}}}). It is
+	 * the last bullet in the card, so it has room for two lines in its narrower box.
+	 */
+	private static final int AUDIENCE_RECO_LIMIT = 110;
 
 	/**
 	 * Strings per tactic on the "Audience analysis" slide: the key takeaway, "what worked", the watch-out
@@ -182,8 +199,8 @@ public class RealClaudeClient implements ClaudeClient {
 	private static final int AUDIENCE_FIELD_COUNT = 4;
 
 	/**
-	 * Output budget for one per-section call. The valid output is small — geo's five ~140-char strings or
-	 * audience/device's ~256+3×120, a few hundred tokens as a keyed JSON object — but the budget is set well above
+	 * Output budget for one per-section call. The valid output is small — geo's four strings of 90-115 chars or
+	 * audience/device's ~256+65+65+110, a few hundred tokens as a keyed JSON object — but the budget is set well above
 	 * that so a reply the model opens with a little extra text (which the prompt forbids but a model may still
 	 * add) still closes its last field instead of truncating mid-object and losing it.
 	 */
@@ -196,11 +213,16 @@ public class RealClaudeClient implements ClaudeClient {
 	private static final int DEVICE_TAKEAWAY_LIMIT = 256;
 
 	/**
-	 * Character budget of the "Device breakdown" slide's three shorter fields — "what worked"
-	 * ({@code {{dev_N_worked}}}), the watch-out ({@code {{dev_N_flag}}}) and the recommended action
-	 * ({@code {{dev_N_reco}}}).
+	 * Character budget of the "Device breakdown" slide's "what worked" ({@code {{dev_N_worked}}}) and
+	 * watch-out ({@code {{dev_N_flag}}}) bullets: ONE line of body text each, as on the audience slide.
 	 */
-	private static final int DEVICE_SHORT_LIMIT = 120;
+	private static final int DEVICE_SHORT_LIMIT = 65;
+
+	/**
+	 * Character budget of the "Device breakdown" slide's recommended action ({@code {{dev_N_reco}}}): the
+	 * last bullet in the card, with room for two lines.
+	 */
+	private static final int DEVICE_RECO_LIMIT = 110;
 
 	/**
 	 * Strings per tactic on the "Device breakdown" slide: the key takeaway, "what worked", the watch-out
@@ -297,11 +319,20 @@ public class RealClaudeClient implements ClaudeClient {
 	/**
 	 * Output budget for the Step-4 campaign-results call. Its output is largely fixed (grouped overviews, four
 	 * thoughts, four recommendations, frequency) and scales with tactic GROUPS, not tactics, so the per-tactic
-	 * term is small; the base covers the fixed copy and the cap bounds a many-group deck.
+	 * term is small; the base covers the fixed copy and the cap bounds a many-group deck. The base carries
+	 * deliberate headroom: when this one reply runs out, the results overview, both thoughts slides and the
+	 * recommendations all ship as dashes together, and output tokens are billed as generated, not as allowed.
 	 */
-	private static final int CAMPAIGN_RESULTS_BASE_TOKENS = 2500;
+	private static final int CAMPAIGN_RESULTS_BASE_TOKENS = 4000;
 	private static final int CAMPAIGN_RESULTS_TOKENS_PER_TACTIC = 80;
-	private static final int CAMPAIGN_RESULTS_MAX_TOKENS_CAP = 6000;
+	private static final int CAMPAIGN_RESULTS_MAX_TOKENS_CAP = 8000;
+
+	/**
+	 * HTTP timeout for every campaign-results send, whatever the tactic count. A reply of several thousand
+	 * tokens routinely takes longer than a minute to generate, and a timeout here blanks the deck's most
+	 * visible campaign-level slides, so the call is given room rather than scaled down for small campaigns.
+	 */
+	private static final int CAMPAIGN_RESULTS_TIMEOUT_SEC = 180;
 
 	// Batch D (narrative alignment) rewrites the campaign-level copy — the proposal, the strategic insights,
 	// one results overview per tactic group, the performance thoughts and three frequency strings — and never
@@ -474,8 +505,8 @@ public class RealClaudeClient implements ClaudeClient {
 			return List.of();
 		}
 		return runSection("GeoSection", input.tacticNum(),
-				promptBuilder.buildGeoSectionPrompt(input, data, brief, GEO_INSIGHT_LIMIT),
-				GEO_BULLET_COUNT, i -> GEO_INSIGHT_LIMIT);
+				promptBuilder.buildGeoSectionPrompt(input, data, brief, GEO_INSIGHT_LIMIT, GEO_RECO_LIMIT),
+				GEO_BULLET_COUNT, i -> i == GEO_BULLET_COUNT - 1 ? GEO_RECO_LIMIT : GEO_INSIGHT_LIMIT);
 	}
 
 	@Override
@@ -485,8 +516,9 @@ public class RealClaudeClient implements ClaudeClient {
 		}
 		return runSection("AudienceSection", input.tacticNum(),
 				promptBuilder.buildAudienceSectionPrompt(
-						input, data, brief, AUDIENCE_TAKEAWAY_LIMIT, AUDIENCE_SHORT_LIMIT),
-				AUDIENCE_FIELD_COUNT, i -> i == 0 ? AUDIENCE_TAKEAWAY_LIMIT : AUDIENCE_SHORT_LIMIT);
+						input, data, brief, AUDIENCE_TAKEAWAY_LIMIT, AUDIENCE_SHORT_LIMIT, AUDIENCE_RECO_LIMIT),
+				AUDIENCE_FIELD_COUNT, i -> fieldLimit(i, AUDIENCE_FIELD_COUNT,
+						AUDIENCE_TAKEAWAY_LIMIT, AUDIENCE_SHORT_LIMIT, AUDIENCE_RECO_LIMIT));
 	}
 
 	@Override
@@ -495,8 +527,29 @@ public class RealClaudeClient implements ClaudeClient {
 			return List.of();
 		}
 		return runSection("DeviceSection", input.tacticNum(),
-				promptBuilder.buildDeviceSectionPrompt(input, data, brief, DEVICE_TAKEAWAY_LIMIT, DEVICE_SHORT_LIMIT),
-				DEVICE_FIELD_COUNT, i -> i == 0 ? DEVICE_TAKEAWAY_LIMIT : DEVICE_SHORT_LIMIT);
+				promptBuilder.buildDeviceSectionPrompt(
+						input, data, brief, DEVICE_TAKEAWAY_LIMIT, DEVICE_SHORT_LIMIT, DEVICE_RECO_LIMIT),
+				DEVICE_FIELD_COUNT, i -> fieldLimit(i, DEVICE_FIELD_COUNT,
+						DEVICE_TAKEAWAY_LIMIT, DEVICE_SHORT_LIMIT, DEVICE_RECO_LIMIT));
+	}
+
+	/**
+	 * Picks the character budget of one field of a takeaway / what-worked / watch-out / recommendation
+	 * section (audience and device): the first field is the key takeaway, the last the recommended action,
+	 * and the ones between are the one-line bullets.
+	 *
+	 * @param index         zero-based position of the field in slide order
+	 * @param count         number of fields in the section
+	 * @param takeawayLimit budget of the key takeaway
+	 * @param shortLimit    budget of the one-line bullets
+	 * @param recoLimit     budget of the recommended action
+	 * @return the budget for the field at {@code index}
+	 */
+	int fieldLimit(int index, int count, int takeawayLimit, int shortLimit, int recoLimit) {
+		if (index == 0) {
+			return takeawayLimit;
+		}
+		return index == count - 1 ? recoLimit : shortLimit;
 	}
 
 	/**
@@ -1807,13 +1860,15 @@ public class RealClaudeClient implements ClaudeClient {
 		int tacticCount = data.tactics() == null ? 0 : data.tactics().size();
 		int maxTokens = Math.min(CAMPAIGN_RESULTS_MAX_TOKENS_CAP,
 				CAMPAIGN_RESULTS_BASE_TOKENS + CAMPAIGN_RESULTS_TOKENS_PER_TACTIC * tacticCount);
-		int timeoutSec = tacticCount > 10 ? 120 : 60;
-		ClaudeResults results = campaignResultsOne(prompt.get(), maxTokens, timeoutSec);
+		ClaudeResults results = campaignResultsOne(prompt.get(), maxTokens, CAMPAIGN_RESULTS_TIMEOUT_SEC);
 		if (results != null) {
 			return results;
 		}
-		log.warn("[claude:BatchCampaign] campaign results came back empty — retrying once");
-		results = campaignResultsOne(prompt.get(), maxTokens, timeoutSec);
+		// The retry is sent with the full budget rather than the same one: a first reply that ran out of tokens
+		// would only run out again at the same place if re-sent unchanged.
+		log.warn("[claude:BatchCampaign] campaign results came back empty — retrying once with {} max tokens",
+				CAMPAIGN_RESULTS_MAX_TOKENS_CAP);
+		results = campaignResultsOne(prompt.get(), CAMPAIGN_RESULTS_MAX_TOKENS_CAP, CAMPAIGN_RESULTS_TIMEOUT_SEC);
 		return results == null ? claudeDefaults.emptyResults() : results;
 	}
 

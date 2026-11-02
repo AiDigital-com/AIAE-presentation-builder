@@ -216,11 +216,11 @@ class ClaudeResponseNormalizerTest {
 	}
 
 	@Test
-	void limitResultsOverview_uses380Budget() {
+	void limitResultsOverview_uses200Budget() {
 		String longText = "x".repeat(500);
 		String out = normalizer.limitResultsOverview(longText);
 		assertThat(out).isNotNull();
-		assertThat(out.length()).isLessThanOrEqualTo(380);
+		assertThat(out.length()).isLessThanOrEqualTo(200);
 	}
 
 	@Test

@@ -41,6 +41,12 @@ public class DeckStyleTokenHelperImpl implements DeckStyleTokenHelper {
 	/** Segment chips the MPO media plan slide draws. */
 	static final int AUDIENCE_SEGMENT_SLOTS = 3;
 
+	/** One paragraph of the "Thoughts on campaign performance" slide, filled with its 1-based slot number. */
+	static final String THOUGHT_TOKEN = "{{thoughts on the performance %d}}";
+
+	/** Paragraph slots the thoughts slide can draw (four analytical thoughts plus the closing story). */
+	static final int THOUGHT_SLOTS = 5;
+
 	/**
 	 * Separates the segments of the audience line: commas and semicolons only, so a segment that is itself
 	 * a pair ("Honeymoons &amp; Romantic Getaways") stays one chip.
@@ -96,6 +102,24 @@ public class DeckStyleTokenHelperImpl implements DeckStyleTokenHelper {
 		}
 		for (int n = 1; n <= tacticCount; n++) {
 			fillTopContentKpi(flatReplacements, n);
+		}
+		hideEmptyThoughts(flatReplacements);
+	}
+
+	/**
+	 * Removes the thoughts slide's empty paragraphs: a slot with no copy (missing, blank or the dash the sheet
+	 * prints for "no value") is written as {@link DeckMarkup#HIDE_SHAPE}, so its text box is deleted instead
+	 * of showing a lone dash.
+	 *
+	 * @param flatReplacements resolved token → value map, mutated in place
+	 */
+	void hideEmptyThoughts(Map<String, String> flatReplacements) {
+		for (int slot = 1; slot <= THOUGHT_SLOTS; slot++) {
+			String token = String.format(THOUGHT_TOKEN, slot);
+			String value = flatReplacements.get(token);
+			if (isBlank(value) || DASH.equals(value.trim())) {
+				flatReplacements.put(token, DeckMarkup.HIDE_SHAPE);
+			}
 		}
 	}
 

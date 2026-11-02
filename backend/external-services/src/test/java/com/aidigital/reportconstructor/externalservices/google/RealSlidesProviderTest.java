@@ -71,7 +71,9 @@ class RealSlidesProviderTest {
 				creds, props, driveSharer, shareRecipients, retrier,
 				new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(), new SummaryTableRowTrimmer(),
 				new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
-				new DeckMarkupRequestBuilder());
+				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
+				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
 	}
 
 	private RealSlidesProvider newMasterTacticProvider(String tacticMasterId, String thoughtsMasterId) {
@@ -96,7 +98,9 @@ class RealSlidesProviderTest {
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
 				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
-				new DeckMarkupRequestBuilder());
+				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
+				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
 	}
 
 	private RealSlidesProvider newTitleProvider(List<String> eomDropSlideTitles) {
@@ -123,7 +127,9 @@ class RealSlidesProviderTest {
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
 				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
-				new DeckMarkupRequestBuilder());
+				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
+				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
 	}
 
 	private Page slide(String objectId) {
@@ -142,6 +148,31 @@ class RealSlidesProviderTest {
 		}
 		page.setPageElements(elements);
 		return page;
+	}
+
+	@Test
+	void shouldAbsorbTheMastersPercentSignWhenTheTileValueIsADashOrAlreadyAPercentageTest() {
+		// Given: a device master whose stat tiles read "{{dev_n_ctr}} %", one tile dashed, one typed with "%",
+		// one typed as a bare number
+		RealSlidesProvider provider = newProvider(Map.of());
+		List<Request> requests = new java.util.ArrayList<>();
+		Map<String, String> values = Map.of(
+				"{{dev_1_ctr}}", "—", "{{dev_1_vcr}}", "82.9%", "{{dev_1_amount}}", "4");
+		Set<String> tokens = new java.util.LinkedHashSet<>(List.of("{{dev_n_ctr}}", "{{dev_n_vcr}}", "{{dev_n_amount}}"));
+
+		// When:
+		provider.emitRenumberedTokens(requests, "copy-1", 1, tokens, values);
+
+		// Then: the dash and the percentage swallow the trailing sign, before the plain token is replaced
+		List<String> matched = requests.stream()
+				.map(r -> r.getReplaceAllText().getContainsText().getText())
+				.toList();
+		assertThat(matched).containsExactly(
+				"{{dev_n_ctr}} %", "{{dev_n_ctr}}%", "{{dev_n_ctr}}",
+				"{{dev_n_vcr}} %", "{{dev_n_vcr}}%", "{{dev_n_vcr}}",
+				"{{dev_n_amount}}");
+		assertThat(requests.getFirst().getReplaceAllText().getReplaceText()).isEqualTo("—");
+		assertThat(requests.getFirst().getReplaceAllText().getPageObjectIds()).containsExactly("copy-1");
 	}
 
 	@Test
@@ -203,7 +234,9 @@ class RealSlidesProviderTest {
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
 				retrier, new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
-				new DeckMarkupRequestBuilder());
+				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
+				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
 
 		List<TableRow> rows = new java.util.ArrayList<>();
 		rows.add(tableRow("Platforms"));
@@ -734,6 +767,97 @@ class RealSlidesProviderTest {
 	}
 
 	@Test
+	void shouldDeleteTheConfiguredBlockOnlyFromSlidesThePassKeepsTest() {
+		// Given: an EOM deck configured to drop the "Monthly Impressions Distribution" block, a locator that
+		// finds that block on both tactic slides, and one of those slides already being deleted whole
+		GoogleCredentialsFactory creds = Mockito.mock(GoogleCredentialsFactory.class);
+		when(creds.transport()).thenReturn(new NetHttpTransport());
+		when(creds.jsonFactory()).thenReturn(GsonFactory.getDefaultInstance());
+		when(creds.initializer()).thenReturn(request -> {
+		});
+		GoogleProperties props = Mockito.mock(GoogleProperties.class);
+		when(props.getSlidesTemplateId()).thenReturn("template");
+		when(props.getSlidesTargetFolderId()).thenReturn("");
+		when(props.getTacticSlideObjectIds()).thenReturn(Map.of());
+		when(props.getThoughtsMasterSlideObjectId()).thenReturn("");
+		when(props.getBreakdownMasterSlideObjectIds()).thenReturn(Map.of());
+		EomDeckProperties eomDeckProps = new EomDeckProperties();
+		eomDeckProps.setDropElementLabels(List.of("Monthly Impressions Distribution"));
+		SlideBlockLocator locator = Mockito.mock(SlideBlockLocator.class);
+		Page kept = slide("p7");
+		Page dropped = slide("gone");
+		when(locator.blockObjectIds(kept, List.of("MONTHLYIMPRESSIONSDISTRIBUTION")))
+				.thenReturn(List.of("card", "heading", "chart"));
+		RealSlidesProvider provider = new RealSlidesProvider(
+				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
+				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
+				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
+				new DeckMarkupRequestBuilder(new SlideBlockLocator()), locator, new TacticSlideRelayout(locator),
+				new DeviceTableCompactor(locator), new CreativeTableCompactor());
+
+		// When:
+		List<Request> requests = provider.buildBlockDeleteRequests(List.of(kept, dropped), Set.of("gone"));
+
+		// Then: the kept slide loses its block, and the slide deleted whole is never searched
+		assertThat(requests.stream().map(r -> r.getDeleteObject().getObjectId()).toList())
+				.containsExactly("card", "heading", "chart");
+		verify(locator, Mockito.never()).blockObjectIds(dropped, List.of("MONTHLYIMPRESSIONSDISTRIBUTION"));
+	}
+
+	@Test
+	void shouldRelayoutOnlyKeptSlidesAndOnlyWhenBothRelayoutLabelsAreSetTest() {
+		// Given: an EOM deck that drops the monthly block and relays the tactic slides out around the gap, with
+		// one tactic slide being deleted whole; and a second deck identical but with no anchor label configured
+		GoogleCredentialsFactory creds = Mockito.mock(GoogleCredentialsFactory.class);
+		when(creds.transport()).thenReturn(new NetHttpTransport());
+		when(creds.jsonFactory()).thenReturn(GsonFactory.getDefaultInstance());
+		when(creds.initializer()).thenReturn(request -> {
+		});
+		GoogleProperties props = Mockito.mock(GoogleProperties.class);
+		when(props.getSlidesTemplateId()).thenReturn("template");
+		when(props.getSlidesTargetFolderId()).thenReturn("");
+		when(props.getTacticSlideObjectIds()).thenReturn(Map.of());
+		when(props.getThoughtsMasterSlideObjectId()).thenReturn("");
+		when(props.getBreakdownMasterSlideObjectIds()).thenReturn(Map.of());
+		EomDeckProperties eomDeckProps = new EomDeckProperties();
+		eomDeckProps.setDropElementLabels(List.of("Monthly Impressions Distribution"));
+		eomDeckProps.setRelayoutGrowLabel("Top Delivery Content");
+		eomDeckProps.setRelayoutAnchorLabel("Daily pacing Dynamic");
+		EomDeckProperties noAnchorProps = new EomDeckProperties();
+		noAnchorProps.setDropElementLabels(List.of("Monthly Impressions Distribution"));
+		noAnchorProps.setRelayoutGrowLabel("Top Delivery Content");
+		TacticSlideRelayout relayout = Mockito.mock(TacticSlideRelayout.class);
+		Page kept = slide("p7");
+		Page dropped = slide("gone");
+		Request move = new Request();
+		when(relayout.relayoutRequests(kept, List.of("MONTHLYIMPRESSIONSDISTRIBUTION"), "TOPDELIVERYCONTENT",
+				"DAILYPACINGDYNAMIC")).thenReturn(List.of(move));
+		RealSlidesProvider provider = new RealSlidesProvider(
+				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
+				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
+				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
+				new DeckMarkupRequestBuilder(new SlideBlockLocator()), new SlideBlockLocator(), relayout,
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
+		RealSlidesProvider noAnchorProvider = new RealSlidesProvider(
+				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
+				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
+				new SummaryTableRowTrimmer(), new EomDeckPolicy(noAnchorProps), mpoDeckPolicy(), new EomSlideFinder(),
+				new DeckMarkupRequestBuilder(new SlideBlockLocator()), new SlideBlockLocator(), relayout,
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
+
+		// When:
+		List<Request> requests = provider.buildRelayoutRequests(List.of(kept, dropped), Set.of("gone"));
+		List<Request> noAnchorRequests = noAnchorProvider.buildRelayoutRequests(List.of(kept), Set.of());
+
+		// Then: the kept slide is relaid out with the normalized labels, the slide deleted whole is skipped,
+		// and a missing anchor label switches the relayout off
+		assertThat(requests).containsExactly(move);
+		verify(relayout, Mockito.never()).relayoutRequests(dropped, List.of("MONTHLYIMPRESSIONSDISTRIBUTION"),
+				"TOPDELIVERYCONTENT", "DAILYPACINGDYNAMIC");
+		assertThat(noAnchorRequests).isEmpty();
+	}
+
+	@Test
 	void buildTitleDeleteRequests_deletesTheSlidesCarryingAConfiguredEomTitleTest() {
 		// Given: the two EOC-only titles an EOM deck must drop, and a deck whose frequency slide has its
 		// title split across text runs and whose awareness slide differs in casing and spacing
@@ -964,7 +1088,9 @@ class RealSlidesProviderTest {
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
 				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
-				new DeckMarkupRequestBuilder());
+				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
+				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
 	}
 
 	private Page eomSlide(String objectId, String... texts) {
@@ -1088,7 +1214,9 @@ class RealSlidesProviderTest {
 				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(new EomDeckProperties()),
 				new MpoDeckPolicy(mpoDeckProps), new EomSlideFinder(),
-				new DeckMarkupRequestBuilder());
+				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
+				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
 
 		// When-Then: only the MPO EOM deck takes the EOM model; a standard EOM deck and any EOC deck do not
 		assertThat(provider.eomDeck("EOM", TemplateVariant.MPO)).isTrue();

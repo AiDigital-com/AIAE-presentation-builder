@@ -42,6 +42,28 @@ public class EomDeckProperties {
 	private List<String> dropSlideTitles = List.of();
 
 	/**
+	 * Static heading texts of the slide blocks an EOM deck must never ship, such as the tactic slide's
+	 * "Monthly Impressions Distribution" card. Each match removes the card the heading sits on together with
+	 * everything inside it (the heading, its chart); a heading on no card is removed alone. Matched like
+	 * {@link #dropSlideTitles}, on letters and digits only, against the heading's whole text.
+	 */
+	private List<String> dropElementLabels = List.of();
+
+	/**
+	 * Static heading of the card that grows into the space the {@link #dropElementLabels} drop leaves on a
+	 * tactic slide ("Top Delivery Content"): the elements stacked above it in its column (the KPI tiles) move
+	 * into the dropped block's place, and the card rises to the top of the row. Blank switches the relayout off
+	 * and leaves the gap as it is.
+	 */
+	private String relayoutGrowLabel = "";
+
+	/**
+	 * Static heading of the card whose top edge marks the top of the tactic slide's content row
+	 * ("Daily pacing Dynamic"): the grow card rises to this line. Blank switches the relayout off.
+	 */
+	private String relayoutAnchorLabel = "";
+
+	/**
 	 * Returns the EOM deck template id.
 	 *
 	 * @return the configured template id, or an empty string when the EOM deck has no template of its own
@@ -93,5 +115,59 @@ public class EomDeckProperties {
 	 */
 	public void setDropSlideTitles(List<String> dropSlideTitles) {
 		this.dropSlideTitles = dropSlideTitles == null ? List.of() : List.copyOf(dropSlideTitles);
+	}
+
+	/**
+	 * Returns the heading texts of the slide blocks an EOM deck drops.
+	 *
+	 * @return the configured block headings, never {@code null}
+	 */
+	public List<String> getDropElementLabels() {
+		return dropElementLabels;
+	}
+
+	/**
+	 * Sets the heading texts of the slide blocks an EOM deck drops, treating {@code null} as none.
+	 *
+	 * @param dropElementLabels the block headings to match (may be {@code null})
+	 */
+	public void setDropElementLabels(List<String> dropElementLabels) {
+		this.dropElementLabels = dropElementLabels == null ? List.of() : List.copyOf(dropElementLabels);
+	}
+
+	/**
+	 * Returns the heading of the card that grows into the dropped block's column.
+	 *
+	 * @return the configured heading, or an empty string when the relayout is off
+	 */
+	public String getRelayoutGrowLabel() {
+		return relayoutGrowLabel;
+	}
+
+	/**
+	 * Sets the heading of the card that grows into the dropped block's column, treating {@code null} as off.
+	 *
+	 * @param relayoutGrowLabel the card's static heading (may be {@code null})
+	 */
+	public void setRelayoutGrowLabel(String relayoutGrowLabel) {
+		this.relayoutGrowLabel = relayoutGrowLabel == null ? "" : relayoutGrowLabel;
+	}
+
+	/**
+	 * Returns the heading of the card marking the top of the tactic slide's content row.
+	 *
+	 * @return the configured heading, or an empty string when the relayout is off
+	 */
+	public String getRelayoutAnchorLabel() {
+		return relayoutAnchorLabel;
+	}
+
+	/**
+	 * Sets the heading of the card marking the top of the content row, treating {@code null} as off.
+	 *
+	 * @param relayoutAnchorLabel the card's static heading (may be {@code null})
+	 */
+	public void setRelayoutAnchorLabel(String relayoutAnchorLabel) {
+		this.relayoutAnchorLabel = relayoutAnchorLabel == null ? "" : relayoutAnchorLabel;
 	}
 }

@@ -405,7 +405,8 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 	 * @param sheetUrl        URL of the reviewed workbook
 	 * @param tacticNums      tactics that enabled the Audience breakdown
 	 * @param userGoogleToken OAuth token for Google Sheets, or null
-	 * @return the age and segment jobs for every tactic whose corresponding sub-table carried a row
+	 * @return one age job per tactic (empty when its age sub-table had no row) plus a segment job for every
+	 *         tactic whose segment sub-table carried a row
 	 */
 	List<BreakdownChartJob> audienceJobs(String sheetUrl, Set<Integer> tacticNums, String userGoogleToken) {
 		if (tacticNums.isEmpty()) {
@@ -420,10 +421,8 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 				ageSlices.add(new BreakdownChartSlice(
 						row.ageGroup(), reportNumbers.parseReportNumber(row.impressions())));
 			}
-			if (!ageSlices.isEmpty()) {
-				jobs.add(new BreakdownChartJob(
-						BreakdownChartSeries.AUDIENCE_AGE.code(), tacticNum, ageSlices));
-			}
+			// Emitted even without rows: the chart step then removes the master's sample age chart.
+			jobs.add(new BreakdownChartJob(BreakdownChartSeries.AUDIENCE_AGE.code(), tacticNum, ageSlices));
 			// The slide's second chart. Segments are plotted by affinity index because that is the only number
 			// the sheet's segment sub-table carries — it has no impressions column — and it is the same number
 			// the {{aud_in_N_x}} tokens print in the table beside the chart.
@@ -447,7 +446,7 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 	 * @param sheetUrl        URL of the reviewed workbook
 	 * @param tacticNums      tactics that enabled the Device breakdown
 	 * @param userGoogleToken OAuth token for Google Sheets, or null
-	 * @return one job per tactic whose device table carried a positive impressions slice
+	 * @return one job per tactic, with no slices when its device table had no row
 	 */
 	List<BreakdownChartJob> deviceJobs(String sheetUrl, Set<Integer> tacticNums, String userGoogleToken) {
 		if (tacticNums.isEmpty()) {
@@ -461,9 +460,9 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 			for (DeviceRow row : table.rows()) {
 				slices.add(new BreakdownChartSlice(row.device(), reportNumbers.parseReportNumber(row.impressions())));
 			}
-			if (!slices.isEmpty()) {
-				jobs.add(new BreakdownChartJob(BreakdownChartSeries.DEVICE.code(), tacticNum, slices));
-			}
+			// Emitted even without rows (a DOOH tactic has no device split): the chart step then removes the
+			// master's sample device chart instead of leaving it on the slide.
+			jobs.add(new BreakdownChartJob(BreakdownChartSeries.DEVICE.code(), tacticNum, slices));
 		}
 		return jobs;
 	}

@@ -6,6 +6,7 @@ import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
 import com.aidigital.reportconstructor.service.reports.dto.DeviceInsightInput;
 import com.aidigital.reportconstructor.service.reports.dto.DeviceRow;
 import com.aidigital.reportconstructor.service.reports.dto.DeviceTable;
+import com.aidigital.reportconstructor.service.reports.enums.DeviceCategory;
 import com.aidigital.reportconstructor.service.reports.helpers.BreakdownSelectionResolver;
 import com.aidigital.reportconstructor.service.reports.helpers.DeviceBreakdownHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportSheetHelper;
@@ -14,8 +15,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -30,36 +33,10 @@ import java.util.regex.Pattern;
 public class DeviceBreakdownHelperImpl implements DeviceBreakdownHelper {
 
 	/**
-	 * Slide token prefix of the "Mobile" device row ({@code {{mobile_imps_N}}}, …). The sheet's
-	 * pre-filled device label, lower-cased, is matched against these so the row lands on the right
-	 * slide tokens regardless of which rows the user actually filled in.
+	 * Everything that is not a letter or a digit, stripped from a sheet device label before it is matched
+	 * against {@link DeviceCategory#matches}, so spacing, casing and punctuation cannot drop a filled row.
 	 */
-	private static final String MOBILE_PREFIX = "mobile";
-
-	/** Slide token prefix of the "Connected TV" row ({@code {{ctv_imps_N}}}, …). */
-	private static final String CTV_PREFIX = "ctv";
-
-	/** Slide token prefix of the "Desktop" row ({@code {{desktop_imps_N}}}, …). */
-	private static final String DESKTOP_PREFIX = "desktop";
-
-	/** Slide token prefix of the "Tablet" row ({@code {{tablet_imps_N}}}, …). */
-	private static final String TABLET_PREFIX = "tablet";
-
-	/**
-	 * Token suffix of the mobile impressions-share tile ({@code {{dev_N_mob}}}). The share tokens use the
-	 * deck template's own short device names, which are not the row-token prefixes above — the slide's
-	 * per-device metric rows and its share tiles were authored under different naming conventions.
-	 */
-	private static final String MOBILE_SHARE_SUFFIX = "mob";
-
-	/** Token suffix of the connected-TV impressions-share tile ({@code {{dev_N_tv}}}). */
-	private static final String CTV_SHARE_SUFFIX = "tv";
-
-	/** Token suffix of the desktop impressions-share tile ({@code {{dev_N_desk}}}). */
-	private static final String DESKTOP_SHARE_SUFFIX = "desk";
-
-	/** Token suffix of the tablet impressions-share tile ({@code {{dev_N_tab}}}). */
-	private static final String TABLET_SHARE_SUFFIX = "tab";
+	private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^\\p{L}\\p{N}]+");
 
 	/**
 	 * Strings Claude returns per tactic, in slide order: the key takeaway, the "what worked" note, the
@@ -154,23 +131,15 @@ public class DeviceBreakdownHelperImpl implements DeviceBreakdownHelper {
 		values.put("{{top_dev_" + tacticNum + "}}", orDash(table.topDevice()));
 		values.put("{{dev_proc_imps_" + tacticNum + "}}", orDash(table.topDeviceImpressionsPct()));
 
-		Map<String, DeviceRow> rowsByDevice = rowsByDevice(table.rows());
-		// The slide's Connected TV row shows a literal "—" for CTR (non-clickable inventory), so it carries
-		// no {{ctv_ctr_N}} token; the other three devices carry the full metric set.
-		putDeviceRow(values, tacticNum, MOBILE_PREFIX, rowsByDevice.get(MOBILE_PREFIX), true);
-		putDeviceRow(values, tacticNum, CTV_PREFIX, rowsByDevice.get(CTV_PREFIX), false);
-		putDeviceRow(values, tacticNum, DESKTOP_PREFIX, rowsByDevice.get(DESKTOP_PREFIX), true);
-		putDeviceRow(values, tacticNum, TABLET_PREFIX, rowsByDevice.get(TABLET_PREFIX), true);
-
+		Map<DeviceCategory, DeviceRow> rowsByDevice = rowsByDevice(table.rows(), tacticNum);
 		double totalImps = shareDenominator(table.rows(), flatReplacements, tacticNum);
-		values.put("{{dev_" + tacticNum + "_" + MOBILE_SHARE_SUFFIX + "}}",
-				shareOf(rowsByDevice.get(MOBILE_PREFIX), totalImps));
-		values.put("{{dev_" + tacticNum + "_" + CTV_SHARE_SUFFIX + "}}",
-				shareOf(rowsByDevice.get(CTV_PREFIX), totalImps));
-		values.put("{{dev_" + tacticNum + "_" + DESKTOP_SHARE_SUFFIX + "}}",
-				shareOf(rowsByDevice.get(DESKTOP_PREFIX), totalImps));
-		values.put("{{dev_" + tacticNum + "_" + TABLET_SHARE_SUFFIX + "}}",
-				shareOf(rowsByDevice.get(TABLET_PREFIX), totalImps));
+		for (DeviceCategory device : DeviceCategory.values()) {
+			DeviceRow row = rowsByDevice.get(device);
+			// A device with no filled sheet row is dashed here; the slide step then drops that dashed row
+			// from the table entirely, so only the devices the campaign actually ran on are listed.
+			putDeviceRow(values, tacticNum, device.tokenPrefix(), row, device.carriesCtr());
+			values.put("{{dev_" + tacticNum + "_" + device.shareSuffix() + "}}", shareOf(row, totalImps));
+		}
 	}
 
 	/**
@@ -277,21 +246,51 @@ public class DeviceBreakdownHelperImpl implements DeviceBreakdownHelper {
 	}
 
 	/**
-	 * Indexes a block's device rows by their lower-cased device label, so each fixed slide row can look
-	 * up its own sheet row regardless of order and of which rows the user filled in. A duplicate label
-	 * keeps the last row, which is the sheet's own precedence when a device appears twice.
+	 * Indexes a block's device rows by the slide device they name, so each fixed slide row can look up its
+	 * own sheet row regardless of order, of which rows the user filled in, and of how the label is spelled
+	 * ({@code "Mobile"}, {@code "MOBILE "}, {@code "Mobile Web"}, {@code "CTV"}, {@code "Connected TV"} …).
+	 * A row whose label names no known device is logged and left out; a device named twice keeps its last
+	 * row, which is the sheet's own precedence when a device appears twice.
 	 *
-	 * @param rows the block's filled device rows, in sheet order
-	 * @return device label (lower-cased) → its row
+	 * @param rows      the block's filled device rows, in sheet order
+	 * @param tacticNum the tactic whose block is being indexed, used only for logging
+	 * @return slide device → its sheet row
 	 */
-	Map<String, DeviceRow> rowsByDevice(List<DeviceRow> rows) {
-		Map<String, DeviceRow> byDevice = new LinkedHashMap<>();
+	Map<DeviceCategory, DeviceRow> rowsByDevice(List<DeviceRow> rows, int tacticNum) {
+		Map<DeviceCategory, DeviceRow> byDevice = new EnumMap<>(DeviceCategory.class);
 		for (DeviceRow row : rows) {
-			if (row.device() != null && !row.device().isBlank()) {
-				byDevice.put(row.device().trim().toLowerCase(), row);
+			DeviceCategory device = deviceOf(row.device());
+			if (device == null) {
+				log.warn("[device] tactic {} row labelled \"{}\" names no slide device (Mobile / Connected TV / "
+						+ "Desktop / Tablet) — not shown on the slide", tacticNum, row.device());
+				continue;
+			}
+			if (byDevice.put(device, row) != null) {
+				log.warn("[device] tactic {} has a second {} row (\"{}\") — keeping this later one",
+						tacticNum, device, row.device());
 			}
 		}
 		return byDevice;
+	}
+
+	/**
+	 * Resolves a sheet device label to the slide device it names, after reducing it to lower-case letters
+	 * and digits so casing, spacing and punctuation cannot break the match.
+	 *
+	 * @param label the raw {@code Device} cell (may be {@code null})
+	 * @return the named device, or {@code null} when the label is blank or names none of them
+	 */
+	DeviceCategory deviceOf(String label) {
+		if (label == null) {
+			return null;
+		}
+		String normalized = NON_ALPHANUMERIC.matcher(label).replaceAll("").toLowerCase(Locale.ROOT);
+		for (DeviceCategory device : DeviceCategory.values()) {
+			if (device.matches(normalized)) {
+				return device;
+			}
+		}
+		return null;
 	}
 
 	/**

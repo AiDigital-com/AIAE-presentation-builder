@@ -14,6 +14,15 @@ public final class DeckMarkup {
 	public static final String HIDE_SHAPE = "⁣";
 
 	/**
+	 * Opens a breakdown takeaway's lead phrase, which the markup pass styles bold brand blue. The section copy
+	 * carries the pair only on its way to the slides; any prompt that reasons over that copy reads it without.
+	 */
+	public static final String LEAD_OPEN = "[[";
+
+	/** Closes a lead phrase opened by {@link #LEAD_OPEN}. */
+	public static final String LEAD_CLOSE = "]]";
+
+	/**
 	 * Not instantiable: this class only holds constants.
 	 */
 	private DeckMarkup() {

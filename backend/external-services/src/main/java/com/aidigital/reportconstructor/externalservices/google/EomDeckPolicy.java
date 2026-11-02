@@ -79,6 +79,33 @@ public class EomDeckPolicy {
 	}
 
 	/**
+	 * Returns the configured heading texts of the slide blocks (a card and everything on it) an EOM deck drops.
+	 *
+	 * @return the configured block headings, never {@code null}
+	 */
+	public List<String> dropElementLabels() {
+		return props.getDropElementLabels();
+	}
+
+	/**
+	 * Returns the heading of the tactic-slide card that grows into the dropped block's column.
+	 *
+	 * @return the configured heading, or an empty string when the relayout is off
+	 */
+	public String relayoutGrowLabel() {
+		return props.getRelayoutGrowLabel();
+	}
+
+	/**
+	 * Returns the heading of the tactic-slide card whose top edge marks the top of the content row.
+	 *
+	 * @return the configured heading, or an empty string when the relayout is off
+	 */
+	public String relayoutAnchorLabel() {
+		return props.getRelayoutAnchorLabel();
+	}
+
+	/**
 	 * Renders the EOM deck mode for the startup log, where the question is always "which template did this
 	 * process actually resolve?" — a deck built from the wrong template looks like a code problem while it
 	 * is nearly always an environment variable that never reached the process.

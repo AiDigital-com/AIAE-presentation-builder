@@ -63,6 +63,7 @@ import com.aidigital.reportconstructor.service.reports.helpers.SheetChartDataRea
 import com.aidigital.reportconstructor.service.reports.helpers.TacticExtractionHelper;
 import com.aidigital.reportconstructor.service.reports.ports.ClaudeClient;
 import com.aidigital.reportconstructor.service.reports.ports.ClaudeClientFlavors;
+import com.aidigital.reportconstructor.service.reports.ports.DeckMarkup;
 import com.aidigital.reportconstructor.service.reports.ports.SlidesProvider;
 import com.aidigital.reportconstructor.service.reports.ports.UserGoogleTokenProvider;
 import com.aidigital.reportconstructor.service.reports.services.PlaceholderResolverService;
@@ -1393,7 +1394,9 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 					continue;
 				}
 				String tag = entry.getKey().replace("{{", "").replace("}}", "").trim();
-				String line = tag + ": " + value.trim();
+				// The lead-phrase markers are slide styling, not copy: the alignment call must not echo them.
+				String line = tag + ": "
+						+ value.replace(DeckMarkup.LEAD_OPEN, "").replace(DeckMarkup.LEAD_CLOSE, "").trim();
 				if (line.length() > BREAKDOWN_DIGEST_LINE_MAX) {
 					line = line.substring(0, BREAKDOWN_DIGEST_LINE_MAX);
 				}

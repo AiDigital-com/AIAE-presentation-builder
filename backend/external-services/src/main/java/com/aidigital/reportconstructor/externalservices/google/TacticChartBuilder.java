@@ -176,6 +176,35 @@ public class TacticChartBuilder {
 	}
 
 	/**
+	 * Tells whether the deck still carries a monthly chart placeholder for any requested tactic: a scanned
+	 * chart linked to the tactic's monthly source workbook (master model), or the configured per-slot
+	 * placeholder id among the deck's elements (legacy model).
+	 *
+	 * @param tacticCharts tactic number &rarr; its scanned chart elements by source workbook; empty for a
+	 *                     legacy deck
+	 * @param transforms   the deck's element transforms by object id (legacy model only)
+	 * @param tacticCount  the number of requested tactics
+	 * @return {@code true} when at least one tactic has a monthly placeholder to swap into
+	 */
+	boolean monthlyPlaceholderOnDeck(
+			Map<Integer, Map<String, ChartElementRef>> tacticCharts, Map<String, ElementTransform> transforms,
+			int tacticCount) {
+		for (int n = 1; n <= tacticCount; n++) {
+			if (!tacticCharts.isEmpty()) {
+				if (tacticCharts.getOrDefault(n, Map.of()).containsKey(templates.monthlyTemplateFor(n))) {
+					return true;
+				}
+			} else {
+				String legacyId = templates.getMonthlySlideObjectIds().get(n);
+				if (legacyId != null && transforms.containsKey(legacyId)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * Builds the monthly combo chart for each requested tactic.
 	 *
 	 * @param clients  the Google clients for this request
@@ -190,6 +219,16 @@ public class TacticChartBuilder {
 			ChartClients clients, ChartRequest req, Headers headers, String folderId,
 			Map<Integer, Map<String, ChartElementRef>> tacticCharts) {
 		List<String> errors = new ArrayList<>();
+		Map<String, ElementTransform> transforms = tacticCharts.isEmpty()
+				? slideChartSwapper.loadTransforms(clients.slides(), req.presentationId(), errors, "Monthly")
+				: Map.of();
+		if (!monthlyPlaceholderOnDeck(tacticCharts, transforms, req.tacticCount())) {
+			// An EOM deck drops the "Monthly Impressions Distribution" card before charts are built, so there is
+			// nothing to swap a chart into; warning per tactic would only report a block removed on purpose.
+			log.info("[charts] deck {} carries no monthly chart placeholder — monthly pass skipped",
+					req.presentationId());
+			return errors;
+		}
 		boolean fromSheet = req.monthlyPivots() != null;
 		if (!fromSheet && !headers.valid()) {
 			errors.add("Monthly: BQ sheet — Date or Impressions column not found");
@@ -198,9 +237,6 @@ public class TacticChartBuilder {
 		Map<Integer, List<String>> tacticLineItems =
 				fromSheet ? Map.of() : lineItemGrouper.groupByTactic(req.lineItemMapping());
 		boolean multiYear = !fromSheet && chartPivot.isMultiYear(req.bqRows(), headers, req.flightTs());
-		Map<String, ElementTransform> transforms = tacticCharts.isEmpty()
-				? slideChartSwapper.loadTransforms(clients.slides(), req.presentationId(), errors, "Monthly")
-				: Map.of();
 
 		for (int n = 1; n <= req.tacticCount(); n++) {
 			List<String> liIds = tacticLineItems.getOrDefault(n, List.of());

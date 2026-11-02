@@ -609,6 +609,19 @@ external:
     #   EOM_DROP_SLIDE_OBJECT_IDS=""  EOM_DROP_SLIDE_TITLES="SLIDES LIBRARY"
     # The defaults below stay as they are, because production still builds EOM decks from the EOC template.
     drop-slide-titles: ${EOM_DROP_SLIDE_TITLES:DATA SIGNAL,AWARENESS & MARKET SHARE DOMINANCE}
+    # Blocks inside a slide an EOM deck must never ship, named by their static heading. Each heading found
+    # removes the card it sits on and everything placed inside that card (the heading, its chart); the rest of
+    # the slide stays. The tactic slides inherit the EOC "Monthly Impressions Distribution" chart, which an
+    # end-of-month report does not carry; with the card gone the monthly chart pass finds no placeholder on the
+    # deck and skips itself. Matched on letters + digits only, against the heading's whole text. Blank = nothing
+    # is removed.
+    drop-element-labels: ${EOM_DROP_ELEMENT_LABELS:Monthly Impressions Distribution}
+    # Closes the gap the block drop above leaves on each tactic slide: the KPI tiles stacked above the
+    # "grow" card move into the dropped block's place, and the grow card rises to the top of the content row
+    # (the anchor card's top edge), its creative image enlarging into the freed height. Matched on static
+    # headings like drop-element-labels. Either one blank = no relayout, the gap stays.
+    relayout-grow-label: ${EOM_RELAYOUT_GROW_LABEL:Top Delivery Content}
+    relayout-anchor-label: ${EOM_RELAYOUT_ANCHOR_LABEL:Daily pacing Dynamic}
 
   anthropic:
     api-key: ${ANTHROPIC_API_KEY:}

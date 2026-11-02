@@ -582,13 +582,13 @@ public class ClaudeResponseNormalizer {
 	}
 
 	/**
-	 * Normalizes the Batch C {@code results_overview} copy with a 380-character budget via {@link #normalizeC}.
+	 * Normalizes the Batch C {@code results_overview} copy with a 200-character budget via {@link #normalizeC}.
 	 *
 	 * @param val raw results-overview text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
 	public String limitResultsOverview(String val) {
-		return normalizeC(val, 380);
+		return normalizeC(val, 200);
 	}
 
 	/**

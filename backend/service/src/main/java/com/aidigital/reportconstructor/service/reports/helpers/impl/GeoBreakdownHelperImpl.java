@@ -44,7 +44,8 @@ public class GeoBreakdownHelperImpl implements GeoBreakdownHelper {
 
 	/**
 	 * Strings Claude returns per tactic: the {@link #INSIGHT_COUNT} insight bullets plus one recommendation.
-	 * The recommendation is the last element, written to {@code {{geo_N_reco}}}.
+	 * The recommendation is the last element, written to {@code {{geo_N_reco}}} and, for templates that type
+	 * the recommendation box as a fourth insight slot, to {@code {{geo_insight_N.4}}}.
 	 */
 	private static final int GEO_BULLET_COUNT = INSIGHT_COUNT + 1;
 
@@ -180,6 +181,9 @@ public class GeoBreakdownHelperImpl implements GeoBreakdownHelper {
 			}
 			String reco = bullets.size() >= GEO_BULLET_COUNT ? bullets.get(GEO_BULLET_COUNT - 1) : null;
 			values.put("{{geo_" + tacticNum + "_reco}}", reco == null ? "" : reco);
+			// Older templates type the recommendation box as the fourth insight slot instead of {{geo_N_reco}};
+			// writing the same text there keeps that box from shipping a raw token.
+			values.put("{{geo_insight_" + tacticNum + "." + GEO_BULLET_COUNT + "}}", reco == null ? "" : reco);
 		}
 		return warnings;
 	}
