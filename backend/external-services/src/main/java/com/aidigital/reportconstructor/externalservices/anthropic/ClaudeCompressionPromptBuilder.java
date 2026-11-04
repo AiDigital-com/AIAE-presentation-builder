@@ -33,7 +33,7 @@ public class ClaudeCompressionPromptBuilder {
 	 * @return the compression prompt requesting a JSON object keyed by each field's {@code key}, or empty when
 	 * {@code fields} is empty
 	 */
-	public Optional<String> buildCompressionPrompt(List<ClaudeCompressionField> fields) {
+	Optional<String> buildCompressionPrompt(List<ClaudeCompressionField> fields) {
 		if (fields.isEmpty()) {
 			return Optional.empty();
 		}
@@ -63,6 +63,8 @@ public class ClaudeCompressionPromptBuilder {
 						"does not fit, drop an entire trailing clause/example rather than trimming it down to a " +
 						"fragment.\n"
 						+ "- Never cut off mid-word.\n"
+						+ "- If a text opens with a lead phrase wrapped in [[double brackets]], the rewrite " +
+						"MUST open with a lead phrase wrapped the same way (shorten it if needed).\n"
 						+ "- Keep the same language (English) and tense as the original text.\n"
 						+ "- Return ONLY the JSON object — no markdown, no backticks, no explanation."
 		);

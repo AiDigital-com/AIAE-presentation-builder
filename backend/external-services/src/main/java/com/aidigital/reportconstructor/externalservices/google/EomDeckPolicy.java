@@ -29,7 +29,7 @@ public class EomDeckPolicy {
 	 * @param reportType report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
 	 * @return {@code true} for an EOM report
 	 */
-	public boolean appliesTo(String reportType) {
+	boolean appliesTo(String reportType) {
 		return EOM_REPORT_TYPE.equals(reportType);
 	}
 
@@ -39,7 +39,7 @@ public class EomDeckPolicy {
 	 *
 	 * @return {@code true} when an EOM deck template id is configured
 	 */
-	public boolean hasOwnTemplate() {
+	boolean hasOwnTemplate() {
 		String templateId = props.getSlidesTemplateId();
 		return templateId != null && !templateId.isBlank();
 	}
@@ -52,7 +52,7 @@ public class EomDeckPolicy {
 	 * @param defaultTemplateId the template to clone when this policy does not apply
 	 * @return the template id to clone
 	 */
-	public String templateIdOr(String reportType, String defaultTemplateId) {
+	String templateIdOr(String reportType, String defaultTemplateId) {
 		if (appliesTo(reportType) && hasOwnTemplate()) {
 			return props.getSlidesTemplateId().trim();
 		}
@@ -65,7 +65,7 @@ public class EomDeckPolicy {
 	 *
 	 * @return the configured slide object ids, never {@code null}
 	 */
-	public List<String> dropSlideObjectIds() {
+	List<String> dropSlideObjectIds() {
 		return props.getDropSlideObjectIds();
 	}
 
@@ -74,8 +74,35 @@ public class EomDeckPolicy {
 	 *
 	 * @return the configured title phrases, never {@code null}
 	 */
-	public List<String> dropSlideTitles() {
+	List<String> dropSlideTitles() {
 		return props.getDropSlideTitles();
+	}
+
+	/**
+	 * Returns the configured heading texts of the slide blocks (a card and everything on it) an EOM deck drops.
+	 *
+	 * @return the configured block headings, never {@code null}
+	 */
+	List<String> dropElementLabels() {
+		return props.getDropElementLabels();
+	}
+
+	/**
+	 * Returns the heading of the tactic-slide card that grows into the dropped block's column.
+	 *
+	 * @return the configured heading, or an empty string when the relayout is off
+	 */
+	String relayoutGrowLabel() {
+		return props.getRelayoutGrowLabel();
+	}
+
+	/**
+	 * Returns the heading of the tactic-slide card whose top edge marks the top of the content row.
+	 *
+	 * @return the configured heading, or an empty string when the relayout is off
+	 */
+	String relayoutAnchorLabel() {
+		return props.getRelayoutAnchorLabel();
 	}
 
 	/**
@@ -85,7 +112,7 @@ public class EomDeckPolicy {
 	 *
 	 * @return the configured EOM template id, or a marker saying the EOC template is used instead
 	 */
-	public String describeTemplate() {
+	String describeTemplate() {
 		return hasOwnTemplate() ? props.getSlidesTemplateId().trim() : "(same as EOC)";
 	}
 }

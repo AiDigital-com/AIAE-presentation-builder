@@ -41,7 +41,7 @@ public class GoogleCredentialsFactory {
 	 * {@link GoogleRequestRetrier}. Kept generous so a slow copy completes rather than failing with
 	 * "Read timed out".
 	 */
-	public static final int HTTP_TIMEOUT_MILLIS = 300_000;
+	private static final int HTTP_TIMEOUT_MILLIS = 300_000;
 
 	private final GoogleCredentials credentials;
 	private final HttpTransport transport;

@@ -81,6 +81,31 @@ class TacticChartBuilderTest {
 	}
 
 	@Test
+	void shouldReportAMonthlyPlaceholderOnlyWhileTheDeckStillCarriesOneTest() {
+		// Given: a legacy deck whose monthly slots are configured, read before and after the EOM drop removed
+		// the "Monthly Impressions Distribution" cards; and a master-model deck scanned with a monthly chart
+		ChartTemplateCatalog templates = new ChartTemplateCatalog();
+		templates.setMonthlySlideObjectIds(Map.of(1, "monthly_1", 2, "monthly_2"));
+		templates.setMonthlyTemplateSheetId("book_monthly");
+		TacticChartBuilder builder = newBuilder(templates);
+		ElementTransform xform = new ElementTransform(new Size(), new AffineTransform(), "p7");
+		Map<String, ElementTransform> eocDeck = Map.of("daily_1", xform, "monthly_2", xform);
+		Map<String, ElementTransform> eomDeck = Map.of("daily_1", xform, "daily_2", xform);
+		Map<Integer, Map<String, ChartElementRef>> scanned =
+				Map.of(1, Map.of("book_monthly", new ChartElementRef("el_monthly_1", xform)));
+
+		// When:
+		boolean onEocDeck = builder.monthlyPlaceholderOnDeck(Map.of(), eocDeck, 2);
+		boolean onEomDeck = builder.monthlyPlaceholderOnDeck(Map.of(), eomDeck, 2);
+		boolean onScannedDeck = builder.monthlyPlaceholderOnDeck(scanned, Map.of(), 2);
+
+		// Then: one surviving placeholder keeps the pass running; a deck with none skips it
+		assertThat(onEocDeck).isTrue();
+		assertThat(onEomDeck).isFalse();
+		assertThat(onScannedDeck).isTrue();
+	}
+
+	@Test
 	void templateFor_shouldPreferTheSingleMasterWorkbookOverThePerSlotMapTest() {
 		// Given: a catalog carrying both the master-model workbook and the legacy per-slot ids
 		ChartTemplateCatalog templates = new ChartTemplateCatalog();

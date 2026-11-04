@@ -65,29 +65,29 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 	private static final int NORTH_STAR_LIMIT = 80;
 
 	/** Tactics one pacing-dashboard slide draws; the deck carries one such slide per block of them. */
-	static final int TACTICS_PER_DASHBOARD = 7;
+	private static final int TACTICS_PER_DASHBOARD = 7;
 
 	/** Pacing-dashboard slides the EOM template carries, covering tactics 1-7, 8-14, 15-21 and 22-28. */
-	static final int MAX_DASHBOARDS = 4;
+	private static final int MAX_DASHBOARDS = 4;
 
 	/** Columns the "what we did this month" slide draws, one observation → action → impact chain each. */
-	static final int WHAT_WE_DID_STEPS = 3;
+	private static final int WHAT_WE_DID_STEPS = 3;
 
 	/** Lines each column of the "focus next month" slide draws — carry forward, pivot and new test alike. */
-	static final int FOCUS_ITEMS = 3;
+	private static final int FOCUS_ITEMS = 3;
 
 	/**
 	 * Output tokens the {@code what_we_did} block adds to the alignment reply: three chains of three
 	 * headings and three paragraphs, sized off their character budgets at roughly four characters a token,
 	 * with headroom for the JSON scaffolding around them.
 	 */
-	static final int WHAT_WE_DID_TOKENS = 900;
+	private static final int WHAT_WE_DID_TOKENS = 900;
 
 	/**
 	 * Output tokens the {@code carry_forward} / {@code pivot} / {@code new_test} block adds to the alignment
 	 * reply: nine short lines sized off their character budget, with headroom for the JSON around them.
 	 */
-	static final int FOCUS_NEXT_MONTH_TOKENS = 400;
+	private static final int FOCUS_NEXT_MONTH_TOKENS = 400;
 
 	/** Reply normaliser, kept alongside the parent's copy because the parent's field is private. */
 	private final ClaudeResponseNormalizer normalizer;
@@ -644,14 +644,12 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 	}
 
 	/**
-	 * Specifies the creative section's fourth string — the optimisation already made on creative — for an
-	 * end-of-month run.
+	 * Specifies the creative section's fourth string — the creative optimisation — for an end-of-month run.
 	 *
-	 * <p>Everything the parent says about WHY this one string may be reconstructed rather than quoted, and
-	 * about which names and numbers it is held to, applies unchanged mid-flight. Only the tense moves: the
-	 * parent asks for it in past tense as a finished change, which on a live tactic reads as a completed
-	 * optimisation programme rather than a change still working. Asking for it as something we did during the
-	 * month and are still seeing the effect of keeps the slot filled without closing the tactic out.
+	 * <p>The parent's grounding applies unchanged mid-flight: an action is claimed only when the change log
+	 * records it, otherwise the slot is a recommendation. Only the tense moves: a logged change is something we
+	 * did this month whose effect is still in flight, and the fallback is a recommendation for the rest of the
+	 * flight rather than for a next one.
 	 *
 	 * @param lead  how the instruction names the slot, e.g. {@code "String 4"} or {@code "Takeaway 4"}
 	 * @param limit character budget quoted to Claude for this string
@@ -659,17 +657,17 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 	 */
 	@Override
 	String creativeOptimisationRule(String lead, int limit) {
-		return lead + " states an optimisation WE ALREADY MADE on creative during this reporting month and the "
-				+ "effect it is having, at most " + limit + " characters. The data carries NO change log, so this "
-				+ "ONE string is EXPECTED to be reconstructed rather than quoted: infer the most plausible "
-				+ "optimisation the numbers imply — shifting weight toward the strongest creative, retiring an "
-				+ "under-delivering size or format, refreshing worn creative, rebalancing spend across sizes — and "
-				+ "state it as something WE DID this month, with the effect described as still in flight rather "
-				+ "than as a settled outcome. That is expected here and is NOT a data problem: never hedge it, "
-				+ "never say the change log is missing, never leave it generic. Constraints: every creative you "
-				+ "name and every number you cite must come from the table (never invent a metric), the result you "
-				+ "claim must be consistent with the table's figures, and the action must obey the small-sample "
-				+ "and budget-shift rules above. Use the tactic's own KPI type for its lead metric.\n";
+		return lead + " is the creative optimisation for this reporting month, at most " + limit + " characters. "
+				+ changeLogGroundedActionRule("this tactic's creative during this reporting month (weight or spend "
+						+ "moved between creatives, a size or format retired, creative refreshed)",
+				"as something WE DID this month, with the effect described as still in flight rather than as a "
+						+ "settled outcome",
+				"ONE recommendation for the rest of the flight that the table supports (e.g. lean further into "
+						+ "the strongest creative, refresh or retire an under-delivering size or format)")
+				+ "Constraints: every creative you name and every number you cite must come from the table (never "
+				+ "invent a metric), any result you claim must be consistent with the table's figures, and the "
+				+ "action must obey the small-sample and budget-shift rules above. Use the tactic's own KPI type "
+				+ "for its lead metric.\n";
 	}
 
 	/**

@@ -22,5 +22,5 @@ public record BreakdownValues(Map<String, String> values, List<String> warnings)
 	 * The contribution of a section no tactic enabled: nothing to fill, nothing to warn about.
 	 * Immutable and safely shared.
 	 */
-	public static final BreakdownValues EMPTY = new BreakdownValues(Map.of(), List.of());
+	private static final BreakdownValues EMPTY = new BreakdownValues(Map.of(), List.of());
 }

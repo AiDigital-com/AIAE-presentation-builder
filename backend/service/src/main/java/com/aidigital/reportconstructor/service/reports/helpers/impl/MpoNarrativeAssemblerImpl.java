@@ -19,52 +19,52 @@ import java.util.Map;
 public class MpoNarrativeAssemblerImpl implements MpoNarrativeAssembler {
 
 	/** Value an unresolved or unwritten narrative token flattens to. */
-	static final String DASH = "—";
+	private static final String DASH = "—";
 
 	/** Number of proposal cards on the MPO media-plan slide. */
-	static final int PROPOSAL_POINTS = 2;
+	private static final int PROPOSAL_POINTS = 2;
 
 	/** Number of stages on the MPO funnel slide. */
-	static final int FUNNEL_STAGES = 4;
+	private static final int FUNNEL_STAGES = 4;
 
 	/** The HHI tile's token. */
-	static final String HHI_TOKEN = "{{audience_hhi}}";
+	private static final String HHI_TOKEN = "{{audience_hhi}}";
 
 	/** The recommendations slide's headline token. */
-	static final String HEADLINE_TOKEN = "{{recommendations headline}}";
+	private static final String HEADLINE_TOKEN = "{{recommendations headline}}";
 
 	/** A proposal card's heading, taking the 1-based card number. */
-	static final String PROPOSAL_POINT_TOKEN = "{{proposal point %d}}";
+	private static final String PROPOSAL_POINT_TOKEN = "{{proposal point %d}}";
 
 	/** A proposal card's body, taking the 1-based card number. */
-	static final String PROPOSAL_OVERVIEW_TOKEN = "{{proposal overview %d}}";
+	private static final String PROPOSAL_OVERVIEW_TOKEN = "{{proposal overview %d}}";
 
 	/** A funnel band's stage name, taking the 1-based stage number. */
-	static final String FUNNEL_STAGE_TOKEN = "{{funnel stage %d}}";
+	private static final String FUNNEL_STAGE_TOKEN = "{{funnel stage %d}}";
 
 	/** A funnel band's caption, taking the 1-based stage number. */
-	static final String FUNNEL_LABEL_TOKEN = "{{funnel stage %d label}}";
+	private static final String FUNNEL_LABEL_TOKEN = "{{funnel stage %d label}}";
 
 	/** A funnel card's headline, taking the 1-based stage number. */
-	static final String FUNNEL_TITLE_TOKEN = "{{funnel title %d}}";
+	private static final String FUNNEL_TITLE_TOKEN = "{{funnel title %d}}";
 
 	/** A funnel card's evidence line, taking the 1-based stage number. */
-	static final String FUNNEL_DATA_TOKEN = "{{funnel data %d}}";
+	private static final String FUNNEL_DATA_TOKEN = "{{funnel data %d}}";
 
 	/** A funnel card's reading of the evidence, taking the 1-based stage number. */
-	static final String FUNNEL_STORY_TOKEN = "{{funnel story %d}}";
+	private static final String FUNNEL_STORY_TOKEN = "{{funnel story %d}}";
 
 	/** A tactic group's "Our results" overview, taking the 1-based group number. */
-	static final String RESULTS_OVERVIEW_TOKEN = "{{Our results overview %d}}";
+	private static final String RESULTS_OVERVIEW_TOKEN = "{{Our results overview %d}}";
 
 	/** Number of tactic groups, each with its own "Our results" slide and overview. */
-	static final int RESULTS_GROUPS = 4;
+	private static final int RESULTS_GROUPS = 4;
 
 	/** Number of strategic-framework cards and of optimisation recommendations the deck carries. */
-	static final int STRATEGY_CARDS = 4;
+	private static final int STRATEGY_CARDS = 4;
 
 	/** Campaign-level facts in prompt order: the label the model reads, then the token it is read from. */
-	static final List<Map.Entry<String, String>> CAMPAIGN_FACTS = List.of(
+	private static final List<Map.Entry<String, String>> CAMPAIGN_FACTS = List.of(
 			Map.entry("Client", "{{client_name}}"),
 			Map.entry("Flight", "{{flight_dates}}"),
 			Map.entry("Campaign period", "{{campaign_period}}"),
@@ -83,7 +83,7 @@ public class MpoNarrativeAssemblerImpl implements MpoNarrativeAssembler {
 			Map.entry("Proposal overview", "{{proposal overview}}"));
 
 	/** Per-tactic facts in prompt order: the label, then the token suffix after {@code "{{tactic N"}. */
-	static final List<Map.Entry<String, String>> TACTIC_FACTS = List.of(
+	private static final List<Map.Entry<String, String>> TACTIC_FACTS = List.of(
 			Map.entry("funnel goal", " goal}}"),
 			Map.entry("impressions", " imps}}"),
 			Map.entry("CTR", " ctr}}"),

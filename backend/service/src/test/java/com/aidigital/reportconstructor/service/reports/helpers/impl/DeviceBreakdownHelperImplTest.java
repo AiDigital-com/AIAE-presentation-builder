@@ -6,6 +6,7 @@ import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
 import com.aidigital.reportconstructor.service.reports.dto.DeviceInsightInput;
 import com.aidigital.reportconstructor.service.reports.dto.DeviceRow;
 import com.aidigital.reportconstructor.service.reports.dto.DeviceTable;
+import com.aidigital.reportconstructor.service.reports.enums.DeviceCategory;
 import com.aidigital.reportconstructor.service.reports.helpers.BreakdownSelectionResolver;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportSheetHelper;
 import org.junit.jupiter.api.Test;
@@ -143,6 +144,45 @@ class DeviceBreakdownHelperImplTest {
 		// Then: Connected TV carries no CTR token — the slide prints a literal "—" for it
 		assertThat(values).doesNotContainKey("{{ctv_ctr_1}}");
 		assertThat(values).containsKey("{{mobile_ctr_1}}");
+	}
+
+	@Test
+	void shouldMapDeviceRowsWhoseLabelsAreNotSpelledExactlyLikeTheSlideRowsTest() {
+		// Given: the sheet labels its rows with casing, padding and wording the slide does not use
+		List<BreakdownSelection> selections = List.of(new BreakdownSelection(1, List.of("dev")));
+		when(breakdownResolver.resolve(selections)).thenReturn(Map.of(1, EnumSet.of(BreakdownType.DEVICE)));
+		DeviceTable table = new DeviceTable("1.20%", "82%", "4", "Mobile", "61%",
+				List.of(new DeviceRow("MOBILE ", "1,200,000", "1.20%", "78%", "$4,000"),
+						new DeviceRow("Connected TV", "900,000", "", "95%", "$6,000"),
+						new DeviceRow("Desktop / Laptop", "300,000", "0.90%", "85%", "$1,000"),
+						new DeviceRow(" tablet ", "50,000", "0.70%", "80%", "$200")));
+		when(sheetHelper.readDeviceTables("sheet-url", Set.of(1), "token")).thenReturn(Map.of(1, table));
+
+		// When:
+		Map<String, String> values = helper.readDeviceInputs(
+				"sheet-url", selections, Map.of("{{tactic 1}}", "CTV"), "token").dataValues();
+
+		// Then: every filled row still lands on its device's tokens instead of being dashed
+		assertThat(values.get("{{mobile_imps_1}}")).isEqualTo("1,200,000");
+		assertThat(values.get("{{mobile_ctr_1}}")).isEqualTo("1.20%");
+		assertThat(values.get("{{mobile_vcr_1}}")).isEqualTo("78%");
+		assertThat(values.get("{{mobile_spend_1}}")).isEqualTo("$4,000");
+		assertThat(values.get("{{ctv_imps_1}}")).isEqualTo("900,000");
+		assertThat(values.get("{{desktop_imps_1}}")).isEqualTo("300,000");
+		assertThat(values.get("{{tablet_imps_1}}")).isEqualTo("50,000");
+	}
+
+	@Test
+	void shouldResolveCommonDeviceLabelVariantsAndRejectUnknownOnesTest() {
+		// When-Then: label variants resolve to the slide device they name; an unrelated label names none
+		assertThat(helper.deviceOf("Mobile Web")).isEqualTo(DeviceCategory.MOBILE);
+		assertThat(helper.deviceOf("Smartphone")).isEqualTo(DeviceCategory.MOBILE);
+		assertThat(helper.deviceOf("CTV")).isEqualTo(DeviceCategory.CTV);
+		assertThat(helper.deviceOf("connected-tv")).isEqualTo(DeviceCategory.CTV);
+		assertThat(helper.deviceOf("DESKTOP")).isEqualTo(DeviceCategory.DESKTOP);
+		assertThat(helper.deviceOf("iPad")).isEqualTo(DeviceCategory.TABLET);
+		assertThat(helper.deviceOf("Unknown")).isNull();
+		assertThat(helper.deviceOf(null)).isNull();
 	}
 
 	@Test

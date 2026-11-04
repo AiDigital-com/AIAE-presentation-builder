@@ -433,7 +433,7 @@ class EomPromptBuilderTest {
 
 		// When:
 		String audience = builder
-				.buildAudienceSectionPrompt(new AudienceInsightInput(1, "CTV", audienceTable), data, "Go.", 200, 120)
+				.buildAudienceSectionPrompt(new AudienceInsightInput(1, "CTV", audienceTable), data, "Go.", 200, 65, 110)
 				.orElseThrow();
 		String publisher = builder.buildPublisherSectionPrompt(
 				new PublisherObservationInput(1, "CTV", List.of(new PublisherRow("Hulu", "400,000", "40%")),
@@ -444,10 +444,10 @@ class EomPromptBuilderTest {
 						120, 140)
 				.orElseThrow();
 		String geo = builder
-				.buildGeoSectionPrompt(new GeoInsightInput(1, "CTV", "VCR", geoTable), data, "Go.", 120)
+				.buildGeoSectionPrompt(new GeoInsightInput(1, "CTV", "VCR", geoTable), data, "Go.", 115, 90)
 				.orElseThrow();
 		String device = builder
-				.buildDeviceSectionPrompt(new DeviceInsightInput(1, "CTV", deviceTable), data, "Go.", 200, 120)
+				.buildDeviceSectionPrompt(new DeviceInsightInput(1, "CTV", deviceTable), data, "Go.", 200, 65, 110)
 				.orElseThrow();
 
 		// Then: every section says which kind of report it is writing, and none of them still says post-campaign
@@ -465,6 +465,32 @@ class EomPromptBuilderTest {
 	}
 
 	@Test
+	void shouldQuoteTheRecommendedActionItsOwnBudgetOnAudienceAndDeviceTest() {
+		// Given: one tactic's audience and device tables
+		CampaignData data = campaign(null, null);
+		AudienceTable audienceTable = new AudienceTable("25-34", "58% F / 42% M",
+				List.of(new AudienceAgeRow("25-34", "1,200,000")),
+				List.of(new AudienceSegmentRow("Auto Intenders", "142")));
+		DeviceTable deviceTable = new DeviceTable("0.42%", "97.1%", "4", "CTV", "62%",
+				List.of(new DeviceRow("CTV", "400,000", "", "97.1%", "$2,400")));
+
+		// When: the one-line bullets get 65 characters and the recommendation 110
+		String audience = eoc
+				.buildAudienceSectionPrompt(new AudienceInsightInput(1, "CTV", audienceTable), data, "Go.", 200, 65, 110)
+				.orElseThrow();
+		String device = eoc
+				.buildDeviceSectionPrompt(new DeviceInsightInput(1, "CTV", deviceTable), data, "Go.", 200, 65, 110)
+				.orElseThrow();
+
+		// Then: both prompts quote 80% of each cap — 52 for the bullets, 88 for the recommended action
+		for (String prompt : List.of(audience, device)) {
+			assertThat(prompt).contains("2) WHAT WORKED, at most 52 characters;\n");
+			assertThat(prompt).contains("3) WATCH-OUT, at most 52 characters;\n");
+			assertThat(prompt).contains("next, at most 88 characters.\n");
+		}
+	}
+
+	@Test
 	void shouldLeaveTheEndOfCampaignSectionPromptsUntouchedTest() {
 		// Given: an EOC run of the same audience section
 		CampaignData data = campaign(null, null);
@@ -474,7 +500,7 @@ class EomPromptBuilderTest {
 
 		// When:
 		String prompt = eoc
-				.buildAudienceSectionPrompt(new AudienceInsightInput(1, "CTV", audienceTable), data, "Go.", 200, 120)
+				.buildAudienceSectionPrompt(new AudienceInsightInput(1, "CTV", audienceTable), data, "Go.", 200, 65, 110)
 				.orElseThrow();
 
 		// Then: the frozen wording still goes out unchanged
@@ -884,10 +910,14 @@ class EomPromptBuilderTest {
 						120, 140)
 				.orElseThrow();
 
-		// Then: the optimisation is ours, made this month, with the effect still running
-		assertThat(prompt).contains("WE ALREADY MADE on creative during this reporting month");
+		// Then: a logged change is ours, made this month, with the effect still running
+		assertThat(prompt).contains("this tactic's creative during this reporting month");
 		assertThat(prompt).contains("still in flight rather than as a settled outcome");
-		assertThat(prompt).doesNotContain("state it in past tense");
+		assertThat(prompt).doesNotContain("in past tense");
+
+		// Then: without a logged change the slot is a recommendation, never an invented action
+		assertThat(prompt).contains("you MUST NOT claim any action was taken",
+				"ONE recommendation for the rest of the flight");
 	}
 
 	@Test
@@ -903,8 +933,8 @@ class EomPromptBuilderTest {
 						120, 140)
 				.orElseThrow();
 
-		// Then: the frozen wording still goes out unchanged
-		assertThat(prompt).contains("state it in past tense as something WE DID");
+		// Then: the EOC wording still goes out unchanged
+		assertThat(prompt).contains("in past tense as something WE DID, with the result the table shows");
 		assertThat(prompt).doesNotContain("STILL RUNNING");
 	}
 

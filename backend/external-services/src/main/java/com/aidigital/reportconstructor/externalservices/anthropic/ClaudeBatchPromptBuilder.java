@@ -61,7 +61,7 @@ public class ClaudeBatchPromptBuilder {
 	// Character budgets of the campaign-results fields, mirroring the limits RealClaudeClient enforces on the
 	// reply. Quoted to Claude through COMPRESSION_PROMPT_BUFFER_RATIO like every other prompt, so a reply that
 	// lands slightly over the number it was given still fits the real budget and skips the compression call.
-	private static final int RESULTS_OVERVIEW_LIMIT = 380;
+	private static final int RESULTS_OVERVIEW_LIMIT = 200;
 	private static final int RECOMMENDATION_TITLE_LIMIT = 28;
 	private static final int RECOMMENDATION_TEXT_LIMIT = 125;
 	private static final int F_OPPORTUNITY_LIMIT = 180;
@@ -190,7 +190,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @return the Batch A strategic prompt requesting audience/proposal/insights JSON, or empty when no context block
 	 * could be built
 	 */
-	public Optional<String> buildBatchAPrompt(CampaignData data, String brief) {
+	Optional<String> buildBatchAPrompt(CampaignData data, String brief) {
 		String brf = brief == null ? "" : brief;
 		List<String> planLines = new ArrayList<>();
 		if (normalizer.notBlank(data.client())) {
@@ -369,7 +369,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @return the strategic-narrative prompt requesting proposal/insights JSON, or empty when no context block
 	 * could be built
 	 */
-	public Optional<String> buildBatchStrategicNarrativePrompt(CampaignData data, String brief) {
+	Optional<String> buildBatchStrategicNarrativePrompt(CampaignData data, String brief) {
 		Optional<String> context = strategicNarrativeContext(data, brief);
 		if (context.isEmpty()) {
 			return Optional.empty();
@@ -536,7 +536,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @return the Batch B prompt requesting per-tactic gender split and weekday/weekend peak windows, or empty when
 	 * no tactics exist
 	 */
-	public Optional<String> buildBatchBPrompt(CampaignData data, String brief) {
+	Optional<String> buildBatchBPrompt(CampaignData data, String brief) {
 		if (data.tactics() == null || data.tactics().isEmpty()) {
 			return Optional.empty();
 		}
@@ -635,7 +635,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @return the merged sheet prompt requesting audience + per-tactic JSON, or empty when no context block
 	 * could be built
 	 */
-	public Optional<String> buildBatchSheetPrompt(CampaignData data, String brief) {
+	Optional<String> buildBatchSheetPrompt(CampaignData data, String brief) {
 		String brf = brief == null ? "" : brief;
 
 		List<String> tacticLines = new ArrayList<>();
@@ -876,7 +876,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param brief      free-text campaign brief the conclusions must stay faithful to
 	 * @return the conclusions prompt, or empty when the chunk carries no tactic and no data
 	 */
-	public Optional<String> buildTacticConclusionsPrompt(
+	Optional<String> buildTacticConclusionsPrompt(
 			CampaignData data, List<Integer> tacticNums, String brief) {
 		return tacticConclusionsPrompt(data, tacticNums, brief, Map.of());
 	}
@@ -1037,11 +1037,12 @@ public class ClaudeBatchPromptBuilder {
 	 * @param data          parsed campaign data supplying the shared campaign context block
 	 * @param brief         free-text campaign brief the copy must stay faithful to
 	 * @param takeawayLimit character budget of the first string (the key takeaway)
-	 * @param shortLimit    character budget of the remaining three strings
+	 * @param shortLimit    character budget of the "what worked" and watch-out strings
+	 * @param recoLimit     character budget of the last string (the recommended action)
 	 * @return the audience-section prompt, or empty when the tactic carries no audience table to reason over
 	 */
-	public Optional<String> buildAudienceSectionPrompt(
-			AudienceInsightInput input, CampaignData data, String brief, int takeawayLimit, int shortLimit) {
+	Optional<String> buildAudienceSectionPrompt(AudienceInsightInput input, CampaignData data, String brief,
+			int takeawayLimit, int shortLimit, int recoLimit) {
 		if (input == null || input.table() == null || input.table().isEmpty() || data == null) {
 			return Optional.empty();
 		}
@@ -1057,9 +1058,8 @@ public class ClaudeBatchPromptBuilder {
 						+ "1) KEY TAKEAWAY (who this tactic reached), at most " + takeawayPrompt + " characters;\n"
 						+ "2) WHAT WORKED, at most " + shortPrompt + " characters;\n"
 						+ "3) WATCH-OUT, at most " + shortPrompt + " characters;\n"
-						+ "4) RECOMMENDED ACTION — FORWARD-LOOKING, which age groups and segments to lean into next, " +
-								"at "
-						+ "most " + shortPrompt + " characters.\n\n"
+						+ "4) RECOMMENDED ACTION — FORWARD-LOOKING, which age groups and segments to lean into next, "
+						+ "at most " + bufferedLimit(recoLimit) + " characters.\n\n"
 						+ sectionObjectRules(4)
 						+ campaignContextForConclusions(data, brief) + "\n\n"
 						+ AnthropicMessagesClient.CACHE_BREAKPOINT + "=== TACTIC: " + input.tacticName() + " ===\n"
@@ -1078,7 +1078,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param limit  character budget of each of the four observations
 	 * @return the publisher-section prompt, or empty when the tactic carries no publisher rows
 	 */
-	public Optional<String> buildPublisherSectionPrompt(
+	Optional<String> buildPublisherSectionPrompt(
 			PublisherObservationInput input, CampaignData data, String brief, int limit) {
 		if (input == null || input.rows() == null || input.rows().isEmpty() || data == null) {
 			return Optional.empty();
@@ -1086,11 +1086,10 @@ public class ClaudeBatchPromptBuilder {
 		int prompt = Math.max(1, (int) (limit * COMPRESSION_PROMPT_BUFFER_RATIO));
 		String text =
 				"You are a senior digital media analyst writing the 'Top Publishers' slide for ONE tactic in "
-						+ sectionReportKind() + ", on behalf of the team that ran the campaign (confident, " +
-								"complimentary "
-						+ "of our own delivery).\n\n"
+						+ sectionReportKind() + ", on behalf of the team that ran the campaign (confident, "
+						+ "complimentary of our own delivery).\n\n"
 						+ sectionPrinciples()
-						+ "Return the four observations in THIS order, each ONE complete sentence:\n"
+						+ "Return the four observations in THIS order. " + LeadPhraseSpec.HEADLINE + "\n"
 						+ "1) VOLUME AND REACH — where delivery concentrated across the named publishers and how that "
 						+ "head compares with the long tail, at most " + prompt + " characters;\n"
 						+ "2) AUDIENCE FIT — why these publishers matched the audience we were chasing (we run an "
@@ -1099,9 +1098,13 @@ public class ClaudeBatchPromptBuilder {
 						+ "3) PREMIUM AND BRAND SUITABILITY — state that WE BLACKLISTED a large number of PUBLISHERS "
 						+ "(hundreds to a few thousand, kept qualitative — never a precise count) to hold delivery on "
 						+ "premium, brand-safe inventory, at most " + prompt + " characters;\n"
-						+ "4) STEERING WEIGHT — an optimisation WE ALREADY MADE toward the strongest publishers and " +
-								"what "
-						+ "it produced, at most " + prompt + " characters.\n"
+						+ "4) STEERING WEIGHT — how delivery weight should sit across the strongest publishers, at "
+						+ "most " + prompt + " characters. "
+						+ changeLogGroundedActionRule("this tactic's publisher weighting",
+								"in past tense as something WE DID, with what it produced in the table",
+								"ONE forward-looking recommendation on where to steer weight among the named "
+										+ "publishers")
+						+ "\n"
 						+ "Ground every observation in the numbers: name real publishers from the table and cite their "
 						+ "real shares/impressions. The table lists only this tactic's top publishers out of " +
 								"thousands; "
@@ -1109,9 +1112,8 @@ public class ClaudeBatchPromptBuilder {
 								"that "
 						+ "share rather than estimating coverage, and never state anything the table does not show " +
 								"as a "
-						+ "measured fact. Every optimisation is phrased as something WE ALREADY DID (e.g. 'we shifted "
-						+ "weight toward stronger publishers'); never say we blacklisted or paused a TACTIC (say we "
-						+ "REDUCED ITS WEIGHT).\n\n"
+						+ "measured fact. Never say we blacklisted or paused a TACTIC (say we REDUCED ITS WEIGHT, and "
+						+ "only when the change log records it).\n\n"
 						+ sectionObjectRules(4)
 						+ campaignContextForConclusions(data, brief) + "\n\n"
 						+ AnthropicMessagesClient.CACHE_BREAKPOINT + "=== TACTIC: " + input.tacticName() + " ===\n"
@@ -1121,7 +1123,8 @@ public class ClaudeBatchPromptBuilder {
 
 	/**
 	 * Builds the per-tactic creative-section prompt: a JSON object of exactly four keyed "Creative analysis"
-	 * strings — three reads of the creative mix plus one optimisation already made. Keyless and single-tactic.
+	 * strings — three reads of the creative mix plus one optimisation, stated as done only when the change log
+	 * records it and as a recommendation otherwise. Keyless and single-tactic.
 	 *
 	 * @param input     the tactic's creative input (name + KPI type + table); empty output when the table is blank
 	 * @param data      parsed campaign data supplying the shared campaign context block
@@ -1130,7 +1133,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param recoLimit character budget of the fourth (optimisation) string
 	 * @return the creative-section prompt, or empty when the tactic carries no creative table
 	 */
-	public Optional<String> buildCreativeSectionPrompt(
+	Optional<String> buildCreativeSectionPrompt(
 			CreativeTakeawayInput input, CampaignData data, String brief, int limit, int recoLimit) {
 		if (input == null || input.table() == null || input.table().isEmpty() || data == null) {
 			return Optional.empty();
@@ -1140,8 +1143,8 @@ public class ClaudeBatchPromptBuilder {
 		String text =
 				"You are a senior digital media analyst writing the 'Creative analysis' slide for ONE tactic in "
 						+ sectionReportKind() + ".\n\n"
-						+ sectionPrinciples()
-						+ "Return the four strings in THIS order. Takeaways 1-3 read the creative mix: ONE sentence "
+						+ sectionPrinciples() + LeadPhraseSpec.CLAUSE
+						+ "Return them in THIS order. Takeaways 1-3 read the creative mix: ONE sentence "
 						+ "each, at most " + prompt + " characters, grounded in the numbers (name real creatives, cite "
 						+ "impressions shares, CTR and the completion rate exactly as the table below labels it — VCR "
 						+ "for video, ACR for audio — and spend). Vary angles: delivery/completion anchor, engagement "
@@ -1162,11 +1165,12 @@ public class ClaudeBatchPromptBuilder {
 	 * @param input the tactic's geo input (name + KPI type + table); empty output when the table is blank
 	 * @param data  parsed campaign data supplying the shared campaign context block
 	 * @param brief free-text campaign brief the copy must stay faithful to
-	 * @param limit character budget of each of the four strings
+	 * @param limit     character budget of each of the three insights
+	 * @param recoLimit character budget of the fourth string (the recommendation)
 	 * @return the geo-section prompt, or empty when the tactic carries no geo table
 	 */
-	public Optional<String> buildGeoSectionPrompt(
-			GeoInsightInput input, CampaignData data, String brief, int limit) {
+	Optional<String> buildGeoSectionPrompt(
+			GeoInsightInput input, CampaignData data, String brief, int limit, int recoLimit) {
 		if (input == null || input.table() == null || input.table().isEmpty() || data == null) {
 			return Optional.empty();
 		}
@@ -1174,14 +1178,13 @@ public class ClaudeBatchPromptBuilder {
 		String text =
 				"You are a senior digital media analyst writing 'WHAT THE MAP TELLS US' for the 'Geo analysis' "
 						+ "slide of ONE tactic in " + sectionReportKind() + ".\n\n"
-						+ sectionPrinciples()
-						+ "Return the four strings in THIS order. Strings 1-3 are insights: ONE sentence each, at most "
+						+ sectionPrinciples() + LeadPhraseSpec.GEO
+						+ "Return them in THIS order. Strings 1-3 are insights: ONE sentence each, at most "
 						+ prompt + " characters, grounded in real markets/geos and the lead KPI; vary angles: "
 						+ "concentration across top geos, efficient (over-indexing) markets, and reach with softer "
-						+ "engagement. Treat high-KPI low-volume markets as noise. String 4 is "
-						+ "DIFFERENT — a FORWARD-LOOKING recommendation (where to open budget, which markets to " +
-								"scale), "
-						+ "at most " + prompt + " characters, still grounded in the table. "
+						+ "engagement. Treat high-KPI low-volume markets as noise. String 4 is DIFFERENT — a "
+						+ "FORWARD-LOOKING recommendation (where to open budget, which markets to scale), at most "
+						+ bufferedLimit(recoLimit) + " characters, still grounded in the table. "
 						+ GEO_TOP_MARKETS_RULE + "\n\n"
 						+ sectionObjectRules(4)
 						+ campaignContextForConclusions(data, brief) + "\n\n"
@@ -1199,11 +1202,12 @@ public class ClaudeBatchPromptBuilder {
 	 * @param data          parsed campaign data supplying the shared campaign context block
 	 * @param brief         free-text campaign brief the copy must stay faithful to
 	 * @param takeawayLimit character budget of the first string (the key takeaway)
-	 * @param shortLimit    character budget of the remaining three strings
+	 * @param shortLimit    character budget of the "what worked" and watch-out strings
+	 * @param recoLimit     character budget of the last string (the recommended action)
 	 * @return the device-section prompt, or empty when the tactic carries no device table
 	 */
-	public Optional<String> buildDeviceSectionPrompt(
-			DeviceInsightInput input, CampaignData data, String brief, int takeawayLimit, int shortLimit) {
+	Optional<String> buildDeviceSectionPrompt(DeviceInsightInput input, CampaignData data, String brief,
+			int takeawayLimit, int shortLimit, int recoLimit) {
 		if (input == null || input.table() == null || input.table().isEmpty() || data == null) {
 			return Optional.empty();
 		}
@@ -1218,7 +1222,7 @@ public class ClaudeBatchPromptBuilder {
 						+ "2) WHAT WORKED, at most " + shortPrompt + " characters;\n"
 						+ "3) WATCH-OUT, at most " + shortPrompt + " characters;\n"
 						+ "4) RECOMMENDED ACTION — FORWARD-LOOKING, which devices to lean into next, at most "
-						+ shortPrompt + " characters.\n"
+						+ bufferedLimit(recoLimit) + " characters.\n"
 						+ "Ground in real devices (impressions, CTR, spend and the completion rate exactly as the "
 						+ "table below labels it — VCR for video, ACR for audio). CTR does not apply to Connected TV — "
 						+ "never treat a missing CTV CTR as a zero or weakness. Treat high-rate low-volume devices as "
@@ -1260,32 +1264,51 @@ public class ClaudeBatchPromptBuilder {
 	}
 
 	/**
-	 * Builds the "optimisation already made" instruction for the creative slide's last string, shared by the
-	 * creative-section prompt and the creative rule text it shares, so both licence the same inference
-	 * in the same words.
-	 *
-	 * <p>The slot asks what was changed on creative mid-flight and what it achieved, but nothing in the data
-	 * records that: a creative table carries performance, not a change log. Left unsaid, the ask collides with
-	 * the surrounding "do NOT invent" rules, and the model resolves the collision the wrong way — a hedge, a
-	 * generic line, or a complaint about missing data in a slot the slide expects copy in. Naming the one thing
-	 * it may reconstruct (the action) while holding every creative name and every number to the table is what
-	 * keeps the string both filled and honest.
+	 * Builds the creative-optimisation instruction for the creative slide's last string: an action stated as
+	 * done only when the change log records it, a recommendation otherwise (see
+	 * {@link #changeLogGroundedActionRule}).
 	 *
 	 * @param lead  how the instruction names the slot, e.g. {@code "String 4"} or {@code "Takeaway 4"}
 	 * @param limit character budget quoted to Claude for this string
 	 * @return the optimisation instruction, newline-terminated
 	 */
 	String creativeOptimisationRule(String lead, int limit) {
-		return lead + " states an optimisation ALREADY MADE on creative during the flight and its result, at most "
-				+ limit + " characters. The data carries NO change log, so this ONE string is EXPECTED to be "
-				+ "reconstructed rather than quoted: infer the most plausible optimisation the numbers imply — "
-				+ "shifting weight toward the strongest creative, retiring an under-delivering size or format, "
-				+ "refreshing worn creative, rebalancing spend across sizes — and state it in past tense as "
-				+ "something WE DID. That is expected here and is NOT a data problem: never hedge it, never say the "
-				+ "change log is missing, never leave it generic. Constraints: every creative you name and every "
-				+ "number you cite must come from the table (never invent a metric), the result you claim must be "
-				+ "consistent with the table's figures, and the action must obey the small-sample and budget-shift "
-				+ "rules above. Use the tactic's own KPI type for its lead metric.\n";
+		return lead + " is the creative optimisation, at most " + limit + " characters. "
+				+ changeLogGroundedActionRule("this tactic's creative (weight or spend moved between creatives, "
+						+ "a size or format retired, creative refreshed)",
+				"in past tense as something WE DID, with the result the table shows",
+				"ONE forward-looking recommendation the table supports (e.g. lean further into the strongest "
+						+ "creative, retire or refresh an under-delivering size or format next flight)")
+				+ "Constraints: every creative you name and every number you cite must come from the table (never "
+				+ "invent a metric), any result you claim must be consistent with the table's figures, and the "
+				+ "action must obey the small-sample and budget-shift rules above. Use the tactic's own KPI type "
+				+ "for its lead metric.\n";
+	}
+
+	/**
+	 * Builds the shared "only claim what the change log records" instruction for a slot that talks about an
+	 * optimisation, used by every section prompt that would otherwise narrate an action as already taken.
+	 *
+	 * <p>The performance tables never record actions; only the user-entered change log does. Letting the model
+	 * reconstruct an action from the numbers produced "we shifted spend toward X, lifting the avg rate" for
+	 * campaigns where nobody touched delivery — a false causal claim in a client deck. So an action is claimed
+	 * only when the log records it; otherwise the slot is an unhedged recommendation that never cites the log.
+	 *
+	 * @param subject   what kind of change counts for this slot, e.g. a tactic's creative or publisher weighting
+	 * @param asAction  how to phrase the slot when the log does record such a change
+	 * @param fallback  what to write instead when the log records no such change
+	 * @return the change-log grounding instruction, ending with a space so a following sentence can be appended
+	 */
+	String changeLogGroundedActionRule(String subject, String asAction, String fallback) {
+		return "ONLY the MID-FLIGHT CHANGES / CHANGE LOG section of the campaign context records what the team "
+				+ "actually changed; the performance tables record results, never actions. If that log records a "
+				+ "change to " + subject + ", state THAT change " + asAction + ". If it records no such change, or "
+				+ "there is no change log, you MUST NOT claim any action was taken: never write 'we shifted', 'we "
+				+ "moved', 'we rebalanced', 'we steered', 'we retired', 'we refreshed', 'we optimised' or any other "
+				+ "past- or present-tense action, and never attribute a metric to a change nobody made — natural "
+				+ "variation in the numbers is NOT evidence of an optimisation. Write instead " + fallback + ", "
+				+ "phrased as what we recommend, not what we did. Either way never hedge, never mention the change "
+				+ "log or its absence, never leave it generic. ";
 	}
 
 	/**
@@ -1513,7 +1536,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @return the prompt requesting {@code {"thoughts": [4 strings], "story": string}}, or empty when there is
 	 * nothing to reason over
 	 */
-	public Optional<String> buildTacticThoughtsPrompt(
+	Optional<String> buildTacticThoughtsPrompt(
 			TacticThoughtsInput input, String brief, int limit, int storyLimit) {
 		if (input == null) {
 			return Optional.empty();
@@ -1693,7 +1716,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param nextMonthLimit the character budget of the month-ahead directive
 	 * @return the prompt requesting the four named fields, or empty when there is nothing to reason over
 	 */
-	public Optional<String> buildTacticPacingPrompt(
+	Optional<String> buildTacticPacingPrompt(
 			TacticPacingInput input, String brief, int takeawayLimit, int nextMonthLimit) {
 		if (input == null) {
 			return Optional.empty();
@@ -1719,7 +1742,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param brief free-text campaign brief the copy must stay faithful to
 	 * @return the prompt, or empty when there are no figures to reason over
 	 */
-	public Optional<String> buildMpoNarrativePrompt(MpoNarrativeInput input, String brief) {
+	Optional<String> buildMpoNarrativePrompt(MpoNarrativeInput input, String brief) {
 		if (input == null || (linesOf(input.campaignFacts()).isEmpty() && linesOf(input.tacticFacts()).isEmpty())) {
 			return Optional.empty();
 		}
@@ -1940,7 +1963,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param perTactic   one digest per tactic (Step-3 thoughts, or overview + breakdown digest as fallback)
 	 * @return the campaign-results prompt, or empty when there is no tactic context to reason over
 	 */
-	public Optional<String> buildCampaignResultsPrompt(
+	Optional<String> buildCampaignResultsPrompt(
 			CampaignData data, String brief, CampaignFrequencies frequencies, List<TacticNarrativeDigest> perTactic) {
 		if (data == null || data.tactics() == null || data.tactics().isEmpty()
 				|| perTactic == null || perTactic.isEmpty()) {
@@ -2194,7 +2217,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @return a prompt asking Claude to condense the campaign's geographic targeting into a single short
 	 * comma-separated string of key regions
 	 */
-	public String buildGeoPrompt(List<String> geoRows) {
+	String buildGeoPrompt(List<String> geoRows) {
 		return "Below are the geography-related rows of a media-plan workbook (each tab preceded by a "
 				+ "'### TAB: <name> ###' marker).\n"
 				+ "Find the campaign's geographic targeting locations anywhere in this data and summarise them into a "
@@ -2214,7 +2237,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @return a prompt asking Claude to condense the goals into a single short comma-separated funnel-stage
 	 * string, or empty when no goal carries any text
 	 */
-	public Optional<String> buildFunnelFromGoalsPrompt(List<String> tacticGoals) {
+	Optional<String> buildFunnelFromGoalsPrompt(List<String> tacticGoals) {
 		List<String> goals = new ArrayList<>();
 		if (tacticGoals != null) {
 			for (String goal : tacticGoals) {
@@ -2247,7 +2270,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param maxChars the character budget the digest must fit into
 	 * @return the prompt asking for the digest, or empty when the brief is blank
 	 */
-	public Optional<String> buildBriefDigestPrompt(String brief, int maxChars) {
+	Optional<String> buildBriefDigestPrompt(String brief, int maxChars) {
 		if (!normalizer.notBlank(brief)) {
 			return Optional.empty();
 		}
@@ -2284,7 +2307,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param maxChars  the character budget the digest must fit into
 	 * @return the prompt asking for the digest, or empty when the change log is blank
 	 */
-	public Optional<String> buildChangeLogDigestPrompt(String changeLog, int maxChars) {
+	Optional<String> buildChangeLogDigestPrompt(String changeLog, int maxChars) {
 		if (!normalizer.notBlank(changeLog)) {
 			return Optional.empty();
 		}
@@ -2321,7 +2344,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param data parsed campaign data whose tactic map drives the KPI selection
 	 * @return a prompt asking Claude for a single comma-separated primary-KPIs line, or empty when no tactics exist
 	 */
-	public Optional<String> buildPrimaryKpisPrompt(CampaignData data) {
+	Optional<String> buildPrimaryKpisPrompt(CampaignData data) {
 		if (data == null || data.tactics() == null || data.tactics().isEmpty()) {
 			return Optional.empty();
 		}
@@ -2438,7 +2461,8 @@ public class ClaudeBatchPromptBuilder {
 	String alignResultsOverviewsSchema(String groupKeys) {
 		return "  \"results_overviews\": object,     // Keyed by group number as strings ("
 				+ groupKeys + "). One entry per key listed, no more, no fewer. Each: EXACTLY "
-				+ "2 sentences, past tense, ≤380 chars. Must pay off the same storyline with its own group's "
+				+ "2 sentences, past tense, ≤" + bufferedLimit(RESULTS_OVERVIEW_LIMIT) + " chars. Must pay off the "
+				+ "same storyline with its own group's "
 				+ "numbers. " + groupNamingRule() + "\n";
 	}
 
@@ -2526,7 +2550,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param brief           free-text campaign brief the aligned narrative must stay faithful to
 	 * @return the Batch D alignment prompt, or empty when the draft carries no alignable campaign-level copy
 	 */
-	public Optional<String> buildBatchDPrompt(
+	Optional<String> buildBatchDPrompt(
 			ClaudeStrategic strategic, ClaudeResults results, List<String> breakdownDigest, String brief) {
 		return alignPrompt(strategic, results, breakdownDigest, brief, null);
 	}

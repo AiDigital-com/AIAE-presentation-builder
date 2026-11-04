@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 public class PromptTokenEstimator {
 
 	/** Characters per token assumed by {@link #estimateTokens}. */
-	static final int CHARS_PER_TOKEN = 4;
+	private static final int CHARS_PER_TOKEN = 4;
 
 	/**
 	 * Estimates the token cost of a prompt.

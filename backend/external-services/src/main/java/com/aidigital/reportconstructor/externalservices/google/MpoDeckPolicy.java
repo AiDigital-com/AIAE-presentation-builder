@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 public class MpoDeckPolicy {
 
 	/** Startup-log marker for a report type whose MPO requests fall back to the standard template. */
-	static final String STANDARD_FALLBACK_MARKER = "(standard)";
+	private static final String STANDARD_FALLBACK_MARKER = "(standard)";
 
 	private final MpoDeckProperties props;
 

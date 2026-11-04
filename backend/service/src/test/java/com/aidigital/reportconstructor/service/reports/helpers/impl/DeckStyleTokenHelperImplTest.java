@@ -44,6 +44,26 @@ class DeckStyleTokenHelperImplTest {
 	}
 
 	@Test
+	void shouldHideTheThoughtsParagraphsThatHaveNoCopyTest() {
+		// Given: two written thoughts, a third the sheet printed as a dash, a blank fourth and no fifth at all
+		Map<String, String> flat = new LinkedHashMap<>();
+		flat.put("{{thoughts on the performance 1}}", "CTV/OTT led pacing with a 98.24% VCR.");
+		flat.put("{{thoughts on the performance 2}}", "Video and audio beat plan.");
+		flat.put("{{thoughts on the performance 3}}", "—");
+		flat.put("{{thoughts on the performance 4}}", " ");
+
+		// When:
+		newHelper().fillDeckStyleTokens(flat, 0);
+
+		// Then: the written ones stay, every empty slot removes its box rather than showing a lone dash
+		assertThat(flat).containsEntry("{{thoughts on the performance 1}}", "CTV/OTT led pacing with a 98.24% VCR.")
+				.containsEntry("{{thoughts on the performance 2}}", "Video and audio beat plan.")
+				.containsEntry("{{thoughts on the performance 3}}", DeckMarkup.HIDE_SHAPE)
+				.containsEntry("{{thoughts on the performance 4}}", DeckMarkup.HIDE_SHAPE)
+				.containsEntry("{{thoughts on the performance 5}}", DeckMarkup.HIDE_SHAPE);
+	}
+
+	@Test
 	void campaignPeriod_shouldPairTwoQuartersOfOneYearTest() {
 		// Given: the deck's own flight format, whose start omits the year
 		String flight = "Jul 1 – Dec 31, 2025";

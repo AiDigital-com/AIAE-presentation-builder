@@ -3,7 +3,9 @@ package com.aidigital.reportconstructor.externalservices.anthropic;
 import com.aidigital.reportconstructor.service.reports.diagnostics.ClaudeFailureLog;
 import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageTracker;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
@@ -67,12 +69,18 @@ public class AnthropicMessagesClient {
 	 * colliding with real prompt text, and it is stripped before the request is sent so the model never sees
 	 * it. When a prompt carries no marker it is sent as one uncached block, exactly as before.
 	 */
-	public static final String CACHE_BREAKPOINT = "\u0000CACHE_BREAKPOINT\u0000";
+	static final String CACHE_BREAKPOINT = "\u0000CACHE_BREAKPOINT\u0000";
 
 	private final String apiKey;
 	private final String model;
 	private final HttpClient http;
-	private final ObjectMapper json = new ObjectMapper();
+	/**
+	 * Reads replies leniently about raw control characters: the model sometimes breaks a long string with a
+	 * literal newline instead of {@code \n}, which strict JSON rejects even though the meaning is unambiguous.
+	 */
+	private final ObjectMapper json = JsonMapper.builder()
+			.enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
+			.build();
 	private final ClaudeResponseNormalizer normalizer;
 	private final ClaudeUsageTracker usageTracker;
 	private final PromptTokenEstimator tokenEstimator;
@@ -149,7 +157,7 @@ public class AnthropicMessagesClient {
 	 *                     repair the trailing JSON by closing open braces
 	 * @return parsed object node, or {@code null} on failure
 	 */
-	public JsonNode callJsonObject(
+	JsonNode callJsonObject(
 			String prompt, int maxTokens, int timeoutSec, String label, boolean allowPartial) {
 		JsonNode resp = callRaw(prompt, maxTokens, timeoutSec, label);
 		if (resp == null) {
@@ -196,7 +204,7 @@ public class AnthropicMessagesClient {
 	 *                     had, and the only way a reply that merely forgot its final {@code ]} survives
 	 * @return the parsed array node, or {@code null} when no usable array could be recovered
 	 */
-	public JsonNode callJsonArray(
+	JsonNode callJsonArray(
 			String prompt, int maxTokens, int timeoutSec, String label, boolean allowPartial) {
 		JsonNode resp = callRaw(prompt, maxTokens, timeoutSec, label);
 		if (resp == null) {
@@ -314,8 +322,56 @@ public class AnthropicMessagesClient {
 			if (node != null) {
 				return node;
 			}
+			// Last resort for a complete object: a quotation inside the prose ("the "Netflix" line") that the
+			// model did not escape ends the string early and breaks the whole reply.
+			node = readObject(escapeStrayQuotes(fromFirst.substring(0, last + 1)));
+			if (node != null) {
+				return node;
+			}
 		}
 		return allowPartial ? readObject(repairTruncatedJson(fromFirst)) : null;
+	}
+
+	/**
+	 * Escapes the double quotes inside JSON string values that the model forgot to escape. A quote inside a
+	 * string is taken to close it only when the next non-blank character is one that can follow a string in
+	 * JSON ({@code , : } ]}) or the text ends; any other quote is a quotation mark in the prose and is escaped.
+	 * Already-escaped characters are copied as they are.
+	 *
+	 * @param text the candidate JSON text
+	 * @return the text with stray inner quotes escaped; unchanged when it had none
+	 */
+	String escapeStrayQuotes(String text) {
+		StringBuilder out = new StringBuilder(text.length() + 16);
+		boolean inString = false;
+		for (int i = 0; i < text.length(); i++) {
+			char c = text.charAt(i);
+			if (inString && c == '\\' && i + 1 < text.length()) {
+				out.append(c).append(text.charAt(++i));
+				continue;
+			}
+			if (c != '"') {
+				out.append(c);
+				continue;
+			}
+			if (!inString) {
+				inString = true;
+				out.append(c);
+				continue;
+			}
+			int next = i + 1;
+			while (next < text.length() && Character.isWhitespace(text.charAt(next))) {
+				next++;
+			}
+			boolean closes = next >= text.length() || ",:}]".indexOf(text.charAt(next)) >= 0;
+			if (closes) {
+				inString = false;
+				out.append(c);
+			} else {
+				out.append("\\\"");
+			}
+		}
+		return out.toString();
 	}
 
 	/**
@@ -529,7 +585,7 @@ public class AnthropicMessagesClient {
 	 * @param label      short tag identifying this call in log messages
 	 * @return the full Messages API response as a JSON tree, or {@code null} on failure
 	 */
-	public JsonNode callRaw(String prompt, int maxTokens, int timeoutSec, String label) {
+	JsonNode callRaw(String prompt, int maxTokens, int timeoutSec, String label) {
 		HttpRequest req;
 		try {
 			// No sampling parameters: Sonnet 5 rejects temperature, top_p and top_k outright, and the

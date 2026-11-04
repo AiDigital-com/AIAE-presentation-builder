@@ -1,6 +1,9 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartSlice;
+import com.google.api.services.sheets.v4.model.EmbeddedChart;
+import com.google.api.services.sheets.v4.model.Sheet;
+import com.google.api.services.sheets.v4.model.SheetProperties;
 import com.google.api.services.slides.v1.model.AffineTransform;
 import com.google.api.services.slides.v1.model.Page;
 import com.google.api.services.slides.v1.model.PageElement;
@@ -116,6 +119,69 @@ class BreakdownChartBuilderTest {
 		// that is what separates "this slide carries no such chart" from "this slide was never inserted"
 		assertThat(bySlide).doesNotContainKey("tct_2");
 		assertThat(bySlide.get("bd_geo_2")).isEmpty();
+	}
+
+	@Test
+	void shouldLinkTheConfiguredChartWhenTheCopyStillCarriesItTest() {
+		// Given: a copy holding the configured chart on a chart sheet and another chart on the data tab
+		BreakdownChartBuilder builder = newBuilder();
+		List<Sheet> tabs = List.of(
+				new Sheet().setProperties(new SheetProperties().setTitle("Sheet1"))
+						.setCharts(List.of(new EmbeddedChart().setChartId(111))),
+				new Sheet().setProperties(new SheetProperties().setTitle("Chart1"))
+						.setCharts(List.of(new EmbeddedChart().setChartId(1497669750))));
+
+		// When:
+		Integer chartId = builder.pickChartId(tabs, "Sheet1", 1497669750);
+
+		// Then:
+		assertThat(chartId).isEqualTo(1497669750);
+	}
+
+	@Test
+	void shouldFallBackToTheDataTabChartWhenTheConfiguredOneIsGoneTest() {
+		// Given: a source workbook whose chart was recreated, so neither chart carries the configured id
+		BreakdownChartBuilder builder = newBuilder();
+		List<Sheet> tabs = List.of(
+				new Sheet().setProperties(new SheetProperties().setTitle("Chart1"))
+						.setCharts(List.of(new EmbeddedChart().setChartId(222))),
+				new Sheet().setProperties(new SheetProperties().setTitle("Sheet1"))
+						.setCharts(List.of(new EmbeddedChart().setChartId(333))));
+
+		// When:
+		Integer chartId = builder.pickChartId(tabs, "Sheet1", 1497669750);
+
+		// Then: the chart drawn over the written values, not the first one in tab order
+		assertThat(chartId).isEqualTo(333);
+	}
+
+	@Test
+	void shouldTakeAnyChartWhenTheDataTabHasNoneTest() {
+		// Given:
+		BreakdownChartBuilder builder = newBuilder();
+		List<Sheet> tabs = List.of(
+				new Sheet().setProperties(new SheetProperties().setTitle("Sheet1")),
+				new Sheet().setProperties(new SheetProperties().setTitle("Chart1"))
+						.setCharts(List.of(new EmbeddedChart().setChartId(444))));
+
+		// When:
+		Integer chartId = builder.pickChartId(tabs, "Sheet1", 1497669750);
+
+		// Then:
+		assertThat(chartId).isEqualTo(444);
+	}
+
+	@Test
+	void shouldReportNoChartForAChartlessCopyTest() {
+		// Given:
+		BreakdownChartBuilder builder = newBuilder();
+		List<Sheet> tabs = List.of(new Sheet().setProperties(new SheetProperties().setTitle("Sheet1")));
+
+		// When:
+		Integer chartId = builder.pickChartId(tabs, "Sheet1", 1497669750);
+
+		// Then:
+		assertThat(chartId).isNull();
 	}
 
 	private Page chartSlide(String slideId, Map<String, String> elementIdBySourceBook) {

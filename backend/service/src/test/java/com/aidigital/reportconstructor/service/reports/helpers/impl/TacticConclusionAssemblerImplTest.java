@@ -47,6 +47,24 @@ class TacticConclusionAssemblerImplTest {
 	}
 
 	@Test
+	void shouldHandTheThoughtsCallSectionCopyWithoutLeadMarkersTest() {
+		// Given: publisher and creative bullets carrying the slide's [[lead phrase]] markers
+		TacticConclusion one = new TacticConclusion(1, "Overview 1");
+		BreakdownBullets bullets = new BreakdownBullets(
+				Map.of(1, List.of("[[Curated the Buy]] — Whitelisted 15 domains.")),
+				Map.of(1, List.of("[[The 300x250 carried 62.7%]] at a 0.20% CTR.")),
+				Map.of(), Map.of(), Map.of());
+
+		// When:
+		List<TacticThoughtsInput> inputs =
+				assembler.toThoughtsInputs(List.of(one), Map.of(1, "Display"), Set.of(1), bullets, false);
+
+		// Then: the copy reads as plain sentences, so the thoughts prompt cannot echo the markers onto its slide
+		assertThat(inputs.getFirst().publisherBullets()).containsExactly("Curated the Buy — Whitelisted 15 domains.");
+		assertThat(inputs.getFirst().creativeBullets()).containsExactly("The 300x250 carried 62.7% at a 0.20% CTR.");
+	}
+
+	@Test
 	void shouldReturnEmptyThoughtsInputsWhenConclusionsNullTest() {
 		// Given: no conclusions and no breakdown bullets
 		BreakdownBullets bullets = new BreakdownBullets(Map.of(), Map.of(), Map.of(), Map.of(), Map.of());

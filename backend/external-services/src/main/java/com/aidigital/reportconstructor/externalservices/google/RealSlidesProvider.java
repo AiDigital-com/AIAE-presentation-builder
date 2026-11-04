@@ -87,10 +87,11 @@ public class RealSlidesProvider implements SlidesProvider {
 
 	/**
 	 * Field mask for the {@code presentations.get} used by {@link #applyDeckMarkup}: each shape's id and its
-	 * text runs with their start indices, which is what locating a marker in the shape's text needs.
+	 * text runs with their start indices, which is what locating a marker in the shape's text needs, plus each
+	 * element's geometry and fill so a lead takeaway on a dark panel can switch to the on-dark palette.
 	 */
-	private static final String BOLD_MARKUP_FIELDS =
-			"slides.pageElements(objectId,shape.text.textElements(startIndex,textRun.content))";
+	private static final String BOLD_MARKUP_FIELDS = "slides.pageElements(objectId,size,transform,"
+			+ "shape(shapeProperties.shapeBackgroundFill,text.textElements(startIndex,textRun.content)))";
 
 	/**
 	 * Field mask for the {@code presentations.get} used by {@link #addBreakdownSlides} and
@@ -134,9 +135,27 @@ public class RealSlidesProvider implements SlidesProvider {
 
 	/**
 	 * Field mask for the {@code presentations.get} used by {@link #deleteReportTypeSlides}: the slide order
-	 * ({@code objectId}) plus the shape and table text the configured titles are matched against.
+	 * ({@code objectId}) plus the shape and table text the configured titles are matched against, and each
+	 * element's id, size and transform — the geometry the dropped blocks are located by. Groups bring their
+	 * children's geometry and images report themselves, which is what the tactic-slide relayout measures and
+	 * resizes.
 	 */
-	private static final String TITLE_FIELDS = BREAKDOWN_FIELDS;
+	private static final String TITLE_FIELDS =
+			"slides.objectId,"
+			+ "slides.pageElements(objectId,size,transform,image.contentUrl,shape.shapeType,"
+			+ "shape.text.textElements.textRun.content,"
+			+ "elementGroup.children(objectId,size,transform,shape.shapeType,"
+			+ "shape.text.textElements.textRun.content),"
+			+ "table.tableRows.tableCells.text.textElements.textRun.content)";
+
+	/**
+	 * Field mask for the {@code presentations.get} used by {@link #compactDeviceTables}: each slide id plus the
+	 * element ids, sizes, transforms and shape text the device table's rows are recovered from.
+	 */
+	private static final String DEVICE_TABLE_FIELDS =
+			"slides.objectId,"
+			+ "slides.pageElements(objectId,size,transform,shape.shapeType,shape.text.textElements.textRun.content,"
+			+ "table.tableRows.tableCells.text.textElements.textRun.content)";
 
 	/** Startup-log marker for a master slide that is not configured. */
 	private static final String UNSET_MARKER = "(unset)";
@@ -152,6 +171,15 @@ public class RealSlidesProvider implements SlidesProvider {
 
 	/** What an unresolved token is replaced with by the final sweep: the deck's own "no figure" mark. */
 	private static final String DASH = "\u2014";
+
+	/** The percent sign some master slides type right after a stat-tile token ({@code {{dev_n_ctr}} %}). */
+	private static final String PERCENT = "%";
+
+	/**
+	 * The ways a master slide follows a token with its own percent sign, longest first so the spaced form is
+	 * consumed before the bare one could match inside it.
+	 */
+	private static final List<String> PERCENT_SUFFIXES = List.of(" " + PERCENT, PERCENT);
 
 	/**
 	 * Matches the standalone tactic variable {@code n} inside a token: a single {@code n} or {@code N}
@@ -177,6 +205,13 @@ public class RealSlidesProvider implements SlidesProvider {
 	private final SlideModel mpoEocModel;
 	private final Set<String> eomDropSlideObjectIds;
 	private final List<String> eomDropSlideTitles;
+	private final List<String> eomDropElementLabels;
+	private final String eomRelayoutGrowLabel;
+	private final String eomRelayoutAnchorLabel;
+	private final SlideBlockLocator slideBlockLocator;
+	private final TacticSlideRelayout tacticSlideRelayout;
+	private final DeviceTableCompactor deviceTableCompactor;
+	private final CreativeTableCompactor creativeTableCompactor;
 	private final BreakdownSlideNaming breakdownSlideNaming;
 	private final BreakdownThoughtsGate thoughtsGate;
 	private final SummaryTableRowTrimmer summaryTableRowTrimmer;
@@ -187,7 +222,9 @@ public class RealSlidesProvider implements SlidesProvider {
 			DriveShareRecipients shareRecipients, GoogleRequestRetrier retrier,
 			BreakdownSlideNaming breakdownSlideNaming, BreakdownThoughtsGate thoughtsGate,
 			SummaryTableRowTrimmer summaryTableRowTrimmer, EomDeckPolicy eomDeckPolicy,
-			MpoDeckPolicy mpoDeckPolicy, EomSlideFinder eomSlideFinder, DeckMarkupRequestBuilder deckMarkup) {
+			MpoDeckPolicy mpoDeckPolicy, EomSlideFinder eomSlideFinder, DeckMarkupRequestBuilder deckMarkup,
+			SlideBlockLocator slideBlockLocator, TacticSlideRelayout tacticSlideRelayout,
+			DeviceTableCompactor deviceTableCompactor, CreativeTableCompactor creativeTableCompactor) {
 		String slidesTemplateId = props.getSlidesTemplateId();
 		this.eomDeckPolicy = eomDeckPolicy;
 		this.mpoDeckPolicy = mpoDeckPolicy;
@@ -206,6 +243,13 @@ public class RealSlidesProvider implements SlidesProvider {
 				mpoEoc.getTacticMasterSlideObjectId());
 		this.eomDropSlideObjectIds = normalizeSlideIds(eomDeckPolicy.dropSlideObjectIds());
 		this.eomDropSlideTitles = normalizeTitles(eomDeckPolicy.dropSlideTitles());
+		this.eomDropElementLabels = normalizeTitles(eomDeckPolicy.dropElementLabels());
+		this.eomRelayoutGrowLabel = normalizeTitle(eomDeckPolicy.relayoutGrowLabel());
+		this.eomRelayoutAnchorLabel = normalizeTitle(eomDeckPolicy.relayoutAnchorLabel());
+		this.slideBlockLocator = slideBlockLocator;
+		this.tacticSlideRelayout = tacticSlideRelayout;
+		this.deviceTableCompactor = deviceTableCompactor;
+		this.creativeTableCompactor = creativeTableCompactor;
 		this.breakdownSlideNaming = breakdownSlideNaming;
 		this.thoughtsGate = thoughtsGate;
 		this.summaryTableRowTrimmer = summaryTableRowTrimmer;
@@ -665,6 +709,7 @@ public class RealSlidesProvider implements SlidesProvider {
 			}
 			executeInChunks(slidesClient, presentationId, requests,
 					"addBreakdownSlides batchUpdate for " + presentationId);
+			compactDeviceTables(slidesClient, presentationId, enabledByTactic);
 		} catch (IOException ex) {
 			log.error("[slides] addBreakdownSlides failed for {}", presentationId, ex);
 			throw new AppException(ErrorReason.C000,
@@ -1173,10 +1218,65 @@ public class RealSlidesProvider implements SlidesProvider {
 			}
 			executeInChunks(slidesClient, presentationId, requests,
 					"addEomBreakdownSlides batchUpdate for " + presentationId);
+			compactDeviceTables(slidesClient, presentationId, enabledByTactic);
 		} catch (IOException ex) {
 			log.error("[slides] addEomBreakdownSlides failed for {}", presentationId, ex);
 			throw new AppException(ErrorReason.C000,
 					"Google Slides addEomBreakdownSlides failed: " + ex.getMessage());
+		}
+	}
+
+	/**
+	 * Removes, from every filled device breakdown copy, the table rows of devices the tactic never ran on and
+	 * closes the gap they leave (see {@link DeviceTableCompactor}). Runs after the copies are filled, because
+	 * only then does an absent device read as an all-dash row. Cosmetic, so a failure is logged and the deck
+	 * keeps its dashed rows rather than failing the job. The creative copies get the same treatment in the same
+	 * read: their table rows without a creative are deleted (see {@link CreativeTableCompactor}).
+	 *
+	 * @param slidesClient    the authenticated Slides client
+	 * @param presentationId  the deck being built
+	 * @param enabledByTactic 1-based tactic number → the breakdown sections that tactic enabled
+	 */
+	void compactDeviceTables(
+			Slides slidesClient, String presentationId, Map<Integer, Set<BreakdownType>> enabledByTactic) {
+		Set<String> deviceSlideIds = new HashSet<>();
+		Set<String> creativeSlideIds = new HashSet<>();
+		enabledByTactic.forEach((tacticNum, types) -> {
+			if (tacticNum != null && types != null && types.contains(BreakdownType.DEVICE)) {
+				deviceSlideIds.add(breakdownSlideNaming.slideId(BreakdownType.DEVICE, tacticNum));
+			}
+			if (tacticNum != null && types != null && types.contains(BreakdownType.CREATIVE)) {
+				creativeSlideIds.add(breakdownSlideNaming.slideId(BreakdownType.CREATIVE, tacticNum));
+			}
+		});
+		if (deviceSlideIds.isEmpty() && creativeSlideIds.isEmpty()) {
+			return;
+		}
+		try {
+			Presentation deck = retrier.execute(
+					slidesClient.presentations().get(presentationId).setFields(DEVICE_TABLE_FIELDS),
+					"compactDeviceTables get " + presentationId);
+			if (deck == null || deck.getSlides() == null) {
+				return;
+			}
+			List<Request> requests = new ArrayList<>();
+			for (Page slide : deck.getSlides()) {
+				if (deviceSlideIds.contains(slide.getObjectId())) {
+					requests.addAll(deviceTableCompactor.compactRequests(slide));
+				} else if (creativeSlideIds.contains(slide.getObjectId())) {
+					requests.addAll(creativeTableCompactor.compactRequests(slide));
+				}
+			}
+			if (requests.isEmpty()) {
+				return;
+			}
+			executeInChunks(slidesClient, presentationId, requests,
+					"compactDeviceTables batchUpdate for " + presentationId);
+			log.info("[slides] compactDeviceTables: {} request(s) dropped absent-device rows in {}",
+					requests.size(), presentationId);
+		} catch (IOException ex) {
+			log.warn("[slides] compactDeviceTables failed for {} (non-fatal, dashed rows stay): {}",
+					presentationId, ex.getMessage());
 		}
 	}
 
@@ -1294,8 +1394,8 @@ public class RealSlidesProvider implements SlidesProvider {
 
 	@Override
 	public void deleteReportTypeSlides(String presentationId, String reportType, String userGoogleAccessToken) {
-		if (!eomDeckPolicy.appliesTo(reportType)
-				|| (eomDropSlideObjectIds.isEmpty() && eomDropSlideTitles.isEmpty())) {
+		if (!eomDeckPolicy.appliesTo(reportType) || (eomDropSlideObjectIds.isEmpty() && eomDropSlideTitles.isEmpty()
+				&& eomDropElementLabels.isEmpty())) {
 			return;
 		}
 		boolean asUser = userGoogleAccessToken != null && !userGoogleAccessToken.isBlank();
@@ -1305,11 +1405,23 @@ public class RealSlidesProvider implements SlidesProvider {
 					slidesClient.presentations().get(presentationId).setFields(TITLE_FIELDS),
 					"deleteReportTypeSlides get " + presentationId);
 			List<Request> requests = buildTitleDeleteRequests(deck.getSlides());
+			Set<String> deletedSlideIds = deletedSlideIds(requests);
+			List<Request> blockRequests = buildBlockDeleteRequests(deck.getSlides(), deletedSlideIds);
+			requests.addAll(blockRequests);
+			// Measured on the slides as read, before anything is deleted, and sent after the deletes: the
+			// relayout only moves elements the deletes leave in place.
+			List<Request> relayoutRequests = blockRequests.isEmpty()
+					? List.of() : buildRelayoutRequests(deck.getSlides(), deletedSlideIds);
+			requests.addAll(relayoutRequests);
 			if (requests.isEmpty()) {
-				log.warn("[slides] deleteReportTypeSlides matched none of the {} configured id(s) / {} title(s) in {}",
-						eomDropSlideObjectIds.size(), eomDropSlideTitles.size(), presentationId);
+				log.warn("[slides] deleteReportTypeSlides matched none of the {} configured id(s) / {} title(s) / "
+						+ "{} block heading(s) in {}", eomDropSlideObjectIds.size(), eomDropSlideTitles.size(),
+						eomDropElementLabels.size(), presentationId);
 				return;
 			}
+			log.info("[slides] deleteReportTypeSlides removing {} slide(s) and {} block element(s), moving {} "
+					+ "element(s) into the freed space, in {}",
+					deletedSlideIds.size(), blockRequests.size(), relayoutRequests.size(), presentationId);
 			executeInChunks(slidesClient, presentationId, requests,
 					"deleteReportTypeSlides batchUpdate for " + presentationId);
 		} catch (IOException ex) {
@@ -1354,6 +1466,73 @@ public class RealSlidesProvider implements SlidesProvider {
 					break;
 				}
 			}
+		}
+		return requests;
+	}
+
+	/**
+	 * Collects the slide ids the whole-slide delete requests remove.
+	 *
+	 * @param slideDeletes the delete requests built by {@link #buildTitleDeleteRequests}
+	 * @return the ids of the slides being deleted whole
+	 */
+	Set<String> deletedSlideIds(List<Request> slideDeletes) {
+		Set<String> ids = new HashSet<>();
+		for (Request request : slideDeletes) {
+			if (request.getDeleteObject() != null) {
+				ids.add(request.getDeleteObject().getObjectId());
+			}
+		}
+		return ids;
+	}
+
+	/**
+	 * Builds the {@code DeleteObject} requests for the blocks an EOM deck drops from the slides it keeps: on
+	 * every slide not already being deleted, each configured heading's card and everything on that card.
+	 *
+	 * @param slides          the deck's slides in order (from {@code presentations.get} with {@link #TITLE_FIELDS})
+	 * @param deletedSlideIds the slides the same pass already deletes whole, skipped here so no request
+	 *                        targets an element of a slide that is gone by the time it runs
+	 * @return the element delete requests in slide order, or an empty list when no heading matched
+	 */
+	List<Request> buildBlockDeleteRequests(List<Page> slides, Set<String> deletedSlideIds) {
+		List<Request> requests = new ArrayList<>();
+		if (slides == null || eomDropElementLabels.isEmpty()) {
+			return requests;
+		}
+		for (Page page : slides) {
+			if (page.getObjectId() == null || deletedSlideIds.contains(page.getObjectId())) {
+				continue;
+			}
+			for (String objectId : slideBlockLocator.blockObjectIds(page, eomDropElementLabels)) {
+				requests.add(new Request().setDeleteObject(new DeleteObjectRequest().setObjectId(objectId)));
+			}
+		}
+		return requests;
+	}
+
+	/**
+	 * Builds the transform updates that close the gap the block drop leaves on each kept slide: the stat tiles
+	 * move into the dropped block's place and the grow card rises into their column (see
+	 * {@link TacticSlideRelayout}). A slide without that layout yields no updates.
+	 *
+	 * @param slides          the deck's slides, read before the drop pass deletes anything
+	 * @param deletedSlideIds the slides the same pass deletes whole, skipped here
+	 * @return the update requests in slide order, or an empty list when the relayout is off or nothing matched
+	 */
+	List<Request> buildRelayoutRequests(List<Page> slides, Set<String> deletedSlideIds) {
+		List<Request> requests = new ArrayList<>();
+		if (slides == null || eomRelayoutGrowLabel.isEmpty() || eomRelayoutAnchorLabel.isEmpty()) {
+			log.warn("[slides] relayout off: grow label [{}], anchor label [{}] (blank = off)",
+					eomRelayoutGrowLabel, eomRelayoutAnchorLabel);
+			return requests;
+		}
+		for (Page page : slides) {
+			if (page.getObjectId() == null || deletedSlideIds.contains(page.getObjectId())) {
+				continue;
+			}
+			requests.addAll(tacticSlideRelayout.relayoutRequests(
+					page, eomDropElementLabels, eomRelayoutGrowLabel, eomRelayoutAnchorLabel));
 		}
 		return requests;
 	}
@@ -1546,9 +1725,37 @@ public class RealSlidesProvider implements SlidesProvider {
 			if (replacement.equals(token)) {
 				continue;
 			}
+			emitPercentSuffixReplacements(requests, copyId, token, value);
 			requests.add(new Request().setReplaceAllText(new ReplaceAllTextRequest()
 					.setContainsText(new SubstringMatchCriteria().setText(token).setMatchCase(true))
 					.setReplaceText(replacement)
+					.setPageObjectIds(List.of(copyId))));
+		}
+	}
+
+	/**
+	 * Absorbs the master slide's own percent sign typed after a stat-tile token ({@code {{dev_n_ctr}} %})
+	 * when the value must not be followed by one: an em-dash ("— %" reads as a broken figure) or a value that
+	 * already carries its own sign ("0.58% %"). Emitted before the plain token's replacement, so the
+	 * suffixed form is matched first; a slide without the suffix simply matches nothing.
+	 *
+	 * @param requests the request list to append the replacements to
+	 * @param copyId   the duplicated slide's object id, used to scope each replacement
+	 * @param token    the master's generic token
+	 * @param value    the token's final value, or {@code null} when it is only renumbered
+	 */
+	void emitPercentSuffixReplacements(List<Request> requests, String copyId, String token, String value) {
+		if (value == null) {
+			return;
+		}
+		String trimmed = value.trim();
+		if (!trimmed.equals(DASH) && !trimmed.endsWith(PERCENT)) {
+			return;
+		}
+		for (String suffix : PERCENT_SUFFIXES) {
+			requests.add(new Request().setReplaceAllText(new ReplaceAllTextRequest()
+					.setContainsText(new SubstringMatchCriteria().setText(token + suffix).setMatchCase(true))
+					.setReplaceText(value)
 					.setPageObjectIds(List.of(copyId))));
 		}
 	}

@@ -77,12 +77,12 @@ class GeoBreakdownHelperImplTest {
 		// When:
 		helper.writeGeoInsights(values, Set.of(1), Set.of(1), insights, Map.of("{{tactic 1}}", "CTV"));
 
-		// Then: the three insights map to the "what the map tells us" tokens, the fourth to the
-		// recommendation, and no fourth insight is written — the slide carries no slot for one
+		// Then: the three insights map to the "what the map tells us" tokens and the fourth string is the
+		// recommendation, written to both the reco slot and the older templates' fourth insight slot
 		assertThat(values.get("{{geo_insight_1.1}}")).isEqualTo("insight one");
 		assertThat(values.get("{{geo_insight_1.3}}")).isEqualTo("insight three");
-		assertThat(values).doesNotContainKey("{{geo_insight_1.4}}");
 		assertThat(values.get("{{geo_1_reco}}")).isEqualTo("do this");
+		assertThat(values.get("{{geo_insight_1.4}}")).isEqualTo("do this");
 	}
 
 	@Test
@@ -188,7 +188,9 @@ class GeoBreakdownHelperImplTest {
 		// Then: both tactics' insights render blank rather than as raw tokens
 		assertThat(values.get("{{geo_insight_1.1}}")).isEmpty();
 		assertThat(values.get("{{geo_1_reco}}")).isEmpty();
+		assertThat(values.get("{{geo_insight_1.4}}")).isEmpty();
 		assertThat(values.get("{{geo_insight_2.1}}")).isEmpty();
+		assertThat(values.get("{{geo_insight_2.4}}")).isEmpty();
 	}
 
 	@Test

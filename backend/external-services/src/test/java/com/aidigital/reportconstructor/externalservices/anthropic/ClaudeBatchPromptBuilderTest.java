@@ -64,6 +64,11 @@ class ClaudeBatchPromptBuilderTest {
 				"1) VOLUME AND REACH", "2) AUDIENCE FIT",
 				"3) PREMIUM AND BRAND SUITABILITY", "4) STEERING WEIGHT");
 
+		// Then: the steering-weight slot is held to the change log rather than narrated as already done
+		assertThat(prompt).contains("If that log records a change to this tactic's publisher weighting",
+				"you MUST NOT claim any action was taken");
+		assertThat(prompt).doesNotContain("WE ALREADY MADE", "WE ALREADY DID");
+
 		// Then: the blacklisting claim and the complimentary framing are still asked for
 		assertThat(prompt).contains("WE BLACKLISTED a large number of PUBLISHERS", "complimentary");
 
@@ -149,12 +154,15 @@ class ClaudeBatchPromptBuilderTest {
 		// When:
 		String prompt = builder.buildCreativeSectionPrompt(input, data, "Drive awareness.", 160, 160).orElseThrow();
 
-		// Then: the fourth string is explicitly licenced to reconstruct the action, so the model stops choosing
-		// between the ask and the surrounding "do not invent" rules by hedging the slot
+		// Then: the fourth string may claim an action only when the change log records it, and otherwise falls
+		// back to a recommendation instead of inventing account management that never happened
 		assertThat(prompt).contains(
-				"The data carries NO change log, so this ONE string is EXPECTED to be reconstructed",
-				"state it in past tense as something WE DID",
-				"never say the change log is missing");
+				"If that log records a change to this tactic's creative",
+				"in past tense as something WE DID",
+				"you MUST NOT claim any action was taken",
+				"ONE forward-looking recommendation the table supports",
+				"never mention the change log or its absence");
+		assertThat(prompt).doesNotContain("EXPECTED to be reconstructed", "infer the most plausible optimisation");
 
 		// Then: the licence stops at the action — names and numbers still come from the table
 		assertThat(prompt).contains("must come from the table (never invent a metric)");
@@ -182,14 +190,14 @@ class ClaudeBatchPromptBuilderTest {
 		String prompt = builder.buildCampaignResultsPrompt(data, "Brief.", frequencies, digests).orElseThrow();
 
 		// Then: every character budget is quoted at 80% of the limit actually enforced on the reply
-		assertThat(prompt).contains("≤304 chars");   // results overview, 380
+		assertThat(prompt).contains("≤160 chars");   // results overview, 200
 		assertThat(prompt).contains("≤560 chars");   // thoughts total, 700
 		assertThat(prompt).contains("≤22 chars");    // recommendation title, 28
 		assertThat(prompt).contains("≤100 chars");   // recommendation text, 125
 		assertThat(prompt).contains("≤144 chars");   // f_opportunity, 180
 		assertThat(prompt).contains("≤112 chars");   // f_fact, 140
 		assertThat(prompt).contains("≤256 chars");   // f_storytelling, 320
-		assertThat(prompt).doesNotContain("380").doesNotContain("700");
+		assertThat(prompt).doesNotContain("≤200 chars").doesNotContain("380").doesNotContain("700");
 
 		// And: the prompt is sent as one uncached block — its prefix is unique to this once-per-report call
 		assertThat(prompt).doesNotContain(AnthropicMessagesClient.CACHE_BREAKPOINT);
@@ -214,7 +222,7 @@ class ClaudeBatchPromptBuilderTest {
 								new GeoRow("Los Angeles", "200,000", "96.4%"))));
 
 		// When: the dedicated per-section call — the only path that writes geo copy — builds its prompt
-		String sectionPrompt = builder.buildGeoSectionPrompt(geo, data, "Drive awareness.", 140).orElseThrow();
+		String sectionPrompt = builder.buildGeoSectionPrompt(geo, data, "Drive awareness.", 115, 90).orElseThrow();
 
 		// Then: it states that the table is a top list and names the stat that does carry total coverage, so a
 		// two-row table never ships as "delivery ran across two markets"
@@ -225,6 +233,55 @@ class ClaudeBatchPromptBuilderTest {
 
 		// And: the stat the rule points at is actually in the data block, under the label the rule quotes
 		assertThat(sectionPrompt).contains("Markets activated: 14");
+	}
+
+	@Test
+	void shouldQuoteTheGeoRecommendationItsOwnShorterBudgetTest() {
+		// Given: one tactic with a filled geo table
+		Tactic ctv = new Tactic(
+				"CTV", "CTV", null,
+				5000.0, 1_000_000.0, 0.0, 1_000_000.0, null, 98.0, null, null,
+				null, null, null, null, null, null, null, null);
+		CampaignData data = new CampaignData(
+				"Acme", "Spring Launch", "US", "Awareness", "Jan 1 - Mar 31",
+				null, "$500,000", "Reach", "CTV", "25-44", "Auto intenders",
+				new Totals(0, 0, 0, 0, null, null), Map.of(1, ctv), null);
+		GeoInsightInput geo = new GeoInsightInput(
+				1, "CTV", "VCR",
+				new GeoTable("14", "New York", "97.1%", List.of(new GeoRow("New York", "400,000", "97.1%"))));
+
+		// When: insights get 115 characters and the recommendation 90
+		String prompt = builder.buildGeoSectionPrompt(geo, data, "Drive awareness.", 115, 90).orElseThrow();
+
+		// Then: each is quoted at 80% of its own cap (92 and 72), so the recommendation is asked for less copy
+		assertThat(prompt).contains("ONE sentence each, at most 92 characters");
+		assertThat(prompt).contains("scale), at most 72 characters, still grounded in the table.");
+
+		// And: the insights open with a bracketed lead clause, while the labelled recommendation takes none
+		assertThat(prompt).contains(LeadPhraseSpec.GEO);
+		assertThat(prompt).contains("string 4 has NO brackets");
+	}
+
+	@Test
+	void shouldAskThePublisherSectionForABracketedHeadlineBeforeEachSentenceTest() {
+		// Given: one tactic with a publisher row
+		Tactic ctv = new Tactic(
+				"CTV", "CTV", null,
+				5000.0, 1_000_000.0, 0.0, 1_000_000.0, null, 98.0, null, null,
+				null, null, null, null, null, null, null, null);
+		CampaignData data = new CampaignData(
+				"Acme", "Spring Launch", "US", "Awareness", "Jan 1 - Mar 31",
+				null, "$500,000", "Reach", "CTV", "25-44", "Auto intenders",
+				new Totals(0, 0, 0, 0, null, null), Map.of(1, ctv), null);
+		PublisherObservationInput input = new PublisherObservationInput(
+				1, "CTV", List.of(new PublisherRow("Hulu", "400,000", "40%")), 400_000L, 1_000_000L);
+
+		// When:
+		String prompt = builder.buildPublisherSectionPrompt(input, data, "Drive awareness.", 115).orElseThrow();
+
+		// Then: every observation is "[[Headline]] — sentence", the design's bold-blue-then-regular takeaway
+		assertThat(prompt).contains("Return the four observations in THIS order. " + LeadPhraseSpec.HEADLINE);
+		assertThat(prompt).contains("[[Curated the Buy]] — ");
 	}
 
 	@Test

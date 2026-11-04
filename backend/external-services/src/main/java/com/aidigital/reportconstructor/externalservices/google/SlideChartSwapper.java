@@ -39,7 +39,7 @@ public class SlideChartSwapper {
 	 * @return a map from each page element's object ID to its captured {@link ElementTransform}; empty if the read
 	 * failed
 	 */
-	public Map<String, ElementTransform> loadTransforms(
+	Map<String, ElementTransform> loadTransforms(
 			Slides slides, String presentationId, List<String> errors, String tag) {
 		Map<String, ElementTransform> out = new LinkedHashMap<>();
 		try {
@@ -75,7 +75,7 @@ public class SlideChartSwapper {
 	 *                         positions the new chart identically, otherwise the API places it at a default location
 	 * @throws IOException if the batch update request to the Slides API fails
 	 */
-	public void replaceChartOnSlide(
+	void replaceChartOnSlide(
 			Slides slides,
 			String presentationId,
 			String oldObjectId,
@@ -100,7 +100,7 @@ public class SlideChartSwapper {
 	 * @param chartIdInSheet   the embedded chart's id within {@code newSpreadsheetId}
 	 * @throws IOException if the batch update request to the Slides API fails
 	 */
-	public void replaceChartOnSlide(
+	void replaceChartOnSlide(
 			Slides slides,
 			String presentationId,
 			String oldObjectId,
@@ -130,5 +130,20 @@ public class SlideChartSwapper {
 
 		slides.presentations().batchUpdate(presentationId,
 				new BatchUpdatePresentationRequest().setRequests(requests)).execute();
+	}
+
+	/**
+	 * Removes a chart element from a slide without putting anything in its place — used when a tactic has no
+	 * data for the chart, so the master's sample chart is not shipped as if it were the tactic's.
+	 *
+	 * @param slides         authenticated Slides client
+	 * @param presentationId the deck being edited
+	 * @param objectId       the chart element to delete
+	 * @throws IOException if the batch update request to the Slides API fails
+	 */
+	void deleteChartFromSlide(Slides slides, String presentationId, String objectId) throws IOException {
+		slides.presentations().batchUpdate(presentationId, new BatchUpdatePresentationRequest().setRequests(
+				List.of(new com.google.api.services.slides.v1.model.Request()
+						.setDeleteObject(new DeleteObjectRequest().setObjectId(objectId))))).execute();
 	}
 }

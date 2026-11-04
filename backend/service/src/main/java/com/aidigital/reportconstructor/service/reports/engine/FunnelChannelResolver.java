@@ -26,7 +26,7 @@ import java.util.Map;
 public class FunnelChannelResolver {
 
 	/** Separator between channel names inside one stage's list. */
-	static final String SEPARATOR = ", ";
+	private static final String SEPARATOR = ", ";
 
 	private final CampaignResolvers campaignResolvers;
 

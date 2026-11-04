@@ -31,6 +31,41 @@ class AnthropicMessagesClientTest {
 	}
 
 	@Test
+	void shouldParseAReplyWhoseProseQuotesAreNotEscapedTest() {
+		// Given: a campaign reply that quotes a line name without escaping the quotes
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class)), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+		String reply = "{\"thoughts_on_performance\": [\"The \"Netflix\" line never activated.\", \"Video beat plan.\"]}";
+
+		// When:
+		JsonNode parsed = client.parseJsonObject(reply, true);
+
+		// Then: both thoughts survive, the quotation kept as text
+		assertThat(parsed.get("thoughts_on_performance").get(0).asText())
+				.isEqualTo("The \"Netflix\" line never activated.");
+		assertThat(parsed.get("thoughts_on_performance").get(1).asText()).isEqualTo("Video beat plan.");
+	}
+
+	@Test
+	void shouldParseAReplyWithARawLineBreakInsideAStringTest() {
+		// Given: a thought the model wrapped with a literal newline instead of \n
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class)), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+		String reply = "{\"results_overviews\": {\"1\": \"Six tactics delivered 4.47M impressions.\nNetflix never activated.\"}}";
+
+		// When:
+		JsonNode parsed = client.parseJsonObject(reply, true);
+
+		// Then:
+		assertThat(parsed.get("results_overviews").get("1").asText())
+				.isEqualTo("Six tactics delivered 4.47M impressions.\nNetflix never activated.");
+	}
+
+	@Test
 	void shouldNotCloseAKeyThatNeverGotItsValueTest() {
 		// Given: a reply truncated right after a key — closing it as-is would produce {"a":1,"b"}, which
 		// does not parse

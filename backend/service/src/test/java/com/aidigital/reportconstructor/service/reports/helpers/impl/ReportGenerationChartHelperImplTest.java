@@ -255,6 +255,32 @@ class ReportGenerationChartHelperImplTest {
 	}
 
 	@Test
+	void shouldStillSendADeviceJobForATacticWithoutDeviceRowsTest() {
+		// Given: a DOOH tactic whose device block is empty
+		List<BreakdownSelection> selections = List.of(new BreakdownSelection(1, List.of("dev")));
+		GeneratePayload payload = new GeneratePayload(
+				"brief", "standard", "", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), selections, "", null, "https://docs.google.com/spreadsheets/d/sheet-1/edit", null);
+		Map<Integer, Set<BreakdownType>> resolved = new LinkedHashMap<>();
+		resolved.put(1, EnumSet.of(BreakdownType.DEVICE));
+		when(breakdownResolver.resolve(selections)).thenReturn(resolved);
+		when(sheetHelper.readDeviceTables(eq("https://docs.google.com/spreadsheets/d/sheet-1/edit"), eq(Set.of(1)),
+				eq("token"))).thenReturn(Map.of(1, new DeviceTable("", "", "", "", "", List.of())));
+
+		// When:
+		helper.buildBreakdownCharts(
+				"https://docs.google.com/presentation/d/pres-1/edit", payload, 1, Map.of(), "token");
+
+		// Then: an empty job goes out, which is what lets the chart step remove the master's sample chart
+		ArgumentCaptor<BreakdownChartRequest> captor = ArgumentCaptor.forClass(BreakdownChartRequest.class);
+		verify(charts).buildBreakdownCharts(captor.capture());
+		assertThat(captor.getValue().jobs()).singleElement().satisfies(job -> {
+			assertThat(job.seriesCode()).isEqualTo("dev");
+			assertThat(job.slices()).isEmpty();
+		});
+	}
+
+	@Test
 	void shouldSkipBreakdownChartsWhenNoAudienceOrDeviceEnabledTest() {
 		// Given: only Top Publishers is enabled — a section with no chart
 		List<BreakdownSelection> selections = List.of(new BreakdownSelection(1, List.of("tp")));

@@ -28,11 +28,14 @@ public class ChartSheetWriter {
 	/**
 	 * Column B — impressions (bars / left axis).
 	 */
-	public static final int IMPS_COL = 1;
+	static final int IMPS_COL = 1;
 	/**
 	 * Column C — CTR/VCR rate (line / right axis); template ships a %-formatted formula.
 	 */
-	public static final int RATE_COL = 2;
+	static final int RATE_COL = 2;
+
+	/** The value written over a breakdown workbook's sample impressions when the tactic has none for it. */
+	private static final String BLANK_CELL = "";
 
 	/**
 	 * Decimal CTR/VCR ratio for a percentage-formatted cell ({@code 0.025} displays as 2.5%).
@@ -42,7 +45,7 @@ public class ChartSheetWriter {
 	 * @param metricCount clicks or completions numerator
 	 * @return ratio in {@code [0,1]}, or {@code 0} when {@code imps <= 0}
 	 */
-	public double dailyComboRateRatio(double imps, double metricCount) {
+	double dailyComboRateRatio(double imps, double metricCount) {
 		if (imps <= 0) {
 			return 0.0;
 		}
@@ -55,7 +58,7 @@ public class ChartSheetWriter {
 	 *
 	 * @return {@code false} — column C is owned by the template formula, never overwritten
 	 */
-	public boolean shouldWriteDailyRateColumn() {
+	boolean shouldWriteDailyRateColumn() {
 		return false;
 	}
 
@@ -67,7 +70,7 @@ public class ChartSheetWriter {
 	 * @param forceWrite when {@code true}, bypass {@link #shouldWriteDailyRateColumn()} (tests only)
 	 * @return cell values per row, or empty when column C must not be overwritten
 	 */
-	public Optional<List<List<Object>>> rateColumnValuesForPivot(
+	Optional<List<List<Object>>> rateColumnValuesForPivot(
 			Pivot pivot, boolean hasClicks, boolean forceWrite) {
 		if (!forceWrite && !shouldWriteDailyRateColumn()) {
 			return Optional.empty();
@@ -92,7 +95,7 @@ public class ChartSheetWriter {
 	 * @return cell values per row, or empty when column C must not be overwritten
 	 * @see #rateColumnValuesForPivot(Pivot, boolean, boolean)
 	 */
-	public Optional<List<List<Object>>> rateColumnValuesForPivot(Pivot pivot, boolean hasClicks) {
+	Optional<List<List<Object>>> rateColumnValuesForPivot(Pivot pivot, boolean hasClicks) {
 		return rateColumnValuesForPivot(pivot, hasClicks, false);
 	}
 
@@ -116,7 +119,7 @@ public class ChartSheetWriter {
 	 *                      metric from the pivot's clicks/completions presence
 	 * @throws IOException when a Sheets API call fails
 	 */
-	public void writePivot(Sheets sheets, String spreadsheetId, String tabName, Pivot pivot, String kpiType)
+	void writePivot(Sheets sheets, String spreadsheetId, String tabName, Pivot pivot, String kpiType)
 			throws IOException {
 		if (pivot.isEmpty()) {
 			return;
@@ -254,7 +257,7 @@ public class ChartSheetWriter {
 	 * @param otherImps     impressions for the "Other" slice, i.e. total impressions minus this tactic's impressions
 	 * @throws IOException when a Sheets API call fails
 	 */
-	public void writeDistribution(
+	void writeDistribution(
 			Sheets sheets, String spreadsheetId, String tabName,
 			String tacticName, double tacticImps, double otherImps) throws IOException {
 		List<List<Object>> rows = readValues(sheets, spreadsheetId, tabName + "!A1:B5");
@@ -291,44 +294,67 @@ public class ChartSheetWriter {
 	 *
 	 * <p>Rows are matched by normalised label rather than position, so a template row order change does not
 	 * misplace values, and the {@code CTV} &harr; {@code Connected TV} spelling difference between the
-	 * "Breakdowns" tab and the chart source is absorbed. A category with no matching slice is left as the
-	 * template shipped it.
+	 * "Breakdowns" tab and the chart source is absorbed. A category of the workbook's data block (the rows
+	 * under the header, up to the first blank label) with no matching slice has its sample impressions
+	 * cleared, so a tactic that served no tablet impressions does not chart the template's sample tablet bar.
+	 * Nothing is written when no category matches at all.
 	 *
 	 * @param sheets        authenticated Sheets client
 	 * @param spreadsheetId id of the copied source workbook
 	 * @param tabName       data tab holding the category / impressions / share-of-voice columns
 	 * @param impsByLabel   normalised category label &rarr; impressions to write; build via
 	 *                      {@link #normalizeBreakdownLabel(String)}
-	 * @return the number of rows written (matched categories)
+	 * @return the number of rows written with impressions (matched categories)
 	 * @throws IOException when a Sheets API call fails
 	 */
-	public int writeBreakdownImpressions(
+	int writeBreakdownImpressions(
 			Sheets sheets, String spreadsheetId, String tabName, Map<String, Long> impsByLabel)
 			throws IOException {
 		if (impsByLabel.isEmpty()) {
 			return 0;
 		}
 		List<List<Object>> rows = readValues(sheets, spreadsheetId, tabName + "!A1:A50");
-		List<ValueRange> data = new ArrayList<>();
-		for (int ri = 0; ri < rows.size(); ri++) {
-			String label = rows.get(ri).isEmpty() ? "" : str(rows.get(ri).get(0));
-			if (label.isBlank()) {
-				continue;
-			}
-			Long imps = impsByLabel.get(normalizeBreakdownLabel(label));
-			if (imps == null) {
-				continue;
-			}
-			data.add(new ValueRange()
-					.setRange(tabName + "!B" + (ri + 1))
-					.setValues(List.of(List.of(imps))));
-		}
-		if (data.isEmpty()) {
+		List<ValueRange> data = breakdownImpressionUpdates(rows, tabName, impsByLabel);
+		long matched = data.stream().filter(vr -> !BLANK_CELL.equals(vr.getValues().getFirst().getFirst())).count();
+		if (matched == 0) {
 			return 0;
 		}
 		sheets.spreadsheets().values().batchUpdate(spreadsheetId,
 				new BatchUpdateValuesRequest().setValueInputOption("RAW").setData(data)).execute();
-		return data.size();
+		return (int) matched;
+	}
+
+	/**
+	 * Plans the column-B writes for {@link #writeBreakdownImpressions}: matched categories anywhere in column A
+	 * get their impressions; unmatched categories inside the data block (row 2 down to the first blank label)
+	 * get a blank, clearing the template's sample value. The header row and anything below the block are
+	 * never touched unless they match.
+	 *
+	 * @param rows        column A of the data tab, row 1 first
+	 * @param tabName     data tab the ranges are addressed to
+	 * @param impsByLabel normalised category label &rarr; impressions
+	 * @return one single-cell update per touched row; a blank value marks a cleared row
+	 */
+	List<ValueRange> breakdownImpressionUpdates(
+			List<List<Object>> rows, String tabName, Map<String, Long> impsByLabel) {
+		List<ValueRange> data = new ArrayList<>();
+		boolean inBlock = true;
+		for (int ri = 0; ri < rows.size(); ri++) {
+			String label = rows.get(ri).isEmpty() ? "" : str(rows.get(ri).get(0));
+			if (label.isBlank()) {
+				inBlock = ri == 0;
+				continue;
+			}
+			Long imps = impsByLabel.get(normalizeBreakdownLabel(label));
+			Object value = imps != null ? imps : (inBlock && ri > 0 ? BLANK_CELL : null);
+			if (value == null) {
+				continue;
+			}
+			data.add(new ValueRange()
+					.setRange(tabName + "!B" + (ri + 1))
+					.setValues(List.of(List.of(value))));
+		}
+		return data;
 	}
 
 	/**
@@ -352,7 +378,7 @@ public class ChartSheetWriter {
 	 * @return the number of rows written (labels + values), excluding blanked leftovers
 	 * @throws IOException when a Sheets API call fails
 	 */
-	public int writeBreakdownSeries(
+	int writeBreakdownSeries(
 			Sheets sheets, String spreadsheetId, String tabName,
 			Map<String, Double> valuesByLabel, int dataStartRow) throws IOException {
 		if (valuesByLabel.isEmpty()) {
@@ -393,7 +419,7 @@ public class ChartSheetWriter {
 	 * @param label the raw category label from either the "Breakdowns" tab or the chart source sheet
 	 * @return the normalised match key
 	 */
-	public String normalizeBreakdownLabel(String label) {
+	String normalizeBreakdownLabel(String label) {
 		if (label == null) {
 			return "";
 		}
@@ -407,7 +433,7 @@ public class ChartSheetWriter {
 	 * @param col 0-based column index
 	 * @return the A1 column letter(s)
 	 */
-	public String colLetter(int col) {
+	String colLetter(int col) {
 		StringBuilder sb = new StringBuilder();
 		int c = col;
 		do {

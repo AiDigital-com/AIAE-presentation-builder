@@ -5,6 +5,10 @@ import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartJob;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartRequest;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartSlice;
+import com.google.api.services.sheets.v4.Sheets;
+import com.google.api.services.sheets.v4.model.EmbeddedChart;
+import com.google.api.services.sheets.v4.model.Sheet;
+import com.google.api.services.sheets.v4.model.Spreadsheet;
 import com.google.api.services.slides.v1.Slides;
 import com.google.api.services.slides.v1.model.Page;
 import com.google.api.services.slides.v1.model.PageElement;
@@ -70,7 +74,7 @@ public class BreakdownChartBuilder {
 	 * @param req     the breakdown chart request describing the deck and per-tactic slices
 	 * @return human-readable error strings for any per-chart failures (empty on full success)
 	 */
-	public List<String> buildBreakdownCharts(ChartClients clients, BreakdownChartRequest req) {
+	List<String> buildBreakdownCharts(ChartClients clients, BreakdownChartRequest req) {
 		List<String> errors = new ArrayList<>();
 		if (req.jobs() == null || req.jobs().isEmpty()) {
 			return errors;
@@ -100,7 +104,8 @@ public class BreakdownChartBuilder {
 	/**
 	 * Renders one breakdown chart: resolves its section config and target chart element, copies the source
 	 * workbook, writes the tactic's impressions and swaps the slide chart. Missing config, an absent chart
-	 * element or a job with no positive slice is recorded as an error rather than thrown.
+	 * element is recorded as an error rather than thrown; a job with no positive slice removes the slide's sample
+	 * chart, so a tactic without data does not show the master's sample bars.
 	 *
 	 * @param clients       the Google clients for this request
 	 * @param req           the breakdown chart request (source of the deck id and copy names)
@@ -148,7 +153,9 @@ public class BreakdownChartBuilder {
 		}
 		Map<String, Double> valuesByLabel = valuesByLabel(job.slices(), series.labelsFromData());
 		if (valuesByLabel.isEmpty()) {
-			errors.add(tag + ": no positive values to chart");
+			// No data for this tactic (a DOOH tactic has no device split): drop the master's sample chart
+			// rather than ship its sample bars as this tactic's numbers.
+			slideChartSwapper.deleteChartFromSlide(clients.slides(), req.presentationId(), chartRef.objectId());
 			return;
 		}
 
@@ -164,9 +171,69 @@ public class BreakdownChartBuilder {
 			errors.add(tag + ": no category labels matched the chart source — chart left empty");
 			return;
 		}
+		Integer copyChartId = copyChartId(clients.sheets(), copyId, tab, chartIdInSheet);
+		if (copyChartId == null) {
+			errors.add(tag + ": the copied chart source " + copyId + " carries no chart to link");
+			return;
+		}
 		slideChartSwapper.replaceChartOnSlide(
 				clients.slides(), req.presentationId(), chartRef.objectId(), copyId, chartRef.transform(),
-				chartIdInSheet);
+				copyChartId);
+	}
+
+	/**
+	 * Reads the embedded charts of a copied source workbook and picks the one to link.
+	 *
+	 * @param sheets     the authenticated Sheets client
+	 * @param copyId     the copied workbook
+	 * @param dataTab    the tab the tactic's values were written to
+	 * @param configured the chart id configured for the series
+	 * @return the chart id to link, or {@code null} when the copy has no chart
+	 * @throws IOException when the Sheets read fails
+	 */
+	Integer copyChartId(Sheets sheets, String copyId, String dataTab,
+			int configured) throws IOException {
+		Spreadsheet copy = sheets.spreadsheets().get(copyId)
+				.setIncludeGridData(false)
+				.setFields("sheets(properties(title),charts(chartId))")
+				.execute();
+		return pickChartId(copy.getSheets(), dataTab, configured);
+	}
+
+	/**
+	 * Picks the chart of a source workbook to link. The configured id wins when the workbook still has it; a
+	 * chart recreated in the workbook (moved to its own sheet, rebuilt, re-pasted) gets a new id that the
+	 * configuration and the master slide's cached link never learn, so otherwise the first chart drawn on the
+	 * data tab is taken, then the first chart anywhere in the workbook.
+	 *
+	 * @param tabs       the workbook's tabs with their titles and embedded charts
+	 * @param dataTab    the tab holding the series' values
+	 * @param configured the chart id configured for the series
+	 * @return the chart id to link, or {@code null} when no tab carries a chart
+	 */
+	Integer pickChartId(List<Sheet> tabs, String dataTab, int configured) {
+		Integer onDataTab = null;
+		Integer anywhere = null;
+		for (Sheet tab : tabs == null ? List.<Sheet>of() : tabs) {
+			for (EmbeddedChart chart : tab.getCharts() == null ? List.<EmbeddedChart>of() : tab.getCharts()) {
+				Integer id = chart.getChartId();
+				if (id == null) {
+					continue;
+				}
+				if (id == configured) {
+					return id;
+				}
+				boolean dataTabChart = tab.getProperties() != null && dataTab != null
+						&& dataTab.equals(tab.getProperties().getTitle());
+				if (dataTabChart && onDataTab == null) {
+					onDataTab = id;
+				}
+				if (anywhere == null) {
+					anywhere = id;
+				}
+			}
+		}
+		return onDataTab != null ? onDataTab : anywhere;
 	}
 
 	/**

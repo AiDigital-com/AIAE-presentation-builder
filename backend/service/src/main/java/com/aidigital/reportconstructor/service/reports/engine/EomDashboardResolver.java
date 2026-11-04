@@ -32,113 +32,113 @@ import java.util.Map;
 public class EomDashboardResolver {
 
 	/** Rendered when a figure is missing or a pacing ratio has no positive plan to divide by. */
-	static final String DASH = "—";
+	private static final String DASH = "—";
 
 	/**
 	 * How many {@code {{tactic n}}} name chips the channel-by-channel divider slide prints. The slide is a
 	 * fixed piece of template art with three chips on it, so a campaign with fewer tactics leaves the
 	 * surplus ones to be dashed.
 	 */
-	static final int DIVIDER_CHIP_SLOTS = 3;
+	private static final int DIVIDER_CHIP_SLOTS = 3;
 
 	/** Token carrying the month this report covers, as the cover prints it. */
-	static final String SRC_REPORTING_MONTH = "{{reporting month}}";
+	private static final String SRC_REPORTING_MONTH = "{{reporting month}}";
 
 	/** Token carrying the month the "focus next month" slide plans for. */
-	static final String DST_NEXT_REPORTING_MONTH = "{{reporting month +1}}";
+	private static final String DST_NEXT_REPORTING_MONTH = "{{reporting month +1}}";
 
 	/** Token carrying the reporting month's position in the flight, as the cover prints it. */
-	static final String SRC_MONTH_NUMBER = "{{mon no}}";
+	private static final String SRC_MONTH_NUMBER = "{{mon no}}";
 
 	/** Token carrying that position plus one, for the "focus next month" slide. */
-	static final String DST_NEXT_MONTH_NUMBER = "{{mon no +1}}";
+	private static final String DST_NEXT_MONTH_NUMBER = "{{mon no +1}}";
 
 	/** Source token suffix carrying a tactic's planned spend. */
-	static final String SRC_SPEND_PLAN = " spend plan";
+	private static final String SRC_SPEND_PLAN = " spend plan";
 
 	/** Source token suffix carrying a tactic's actual spend. */
-	static final String SRC_SPEND = " spend";
+	private static final String SRC_SPEND = " spend";
 
 	/** Source token suffix carrying a tactic's planned impressions (EOM: planned units). */
-	static final String SRC_IMPS_PLAN = " imps plan";
+	private static final String SRC_IMPS_PLAN = " imps plan";
 
 	/** Source token suffix carrying a tactic's actual impressions. */
-	static final String SRC_IMPS = " imps";
+	private static final String SRC_IMPS = " imps";
 
 	/** Source token suffix carrying which KPI the tactic is judged on, as the deck spells it. */
-	static final String SRC_KPI_TYPE = " KPI type";
+	private static final String SRC_KPI_TYPE = " KPI type";
 
 	/** Source token suffix carrying the tactic's actual KPI, already picked by KPI type. */
-	static final String SRC_KPI = " KPI";
+	private static final String SRC_KPI = " KPI";
 
 	/** Source token suffix carrying a tactic's planned click-through rate. */
-	static final String SRC_CTR_PLAN = " ctr plan";
+	private static final String SRC_CTR_PLAN = " ctr plan";
 
 	/** Source token suffix carrying a tactic's planned completion rate. */
-	static final String SRC_VCR_PLAN = " vcr plan";
+	private static final String SRC_VCR_PLAN = " vcr plan";
 
 	/** KPI type spelling that means the tactic is judged on its click-through rate. */
-	static final String KPI_TYPE_CTR = "CTR";
+	private static final String KPI_TYPE_CTR = "CTR";
 
 	/** Percentage points below which a tactic is printed as sitting exactly on its goal. */
-	static final double ON_GOAL_TOLERANCE_PP = 0.005;
+	private static final double ON_GOAL_TOLERANCE_PP = 0.005;
 
 	/** Performance-dashboard token suffix for the KPI-goal column. */
-	static final String OUT_KPI_GOAL = " KPI goal";
+	private static final String OUT_KPI_GOAL = " KPI goal";
 
 	/** Performance-dashboard token suffix for the distance between the actual KPI and its goal. */
-	static final String OUT_VS_GOAL = " vs goal";
+	private static final String OUT_VS_GOAL = " vs goal";
 
 	/** Dashboard token suffix for the planned-budget column. */
-	static final String OUT_PLANNED_BUDGET = " planned budget";
+	private static final String OUT_PLANNED_BUDGET = " planned budget";
 
 	/** Dashboard token suffix for the actual-budget column. */
-	static final String OUT_FACT_BUDGET = " fact budget";
+	private static final String OUT_FACT_BUDGET = " fact budget";
 
 	/** Dashboard token suffix for the planned-impressions column. */
-	static final String OUT_PLANNED_IMPS = " planned imps";
+	private static final String OUT_PLANNED_IMPS = " planned imps";
 
 	/** Dashboard token suffix for the actual-impressions column. */
-	static final String OUT_FACT_IMPS = " fact imps";
+	private static final String OUT_FACT_IMPS = " fact imps";
 
 	/** Dashboard token suffix for the pacing column. */
-	static final String OUT_PACING = " pacing";
+	private static final String OUT_PACING = " pacing";
 
 	/** Channel-slide tile token suffix for the month's impressions goal, abbreviated. */
-	static final String OUT_PLANNED_IMPS_SHORT = " planned imps short";
+	private static final String OUT_PLANNED_IMPS_SHORT = " planned imps short";
 
 	/** Channel-slide tile token suffix for the month's delivered impressions, abbreviated. */
-	static final String OUT_FACT_IMPS_SHORT = " fact imps short";
+	private static final String OUT_FACT_IMPS_SHORT = " fact imps short";
 
 	/** Channel-slide tile token suffix for the month's spend, abbreviated. */
-	static final String OUT_FACT_BUDGET_SHORT = " fact budget short";
+	private static final String OUT_FACT_BUDGET_SHORT = " fact budget short";
 
 	/** Totals-row token for the planned budget. */
-	static final String TOTAL_PLANNED_BUDGET = "{{total planned budget}}";
+	private static final String TOTAL_PLANNED_BUDGET = "{{total planned budget}}";
 
 	/** Totals-row token for the actual budget. */
-	static final String TOTAL_FACT_BUDGET = "{{total fact budget}}";
+	private static final String TOTAL_FACT_BUDGET = "{{total fact budget}}";
 
 	/** Totals-row token for the planned impressions. */
-	static final String TOTAL_PLANNED_IMPS = "{{total planned imps}}";
+	private static final String TOTAL_PLANNED_IMPS = "{{total planned imps}}";
 
 	/** Totals-row token for the actual impressions. */
-	static final String TOTAL_FACT_IMPS = "{{total fact imps}}";
+	private static final String TOTAL_FACT_IMPS = "{{total fact imps}}";
 
 	/** Totals-row token for the campaign pacing. */
-	static final String TOTAL_PACING = "{{total pacing}}";
+	private static final String TOTAL_PACING = "{{total pacing}}";
 
 	/** Workbook tokens holding the campaign's planned spend, most authoritative first. */
-	static final List<String> SRC_TOTAL_SPEND_PLAN = List.of("{{total_investment_plan}}");
+	private static final List<String> SRC_TOTAL_SPEND_PLAN = List.of("{{total_investment_plan}}");
 
 	/** Workbook tokens holding the campaign's actual spend, most authoritative first. */
-	static final List<String> SRC_TOTAL_SPEND = List.of("{{total_investment}}", "{{total spend}}");
+	private static final List<String> SRC_TOTAL_SPEND = List.of("{{total_investment}}", "{{total spend}}");
 
 	/** Workbook tokens holding the campaign's planned impressions, most authoritative first. */
-	static final List<String> SRC_TOTAL_IMPS_PLAN = List.of("{{total imps plan}}");
+	private static final List<String> SRC_TOTAL_IMPS_PLAN = List.of("{{total imps plan}}");
 
 	/** Workbook tokens holding the campaign's actual impressions, most authoritative first. */
-	static final List<String> SRC_TOTAL_IMPS = List.of("{{total imps}}");
+	private static final List<String> SRC_TOTAL_IMPS = List.of("{{total imps}}");
 
 	private final ReportNumberParser numbers;
 	private final Fmt fmt;

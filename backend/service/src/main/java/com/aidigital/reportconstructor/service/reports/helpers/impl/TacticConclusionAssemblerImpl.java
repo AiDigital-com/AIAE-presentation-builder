@@ -6,6 +6,7 @@ import com.aidigital.reportconstructor.service.reports.dto.TacticNarrativeDigest
 import com.aidigital.reportconstructor.service.reports.dto.TacticThoughts;
 import com.aidigital.reportconstructor.service.reports.dto.TacticThoughtsInput;
 import com.aidigital.reportconstructor.service.reports.helpers.TacticConclusionAssembler;
+import com.aidigital.reportconstructor.service.reports.ports.DeckMarkup;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -114,12 +115,24 @@ public class TacticConclusionAssemblerImpl implements TacticConclusionAssembler 
 	 * Reads one section's strings for one tactic, tolerating a null map so a run with no breakdowns at all is
 	 * handled the same way as a tactic whose section simply produced nothing.
 	 *
+	 * <p>The strings come back without their {@code [[lead phrase]]} markers: those only tell the deck markup
+	 * pass what to style, and a prompt that reasons over this copy could otherwise echo them into other slides.
+	 *
 	 * @param section   the section's tactic → strings map, possibly {@code null}
 	 * @param tacticNum the tactic's 1-based number
 	 * @return the tactic's strings for that section, or {@code null} when it has none
 	 */
 	List<String> section(Map<Integer, List<String>> section, int tacticNum) {
-		return section == null ? null : section.get(tacticNum);
+		List<String> strings = section == null ? null : section.get(tacticNum);
+		if (strings == null) {
+			return null;
+		}
+		List<String> plain = new ArrayList<>(strings.size());
+		for (String value : strings) {
+			plain.add(value == null ? null
+					: value.replace(DeckMarkup.LEAD_OPEN, "").replace(DeckMarkup.LEAD_CLOSE, ""));
+		}
+		return plain;
 	}
 
 	/**
