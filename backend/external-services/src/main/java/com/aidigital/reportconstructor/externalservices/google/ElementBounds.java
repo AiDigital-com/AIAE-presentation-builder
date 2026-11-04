@@ -18,7 +18,7 @@ public record ElementBounds(double left, double top, double right, double bottom
 	 * @param tolerance how far, in EMU, the other box may cross each edge
 	 * @return {@code true} when {@code other} lies within this box
 	 */
-	public boolean contains(ElementBounds other, double tolerance) {
+	boolean contains(ElementBounds other, double tolerance) {
 		return other.left >= left - tolerance && other.top >= top - tolerance
 				&& other.right <= right + tolerance && other.bottom <= bottom + tolerance;
 	}
@@ -28,7 +28,7 @@ public record ElementBounds(double left, double top, double right, double bottom
 	 *
 	 * @return width times height, in EMU squared
 	 */
-	public double area() {
+	double area() {
 		return (right - left) * (bottom - top);
 	}
 }

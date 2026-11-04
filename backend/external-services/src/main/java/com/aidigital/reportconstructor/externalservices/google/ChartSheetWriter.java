@@ -28,14 +28,14 @@ public class ChartSheetWriter {
 	/**
 	 * Column B — impressions (bars / left axis).
 	 */
-	public static final int IMPS_COL = 1;
+	static final int IMPS_COL = 1;
 	/**
 	 * Column C — CTR/VCR rate (line / right axis); template ships a %-formatted formula.
 	 */
-	public static final int RATE_COL = 2;
+	static final int RATE_COL = 2;
 
 	/** The value written over a breakdown workbook's sample impressions when the tactic has none for it. */
-	static final String BLANK_CELL = "";
+	private static final String BLANK_CELL = "";
 
 	/**
 	 * Decimal CTR/VCR ratio for a percentage-formatted cell ({@code 0.025} displays as 2.5%).
@@ -45,7 +45,7 @@ public class ChartSheetWriter {
 	 * @param metricCount clicks or completions numerator
 	 * @return ratio in {@code [0,1]}, or {@code 0} when {@code imps <= 0}
 	 */
-	public double dailyComboRateRatio(double imps, double metricCount) {
+	double dailyComboRateRatio(double imps, double metricCount) {
 		if (imps <= 0) {
 			return 0.0;
 		}
@@ -58,7 +58,7 @@ public class ChartSheetWriter {
 	 *
 	 * @return {@code false} — column C is owned by the template formula, never overwritten
 	 */
-	public boolean shouldWriteDailyRateColumn() {
+	boolean shouldWriteDailyRateColumn() {
 		return false;
 	}
 
@@ -70,7 +70,7 @@ public class ChartSheetWriter {
 	 * @param forceWrite when {@code true}, bypass {@link #shouldWriteDailyRateColumn()} (tests only)
 	 * @return cell values per row, or empty when column C must not be overwritten
 	 */
-	public Optional<List<List<Object>>> rateColumnValuesForPivot(
+	Optional<List<List<Object>>> rateColumnValuesForPivot(
 			Pivot pivot, boolean hasClicks, boolean forceWrite) {
 		if (!forceWrite && !shouldWriteDailyRateColumn()) {
 			return Optional.empty();
@@ -95,7 +95,7 @@ public class ChartSheetWriter {
 	 * @return cell values per row, or empty when column C must not be overwritten
 	 * @see #rateColumnValuesForPivot(Pivot, boolean, boolean)
 	 */
-	public Optional<List<List<Object>>> rateColumnValuesForPivot(Pivot pivot, boolean hasClicks) {
+	Optional<List<List<Object>>> rateColumnValuesForPivot(Pivot pivot, boolean hasClicks) {
 		return rateColumnValuesForPivot(pivot, hasClicks, false);
 	}
 
@@ -119,7 +119,7 @@ public class ChartSheetWriter {
 	 *                      metric from the pivot's clicks/completions presence
 	 * @throws IOException when a Sheets API call fails
 	 */
-	public void writePivot(Sheets sheets, String spreadsheetId, String tabName, Pivot pivot, String kpiType)
+	void writePivot(Sheets sheets, String spreadsheetId, String tabName, Pivot pivot, String kpiType)
 			throws IOException {
 		if (pivot.isEmpty()) {
 			return;
@@ -257,7 +257,7 @@ public class ChartSheetWriter {
 	 * @param otherImps     impressions for the "Other" slice, i.e. total impressions minus this tactic's impressions
 	 * @throws IOException when a Sheets API call fails
 	 */
-	public void writeDistribution(
+	void writeDistribution(
 			Sheets sheets, String spreadsheetId, String tabName,
 			String tacticName, double tacticImps, double otherImps) throws IOException {
 		List<List<Object>> rows = readValues(sheets, spreadsheetId, tabName + "!A1:B5");
@@ -307,7 +307,7 @@ public class ChartSheetWriter {
 	 * @return the number of rows written with impressions (matched categories)
 	 * @throws IOException when a Sheets API call fails
 	 */
-	public int writeBreakdownImpressions(
+	int writeBreakdownImpressions(
 			Sheets sheets, String spreadsheetId, String tabName, Map<String, Long> impsByLabel)
 			throws IOException {
 		if (impsByLabel.isEmpty()) {
@@ -378,7 +378,7 @@ public class ChartSheetWriter {
 	 * @return the number of rows written (labels + values), excluding blanked leftovers
 	 * @throws IOException when a Sheets API call fails
 	 */
-	public int writeBreakdownSeries(
+	int writeBreakdownSeries(
 			Sheets sheets, String spreadsheetId, String tabName,
 			Map<String, Double> valuesByLabel, int dataStartRow) throws IOException {
 		if (valuesByLabel.isEmpty()) {
@@ -419,7 +419,7 @@ public class ChartSheetWriter {
 	 * @param label the raw category label from either the "Breakdowns" tab or the chart source sheet
 	 * @return the normalised match key
 	 */
-	public String normalizeBreakdownLabel(String label) {
+	String normalizeBreakdownLabel(String label) {
 		if (label == null) {
 			return "";
 		}
@@ -433,7 +433,7 @@ public class ChartSheetWriter {
 	 * @param col 0-based column index
 	 * @return the A1 column letter(s)
 	 */
-	public String colLetter(int col) {
+	String colLetter(int col) {
 		StringBuilder sb = new StringBuilder();
 		int c = col;
 		do {

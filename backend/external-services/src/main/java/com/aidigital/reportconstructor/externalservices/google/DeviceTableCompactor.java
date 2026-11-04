@@ -74,7 +74,7 @@ public class DeviceTableCompactor {
 	 * @param slide the filled device breakdown slide (needs element ids, sizes, transforms, shape text)
 	 * @return the deletes followed by the moves; empty when the table needs no change or is not recognized
 	 */
-	public List<Request> compactRequests(Page slide) {
+	List<Request> compactRequests(Page slide) {
 		Set<String> deleted = new LinkedHashSet<>();
 		List<Request> moves = new ArrayList<>();
 		for (List<Request> plan : List.of(rowRequests(slide), ctrColumnRequests(slide))) {

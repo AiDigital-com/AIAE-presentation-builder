@@ -29,7 +29,7 @@ public class ClaudeResponseNormalizer {
 	 * slide gives the same copy a wider box and passes its own budget to
 	 * {@link #limitAudienceSegments(String, int)}.
 	 */
-	public static final int AUDIENCE_SEGMENTS_LIMIT = 80;
+	static final int AUDIENCE_SEGMENTS_LIMIT = 80;
 
 	/** Characters the EOM north-star headline fits, upper-cased, on one line. */
 	private static final int NORTH_STAR_LIMIT = 80;
@@ -63,7 +63,7 @@ public class ClaudeResponseNormalizer {
 	 * @param limits the budgets of the deck design the copy is written for
 	 * @return a normalizer bound to {@code limits}
 	 */
-	public ClaudeResponseNormalizer withCopyLimits(NarrativeCopyLimits limits) {
+	ClaudeResponseNormalizer withCopyLimits(NarrativeCopyLimits limits) {
 		return new ClaudeResponseNormalizer(limits);
 	}
 
@@ -84,7 +84,7 @@ public class ClaudeResponseNormalizer {
 	 * @param resp parsed JSON body
 	 * @return combined text or {@code null} when empty
 	 */
-	public String extractText(JsonNode resp) {
+	String extractText(JsonNode resp) {
 		JsonNode content = resp.path("content");
 		if (!content.isArray() || content.isEmpty()) {
 			return null;
@@ -186,7 +186,7 @@ public class ClaudeResponseNormalizer {
 	 * @param limit character budget before windowing
 	 * @return trimmed text or {@code null} when blank
 	 */
-	public String normalizeProposal(String val, int limit) {
+	String normalizeProposal(String val, int limit) {
 		if (val == null || val.trim().isEmpty()) {
 			return null;
 		}
@@ -215,7 +215,7 @@ public class ClaudeResponseNormalizer {
 	 * @param limit character budget
 	 * @return trimmed text or {@code null} when blank
 	 */
-	public String normalizeC(String val, int limit) {
+	String normalizeC(String val, int limit) {
 		if (val == null || val.trim().isEmpty()) {
 			return null;
 		}
@@ -244,7 +244,7 @@ public class ClaudeResponseNormalizer {
 	 * @param node the {@code thoughts_on_performance} node, possibly absent, textual or an array
 	 * @return four slots, never shorter than four entries (null for blank or missing paragraphs)
 	 */
-	public List<String> normalizeThoughts(JsonNode node) {
+	List<String> normalizeThoughts(JsonNode node) {
 		if (node != null && node.isArray()) {
 			List<String> out = new ArrayList<>(Arrays.asList(null, null, null, null));
 			for (int i = 0; i < THOUGHT_SLOTS && i < node.size(); i++) {
@@ -264,7 +264,7 @@ public class ClaudeResponseNormalizer {
 	 * @param val thoughts-on-performance field from Batch C
 	 * @return four slots, never shorter than four entries
 	 */
-	public List<String> normalizeThoughts(String val) {
+	List<String> normalizeThoughts(String val) {
 		List<String> out = new ArrayList<>(Arrays.asList(null, null, null, null));
 		if (val == null || val.trim().isEmpty()) {
 			return out;
@@ -286,7 +286,7 @@ public class ClaudeResponseNormalizer {
 	 * @param node JSON field to read (null or JSON-null yields {@code null})
 	 * @return the node's text (or {@code toString()} for non-textual nodes), or {@code null} when absent/empty
 	 */
-	public String textOrNull(JsonNode node) {
+	String textOrNull(JsonNode node) {
 		if (node == null || node.isNull()) {
 			return null;
 		}
@@ -300,7 +300,7 @@ public class ClaudeResponseNormalizer {
 	 * @param s the string to inspect (may be null)
 	 * @return {@code true} when {@code s} is non-null and contains at least one non-whitespace character
 	 */
-	public boolean notBlank(String s) {
+	boolean notBlank(String s) {
 		return s != null && !s.isBlank();
 	}
 
@@ -311,7 +311,7 @@ public class ClaudeResponseNormalizer {
 	 * @param seg raw audience-segments text from the model ({@code "not specified"} is treated as empty)
 	 * @return the trimmed segment text, or {@code null} when blank or unspecified
 	 */
-	public String limitAudienceSegments(String seg) {
+	String limitAudienceSegments(String seg) {
 		return limitAudienceSegments(seg, AUDIENCE_SEGMENTS_LIMIT);
 	}
 
@@ -324,7 +324,7 @@ public class ClaudeResponseNormalizer {
 	 * @param limit the maximum number of characters the flavour's slide fits
 	 * @return the trimmed segment text, or {@code null} when blank or unspecified
 	 */
-	public String limitAudienceSegments(String seg, int limit) {
+	String limitAudienceSegments(String seg, int limit) {
 		if (seg == null) {
 			return null;
 		}
@@ -350,7 +350,7 @@ public class ClaudeResponseNormalizer {
 	 * @param northStar raw north-star text from the model (may be null)
 	 * @return the trimmed, upper-cased headline, or {@code null} when blank
 	 */
-	public String limitNorthStar(String northStar) {
+	String limitNorthStar(String northStar) {
 		if (northStar == null) {
 			return null;
 		}
@@ -372,7 +372,7 @@ public class ClaudeResponseNormalizer {
 	 * @param val raw extended-north-star text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
-	public String limitExtendedNorthStar(String val) {
+	String limitExtendedNorthStar(String val) {
 		return normalizeC(val, copyLimits.getExtendedNorthStarLimit());
 	}
 
@@ -383,7 +383,7 @@ public class ClaudeResponseNormalizer {
 	 * @param val raw horizon text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
-	public String limitHorizon(String val) {
+	String limitHorizon(String val) {
 		return normalizeC(val, copyLimits.getHorizonLimit());
 	}
 
@@ -395,7 +395,7 @@ public class ClaudeResponseNormalizer {
 	 * @param val raw takeaway text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
-	public String limitPacingTakeaway(String val) {
+	String limitPacingTakeaway(String val) {
 		return normalizeC(val, copyLimits.getPacingTakeawayLimit());
 	}
 
@@ -410,7 +410,7 @@ public class ClaudeResponseNormalizer {
 	 * @param val raw heading text from the model (may be null)
 	 * @return the trimmed heading, or {@code null} when blank
 	 */
-	public String limitWhatWeDidHeading(String val) {
+	String limitWhatWeDidHeading(String val) {
 		if (val == null) {
 			return null;
 		}
@@ -432,7 +432,7 @@ public class ClaudeResponseNormalizer {
 	 * @param val raw paragraph text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
-	public String limitWhatWeDidText(String val) {
+	String limitWhatWeDidText(String val) {
 		return normalizeC(val, copyLimits.getWhatWeDidTextLimit());
 	}
 
@@ -444,7 +444,7 @@ public class ClaudeResponseNormalizer {
 	 * @param val raw projection text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
-	public String limitUpdatedProjection(String val) {
+	String limitUpdatedProjection(String val) {
 		return normalizeC(val, copyLimits.getUpdatedProjectionLimit());
 	}
 
@@ -459,7 +459,7 @@ public class ClaudeResponseNormalizer {
 	 * @param val raw item text from the model (may be null)
 	 * @return the trimmed item, or {@code null} when blank
 	 */
-	public String limitFocusItem(String val) {
+	String limitFocusItem(String val) {
 		if (val == null) {
 			return null;
 		}
@@ -492,7 +492,7 @@ public class ClaudeResponseNormalizer {
 	 * @param point raw strategic-point text from the model (may be null)
 	 * @return the trimmed point, or an empty string when {@code point} is null
 	 */
-	public String limitStrategicPoint(String point) {
+	String limitStrategicPoint(String point) {
 		if (point == null) {
 			return "";
 		}
@@ -523,7 +523,7 @@ public class ClaudeResponseNormalizer {
 	 * @param overview raw strategic-overview text from the model (may be null)
 	 * @return the trimmed overview, or an empty string when {@code overview} is null
 	 */
-	public String limitStrategicOverview(String overview) {
+	String limitStrategicOverview(String overview) {
 		if (overview == null) {
 			return "";
 		}
@@ -551,7 +551,7 @@ public class ClaudeResponseNormalizer {
 	 * @param title raw recommendation-title text from the model (may be null)
 	 * @return the trimmed title, or an empty string when {@code title} is null
 	 */
-	public String limitRecommendationTitle(String title) {
+	String limitRecommendationTitle(String title) {
 		if (title == null) {
 			return "";
 		}
@@ -577,7 +577,7 @@ public class ClaudeResponseNormalizer {
 	 * @param val raw recommendation-text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
-	public String limitRecommendationText(String val) {
+	String limitRecommendationText(String val) {
 		return normalizeC(val, 130);
 	}
 
@@ -587,7 +587,7 @@ public class ClaudeResponseNormalizer {
 	 * @param val raw results-overview text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
-	public String limitResultsOverview(String val) {
+	String limitResultsOverview(String val) {
 		return normalizeC(val, 200);
 	}
 
@@ -597,7 +597,7 @@ public class ClaudeResponseNormalizer {
 	 * @param val raw tactic-overview text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
-	public String limitTacticOverview(String val) {
+	String limitTacticOverview(String val) {
 		return normalizeC(val, 210);
 	}
 
@@ -608,7 +608,7 @@ public class ClaudeResponseNormalizer {
 	 * @param val raw frequency-opportunity text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
-	public String limitFOpportunity(String val) {
+	String limitFOpportunity(String val) {
 		return normalizeC(val, 180);
 	}
 
@@ -619,7 +619,7 @@ public class ClaudeResponseNormalizer {
 	 * @param val raw actual-frequency text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
-	public String limitFFact(String val) {
+	String limitFFact(String val) {
 		return normalizeC(val, 140);
 	}
 
@@ -630,7 +630,7 @@ public class ClaudeResponseNormalizer {
 	 * @param val raw frequency-storytelling text from the model
 	 * @return the normalized, length-capped text, or {@code null} when blank
 	 */
-	public String limitFStorytelling(String val) {
+	String limitFStorytelling(String val) {
 		return normalizeC(val, 320);
 	}
 
@@ -643,7 +643,7 @@ public class ClaudeResponseNormalizer {
 	 * @param text raw geo-summary text from the model (may be null or blank)
 	 * @return the whitespace-collapsed, length-capped summary, or {@code null} when blank
 	 */
-	public String limitGeoSummary(String text) {
+	String limitGeoSummary(String text) {
 		if (text == null || text.isBlank()) {
 			return null;
 		}
@@ -669,7 +669,7 @@ public class ClaudeResponseNormalizer {
 	 * @param text raw primary-KPIs text from the model (may be null or blank)
 	 * @return the cleaned, length-capped KPI line, or {@code null} when blank
 	 */
-	public String limitPrimaryKpis(String text) {
+	String limitPrimaryKpis(String text) {
 		if (text == null || text.isBlank()) {
 			return null;
 		}

@@ -46,7 +46,7 @@ public class SlideBlockLocator {
 	 * @param normalizedLabels the headings to look for, already passed through {@link #normalizeLabel}
 	 * @return the matching elements' object ids in slide order, empty when no heading matched
 	 */
-	public List<String> blockObjectIds(Page page, List<String> normalizedLabels) {
+	List<String> blockObjectIds(Page page, List<String> normalizedLabels) {
 		Set<String> ids = new LinkedHashSet<>();
 		if (page == null || page.getPageElements() == null || normalizedLabels == null
 				|| normalizedLabels.isEmpty()) {
@@ -74,7 +74,7 @@ public class SlideBlockLocator {
 	 * @param normalizedLabels the headings to look for, already passed through {@link #normalizeLabel}
 	 * @return the first matching heading in slide order, or {@code null} when none matches
 	 */
-	public PageElement findHeading(Page page, List<String> normalizedLabels) {
+	PageElement findHeading(Page page, List<String> normalizedLabels) {
 		if (page == null || page.getPageElements() == null || normalizedLabels == null) {
 			return null;
 		}
@@ -95,7 +95,7 @@ public class SlideBlockLocator {
 	 * @param heading  the matched heading
 	 * @return the enclosing card, or {@code null} when the heading sits on none (or its geometry is unknown)
 	 */
-	public PageElement enclosingCard(List<PageElement> elements, PageElement heading) {
+	PageElement enclosingCard(List<PageElement> elements, PageElement heading) {
 		ElementBounds headingBounds = boundsOf(heading);
 		if (headingBounds == null) {
 			return null;
@@ -149,7 +149,7 @@ public class SlideBlockLocator {
 	 * @param element the element to measure
 	 * @return its box, or {@code null} when its geometry is unknown
 	 */
-	public ElementBounds boundsOf(PageElement element) {
+	ElementBounds boundsOf(PageElement element) {
 		if (element.getElementGroup() != null) {
 			return groupBoundsOf(element);
 		}
@@ -271,7 +271,7 @@ public class SlideBlockLocator {
 	 * @param value the raw heading (may be {@code null})
 	 * @return the normalized heading, or an empty string when there is nothing to match
 	 */
-	public String normalizeLabel(String value) {
+	String normalizeLabel(String value) {
 		if (value == null) {
 			return "";
 		}

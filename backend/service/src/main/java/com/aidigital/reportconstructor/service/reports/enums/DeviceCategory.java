@@ -74,7 +74,7 @@ public enum DeviceCategory {
 	 *
 	 * @return the label prefixes, most specific first
 	 */
-	public List<String> labelPrefixes() {
+	List<String> labelPrefixes() {
 		return labelPrefixes;
 	}
 

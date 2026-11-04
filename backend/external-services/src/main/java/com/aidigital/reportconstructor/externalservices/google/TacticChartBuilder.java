@@ -66,7 +66,7 @@ public class TacticChartBuilder {
 	 * @param req     the chart request describing the deck, tactic count and BigQuery rows
 	 * @return human-readable error strings for any per-chart failures (empty on full success)
 	 */
-	public List<String> buildAllCharts(ChartClients clients, ChartRequest req) {
+	List<String> buildAllCharts(ChartClients clients, ChartRequest req) {
 		List<String> errors = new ArrayList<>();
 
 		String folderId = null;

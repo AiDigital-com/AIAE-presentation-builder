@@ -65,29 +65,29 @@ public class EomPromptBuilder extends ClaudeBatchPromptBuilder {
 	private static final int NORTH_STAR_LIMIT = 80;
 
 	/** Tactics one pacing-dashboard slide draws; the deck carries one such slide per block of them. */
-	static final int TACTICS_PER_DASHBOARD = 7;
+	private static final int TACTICS_PER_DASHBOARD = 7;
 
 	/** Pacing-dashboard slides the EOM template carries, covering tactics 1-7, 8-14, 15-21 and 22-28. */
-	static final int MAX_DASHBOARDS = 4;
+	private static final int MAX_DASHBOARDS = 4;
 
 	/** Columns the "what we did this month" slide draws, one observation → action → impact chain each. */
-	static final int WHAT_WE_DID_STEPS = 3;
+	private static final int WHAT_WE_DID_STEPS = 3;
 
 	/** Lines each column of the "focus next month" slide draws — carry forward, pivot and new test alike. */
-	static final int FOCUS_ITEMS = 3;
+	private static final int FOCUS_ITEMS = 3;
 
 	/**
 	 * Output tokens the {@code what_we_did} block adds to the alignment reply: three chains of three
 	 * headings and three paragraphs, sized off their character budgets at roughly four characters a token,
 	 * with headroom for the JSON scaffolding around them.
 	 */
-	static final int WHAT_WE_DID_TOKENS = 900;
+	private static final int WHAT_WE_DID_TOKENS = 900;
 
 	/**
 	 * Output tokens the {@code carry_forward} / {@code pivot} / {@code new_test} block adds to the alignment
 	 * reply: nine short lines sized off their character budget, with headroom for the JSON around them.
 	 */
-	static final int FOCUS_NEXT_MONTH_TOKENS = 400;
+	private static final int FOCUS_NEXT_MONTH_TOKENS = 400;
 
 	/** Reply normaliser, kept alongside the parent's copy because the parent's field is private. */
 	private final ClaudeResponseNormalizer normalizer;

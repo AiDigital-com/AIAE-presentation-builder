@@ -21,70 +21,70 @@ import java.util.regex.Pattern;
 public class DeckStyleTokenHelperImpl implements DeckStyleTokenHelper {
 
 	/** Token the campaign period is derived from: the flight the media plan slide prints. */
-	static final String FLIGHT_DATES_TOKEN = "{{flight_dates}}";
+	private static final String FLIGHT_DATES_TOKEN = "{{flight_dates}}";
 
 	/** Strategic framework subtitle, e.g. "Q3 & Q4 2025". */
-	static final String CAMPAIGN_PERIOD_TOKEN = "{{campaign_period}}";
+	private static final String CAMPAIGN_PERIOD_TOKEN = "{{campaign_period}}";
 
 	/** Token the geo summary is derived from: the market list the media plan slide prints. */
-	static final String GEO_LOCATIONS_TOKEN = "{{geo_locations}}";
+	private static final String GEO_LOCATIONS_TOKEN = "{{geo_locations}}";
 
 	/** Media plan slide's short geo line, e.g. "9 priority markets". */
-	static final String GEO_SUMMARY_TOKEN = "{{geo_summary}}";
+	private static final String GEO_SUMMARY_TOKEN = "{{geo_summary}}";
 
 	/** Token the segment chips are derived from: the comma-separated audience segments. */
-	static final String AUDIENCE_SEGMENTS_TOKEN = "{{audience_segments}}";
+	private static final String AUDIENCE_SEGMENTS_TOKEN = "{{audience_segments}}";
 
 	/** One segment chip of the MPO media plan slide, filled with its 1-based slot number. */
-	static final String AUDIENCE_SEGMENT_TOKEN = "{{audience segment %d}}";
+	private static final String AUDIENCE_SEGMENT_TOKEN = "{{audience segment %d}}";
 
 	/** Segment chips the MPO media plan slide draws. */
-	static final int AUDIENCE_SEGMENT_SLOTS = 3;
+	private static final int AUDIENCE_SEGMENT_SLOTS = 3;
 
 	/** One paragraph of the "Thoughts on campaign performance" slide, filled with its 1-based slot number. */
-	static final String THOUGHT_TOKEN = "{{thoughts on the performance %d}}";
+	private static final String THOUGHT_TOKEN = "{{thoughts on the performance %d}}";
 
 	/** Paragraph slots the thoughts slide can draw (four analytical thoughts plus the closing story). */
-	static final int THOUGHT_SLOTS = 5;
+	private static final int THOUGHT_SLOTS = 5;
 
 	/**
 	 * Separates the segments of the audience line: commas and semicolons only, so a segment that is itself
 	 * a pair ("Honeymoons &amp; Romantic Getaways") stays one chip.
 	 */
-	static final Pattern SEGMENT_SEPARATOR = Pattern.compile("\\s*[,;]\\s*");
+	private static final Pattern SEGMENT_SEPARATOR = Pattern.compile("\\s*[,;]\\s*");
 
 	/** Em dash written when a value cannot be derived, matching the deck's other unresolved values. */
-	static final String DASH = "—";
+	private static final String DASH = "—";
 
 	/** KPI type of a click-led tactic; every other non-blank KPI type is completion-led (VCR, ACR, …). */
-	static final String CLICK_KPI_TYPE = "CTR";
+	private static final String CLICK_KPI_TYPE = "CTR";
 
 	/** Top-content tile label for a click-led tactic. */
-	static final String CLICKS_LABEL = "Clicks";
+	private static final String CLICKS_LABEL = "Clicks";
 
 	/** Top-content tile label for a completion-led tactic. */
-	static final String COMPLETED_VIEWS_LABEL = "Completed Views";
+	private static final String COMPLETED_VIEWS_LABEL = "Completed Views";
 
 	/** Wording of a multi-market geo summary, filled with the market count. */
-	static final String MARKETS_SUMMARY = "%d priority markets";
+	private static final String MARKETS_SUMMARY = "%d priority markets";
 
 	/** Months in one quarter. */
-	static final int MONTHS_PER_QUARTER = 3;
+	private static final int MONTHS_PER_QUARTER = 3;
 
 	/** Quarter count from which a same-year period is written as a range ("Q1 – Q3") rather than a pair. */
-	static final int RANGE_FROM_QUARTERS = 3;
+	private static final int RANGE_FROM_QUARTERS = 3;
 
 	/**
 	 * Separates the two ends of a flight range. A spaced hyphen only, so an ISO date such as
 	 * {@code 2025-10-01} is never split apart.
 	 */
-	static final Pattern FLIGHT_SEPARATOR = Pattern.compile("\\s*[\\u2013\\u2014]\\s*|\\s+-\\s+");
+	private static final Pattern FLIGHT_SEPARATOR = Pattern.compile("\\s*[\\u2013\\u2014]\\s*|\\s+-\\s+");
 
 	/** A four-digit year inside a printed date. */
-	static final Pattern YEAR = Pattern.compile("\\b\\d{4}\\b");
+	private static final Pattern YEAR = Pattern.compile("\\b\\d{4}\\b");
 
 	/** Separates the markets of a geo list: commas, semicolons, an ampersand or a spelled-out "and". */
-	static final Pattern MARKET_SEPARATOR = Pattern.compile("\\s*(?:[,;&]|\\band\\b)\\s*");
+	private static final Pattern MARKET_SEPARATOR = Pattern.compile("\\s*(?:[,;&]|\\band\\b)\\s*");
 
 	private final SheetRowHelper sheetUtils;
 

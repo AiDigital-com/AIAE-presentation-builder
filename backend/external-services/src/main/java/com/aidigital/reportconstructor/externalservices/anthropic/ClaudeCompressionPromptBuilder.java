@@ -33,7 +33,7 @@ public class ClaudeCompressionPromptBuilder {
 	 * @return the compression prompt requesting a JSON object keyed by each field's {@code key}, or empty when
 	 * {@code fields} is empty
 	 */
-	public Optional<String> buildCompressionPrompt(List<ClaudeCompressionField> fields) {
+	Optional<String> buildCompressionPrompt(List<ClaudeCompressionField> fields) {
 		if (fields.isEmpty()) {
 			return Optional.empty();
 		}

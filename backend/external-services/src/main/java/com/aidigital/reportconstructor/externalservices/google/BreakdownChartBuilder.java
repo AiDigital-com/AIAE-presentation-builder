@@ -74,7 +74,7 @@ public class BreakdownChartBuilder {
 	 * @param req     the breakdown chart request describing the deck and per-tactic slices
 	 * @return human-readable error strings for any per-chart failures (empty on full success)
 	 */
-	public List<String> buildBreakdownCharts(ChartClients clients, BreakdownChartRequest req) {
+	List<String> buildBreakdownCharts(ChartClients clients, BreakdownChartRequest req) {
 		List<String> errors = new ArrayList<>();
 		if (req.jobs() == null || req.jobs().isEmpty()) {
 			return errors;

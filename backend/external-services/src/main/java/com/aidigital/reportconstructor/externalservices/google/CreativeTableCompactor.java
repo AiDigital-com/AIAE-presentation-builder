@@ -25,7 +25,7 @@ import java.util.List;
 public class CreativeTableCompactor {
 
 	/** The "no figure" mark the creative helper writes into every cell of an unused row. */
-	static final String DASH = "—";
+	private static final String DASH = "—";
 
 	/**
 	 * Builds the requests that delete a creative slide's unused table rows, last row first so each index is
@@ -35,7 +35,7 @@ public class CreativeTableCompactor {
 	 * @return the row deletions, or an empty list when every row is used, every row is unused (an all-dash
 	 *         table is left as the "no data" signal it is), or the slide has no table
 	 */
-	public List<Request> compactRequests(Page slide) {
+	List<Request> compactRequests(Page slide) {
 		List<Request> requests = new ArrayList<>();
 		if (slide == null || slide.getPageElements() == null) {
 			return requests;

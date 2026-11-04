@@ -48,7 +48,7 @@ public class TacticSlideRelayout {
 	 * @param anchorLabel   normalized heading of the card whose top edge marks the top of the content row
 	 * @return the update requests for this slide, or an empty list when the slide does not have that layout
 	 */
-	public List<Request> relayoutRequests(
+	List<Request> relayoutRequests(
 			Page page, List<String> droppedLabels, String growLabel, String anchorLabel) {
 		List<Request> requests = new ArrayList<>();
 		if (page == null || page.getPageElements() == null || growLabel.isEmpty() || anchorLabel.isEmpty()) {

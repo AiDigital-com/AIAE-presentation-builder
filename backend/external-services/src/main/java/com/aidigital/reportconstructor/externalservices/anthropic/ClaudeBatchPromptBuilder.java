@@ -190,7 +190,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @return the Batch A strategic prompt requesting audience/proposal/insights JSON, or empty when no context block
 	 * could be built
 	 */
-	public Optional<String> buildBatchAPrompt(CampaignData data, String brief) {
+	Optional<String> buildBatchAPrompt(CampaignData data, String brief) {
 		String brf = brief == null ? "" : brief;
 		List<String> planLines = new ArrayList<>();
 		if (normalizer.notBlank(data.client())) {
@@ -369,7 +369,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @return the strategic-narrative prompt requesting proposal/insights JSON, or empty when no context block
 	 * could be built
 	 */
-	public Optional<String> buildBatchStrategicNarrativePrompt(CampaignData data, String brief) {
+	Optional<String> buildBatchStrategicNarrativePrompt(CampaignData data, String brief) {
 		Optional<String> context = strategicNarrativeContext(data, brief);
 		if (context.isEmpty()) {
 			return Optional.empty();
@@ -536,7 +536,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @return the Batch B prompt requesting per-tactic gender split and weekday/weekend peak windows, or empty when
 	 * no tactics exist
 	 */
-	public Optional<String> buildBatchBPrompt(CampaignData data, String brief) {
+	Optional<String> buildBatchBPrompt(CampaignData data, String brief) {
 		if (data.tactics() == null || data.tactics().isEmpty()) {
 			return Optional.empty();
 		}
@@ -635,7 +635,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @return the merged sheet prompt requesting audience + per-tactic JSON, or empty when no context block
 	 * could be built
 	 */
-	public Optional<String> buildBatchSheetPrompt(CampaignData data, String brief) {
+	Optional<String> buildBatchSheetPrompt(CampaignData data, String brief) {
 		String brf = brief == null ? "" : brief;
 
 		List<String> tacticLines = new ArrayList<>();
@@ -876,7 +876,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param brief      free-text campaign brief the conclusions must stay faithful to
 	 * @return the conclusions prompt, or empty when the chunk carries no tactic and no data
 	 */
-	public Optional<String> buildTacticConclusionsPrompt(
+	Optional<String> buildTacticConclusionsPrompt(
 			CampaignData data, List<Integer> tacticNums, String brief) {
 		return tacticConclusionsPrompt(data, tacticNums, brief, Map.of());
 	}
@@ -1041,7 +1041,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param recoLimit     character budget of the last string (the recommended action)
 	 * @return the audience-section prompt, or empty when the tactic carries no audience table to reason over
 	 */
-	public Optional<String> buildAudienceSectionPrompt(AudienceInsightInput input, CampaignData data, String brief,
+	Optional<String> buildAudienceSectionPrompt(AudienceInsightInput input, CampaignData data, String brief,
 			int takeawayLimit, int shortLimit, int recoLimit) {
 		if (input == null || input.table() == null || input.table().isEmpty() || data == null) {
 			return Optional.empty();
@@ -1078,7 +1078,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param limit  character budget of each of the four observations
 	 * @return the publisher-section prompt, or empty when the tactic carries no publisher rows
 	 */
-	public Optional<String> buildPublisherSectionPrompt(
+	Optional<String> buildPublisherSectionPrompt(
 			PublisherObservationInput input, CampaignData data, String brief, int limit) {
 		if (input == null || input.rows() == null || input.rows().isEmpty() || data == null) {
 			return Optional.empty();
@@ -1133,7 +1133,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param recoLimit character budget of the fourth (optimisation) string
 	 * @return the creative-section prompt, or empty when the tactic carries no creative table
 	 */
-	public Optional<String> buildCreativeSectionPrompt(
+	Optional<String> buildCreativeSectionPrompt(
 			CreativeTakeawayInput input, CampaignData data, String brief, int limit, int recoLimit) {
 		if (input == null || input.table() == null || input.table().isEmpty() || data == null) {
 			return Optional.empty();
@@ -1169,7 +1169,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param recoLimit character budget of the fourth string (the recommendation)
 	 * @return the geo-section prompt, or empty when the tactic carries no geo table
 	 */
-	public Optional<String> buildGeoSectionPrompt(
+	Optional<String> buildGeoSectionPrompt(
 			GeoInsightInput input, CampaignData data, String brief, int limit, int recoLimit) {
 		if (input == null || input.table() == null || input.table().isEmpty() || data == null) {
 			return Optional.empty();
@@ -1206,7 +1206,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param recoLimit     character budget of the last string (the recommended action)
 	 * @return the device-section prompt, or empty when the tactic carries no device table
 	 */
-	public Optional<String> buildDeviceSectionPrompt(DeviceInsightInput input, CampaignData data, String brief,
+	Optional<String> buildDeviceSectionPrompt(DeviceInsightInput input, CampaignData data, String brief,
 			int takeawayLimit, int shortLimit, int recoLimit) {
 		if (input == null || input.table() == null || input.table().isEmpty() || data == null) {
 			return Optional.empty();
@@ -1536,7 +1536,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @return the prompt requesting {@code {"thoughts": [4 strings], "story": string}}, or empty when there is
 	 * nothing to reason over
 	 */
-	public Optional<String> buildTacticThoughtsPrompt(
+	Optional<String> buildTacticThoughtsPrompt(
 			TacticThoughtsInput input, String brief, int limit, int storyLimit) {
 		if (input == null) {
 			return Optional.empty();
@@ -1716,7 +1716,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param nextMonthLimit the character budget of the month-ahead directive
 	 * @return the prompt requesting the four named fields, or empty when there is nothing to reason over
 	 */
-	public Optional<String> buildTacticPacingPrompt(
+	Optional<String> buildTacticPacingPrompt(
 			TacticPacingInput input, String brief, int takeawayLimit, int nextMonthLimit) {
 		if (input == null) {
 			return Optional.empty();
@@ -1742,7 +1742,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param brief free-text campaign brief the copy must stay faithful to
 	 * @return the prompt, or empty when there are no figures to reason over
 	 */
-	public Optional<String> buildMpoNarrativePrompt(MpoNarrativeInput input, String brief) {
+	Optional<String> buildMpoNarrativePrompt(MpoNarrativeInput input, String brief) {
 		if (input == null || (linesOf(input.campaignFacts()).isEmpty() && linesOf(input.tacticFacts()).isEmpty())) {
 			return Optional.empty();
 		}
@@ -1963,7 +1963,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param perTactic   one digest per tactic (Step-3 thoughts, or overview + breakdown digest as fallback)
 	 * @return the campaign-results prompt, or empty when there is no tactic context to reason over
 	 */
-	public Optional<String> buildCampaignResultsPrompt(
+	Optional<String> buildCampaignResultsPrompt(
 			CampaignData data, String brief, CampaignFrequencies frequencies, List<TacticNarrativeDigest> perTactic) {
 		if (data == null || data.tactics() == null || data.tactics().isEmpty()
 				|| perTactic == null || perTactic.isEmpty()) {
@@ -2217,7 +2217,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @return a prompt asking Claude to condense the campaign's geographic targeting into a single short
 	 * comma-separated string of key regions
 	 */
-	public String buildGeoPrompt(List<String> geoRows) {
+	String buildGeoPrompt(List<String> geoRows) {
 		return "Below are the geography-related rows of a media-plan workbook (each tab preceded by a "
 				+ "'### TAB: <name> ###' marker).\n"
 				+ "Find the campaign's geographic targeting locations anywhere in this data and summarise them into a "
@@ -2237,7 +2237,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @return a prompt asking Claude to condense the goals into a single short comma-separated funnel-stage
 	 * string, or empty when no goal carries any text
 	 */
-	public Optional<String> buildFunnelFromGoalsPrompt(List<String> tacticGoals) {
+	Optional<String> buildFunnelFromGoalsPrompt(List<String> tacticGoals) {
 		List<String> goals = new ArrayList<>();
 		if (tacticGoals != null) {
 			for (String goal : tacticGoals) {
@@ -2270,7 +2270,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param maxChars the character budget the digest must fit into
 	 * @return the prompt asking for the digest, or empty when the brief is blank
 	 */
-	public Optional<String> buildBriefDigestPrompt(String brief, int maxChars) {
+	Optional<String> buildBriefDigestPrompt(String brief, int maxChars) {
 		if (!normalizer.notBlank(brief)) {
 			return Optional.empty();
 		}
@@ -2307,7 +2307,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param maxChars  the character budget the digest must fit into
 	 * @return the prompt asking for the digest, or empty when the change log is blank
 	 */
-	public Optional<String> buildChangeLogDigestPrompt(String changeLog, int maxChars) {
+	Optional<String> buildChangeLogDigestPrompt(String changeLog, int maxChars) {
 		if (!normalizer.notBlank(changeLog)) {
 			return Optional.empty();
 		}
@@ -2344,7 +2344,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param data parsed campaign data whose tactic map drives the KPI selection
 	 * @return a prompt asking Claude for a single comma-separated primary-KPIs line, or empty when no tactics exist
 	 */
-	public Optional<String> buildPrimaryKpisPrompt(CampaignData data) {
+	Optional<String> buildPrimaryKpisPrompt(CampaignData data) {
 		if (data == null || data.tactics() == null || data.tactics().isEmpty()) {
 			return Optional.empty();
 		}
@@ -2550,7 +2550,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param brief           free-text campaign brief the aligned narrative must stay faithful to
 	 * @return the Batch D alignment prompt, or empty when the draft carries no alignable campaign-level copy
 	 */
-	public Optional<String> buildBatchDPrompt(
+	Optional<String> buildBatchDPrompt(
 			ClaudeStrategic strategic, ClaudeResults results, List<String> breakdownDigest, String brief) {
 		return alignPrompt(strategic, results, breakdownDigest, brief, null);
 	}

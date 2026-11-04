@@ -49,13 +49,13 @@ import java.util.List;
 public class DeckMarkupRequestBuilder {
 
 	/** The marker the copy wraps a bold phrase in. */
-	static final String MARKER = "**";
+	private static final String MARKER = "**";
 
 	/** Opens a lead phrase. */
-	static final String LEAD_OPEN = DeckMarkup.LEAD_OPEN;
+	private static final String LEAD_OPEN = DeckMarkup.LEAD_OPEN;
 
 	/** Closes a lead phrase. */
-	static final String LEAD_CLOSE = DeckMarkup.LEAD_CLOSE;
+	private static final String LEAD_CLOSE = DeckMarkup.LEAD_CLOSE;
 
 	/** Brand blue of a lead phrase (the design's #0120F1). */
 	static final RgbColor LEAD_COLOR = new RgbColor().setRed(0.003921569f).setGreen(0.1254902f).setBlue(0.94509804f);
@@ -70,10 +70,10 @@ public class DeckMarkupRequestBuilder {
 	static final RgbColor ON_DARK_BODY_COLOR = new RgbColor().setRed(0.9019608f).setGreen(0.9098039f).setBlue(1f);
 
 	/** Perceived brightness (0-1) below which a backdrop counts as dark. */
-	static final double DARK_BACKDROP_BRIGHTNESS = 0.5;
+	private static final double DARK_BACKDROP_BRIGHTNESS = 0.5;
 
 	/** Fill opacity below which a fill is too faint to count as a backdrop. */
-	static final double MIN_BACKDROP_ALPHA = 0.5;
+	private static final double MIN_BACKDROP_ALPHA = 0.5;
 
 	/** Red weight of the perceived-brightness formula (ITU-R BT.601). */
 	private static final double RED_WEIGHT = 0.299;
@@ -109,7 +109,7 @@ public class DeckMarkupRequestBuilder {
 	 * @param slides the deck's slides, read with each shape's text runs and their start indices
 	 * @return the requests, empty when no shape carries a marker
 	 */
-	public List<Request> deckMarkupRequests(List<Page> slides) {
+	List<Request> deckMarkupRequests(List<Page> slides) {
 		List<Request> requests = new ArrayList<>();
 		if (slides == null) {
 			return requests;

@@ -69,7 +69,7 @@ public class AnthropicMessagesClient {
 	 * colliding with real prompt text, and it is stripped before the request is sent so the model never sees
 	 * it. When a prompt carries no marker it is sent as one uncached block, exactly as before.
 	 */
-	public static final String CACHE_BREAKPOINT = "\u0000CACHE_BREAKPOINT\u0000";
+	static final String CACHE_BREAKPOINT = "\u0000CACHE_BREAKPOINT\u0000";
 
 	private final String apiKey;
 	private final String model;
@@ -157,7 +157,7 @@ public class AnthropicMessagesClient {
 	 *                     repair the trailing JSON by closing open braces
 	 * @return parsed object node, or {@code null} on failure
 	 */
-	public JsonNode callJsonObject(
+	JsonNode callJsonObject(
 			String prompt, int maxTokens, int timeoutSec, String label, boolean allowPartial) {
 		JsonNode resp = callRaw(prompt, maxTokens, timeoutSec, label);
 		if (resp == null) {
@@ -204,7 +204,7 @@ public class AnthropicMessagesClient {
 	 *                     had, and the only way a reply that merely forgot its final {@code ]} survives
 	 * @return the parsed array node, or {@code null} when no usable array could be recovered
 	 */
-	public JsonNode callJsonArray(
+	JsonNode callJsonArray(
 			String prompt, int maxTokens, int timeoutSec, String label, boolean allowPartial) {
 		JsonNode resp = callRaw(prompt, maxTokens, timeoutSec, label);
 		if (resp == null) {
@@ -585,7 +585,7 @@ public class AnthropicMessagesClient {
 	 * @param label      short tag identifying this call in log messages
 	 * @return the full Messages API response as a JSON tree, or {@code null} on failure
 	 */
-	public JsonNode callRaw(String prompt, int maxTokens, int timeoutSec, String label) {
+	JsonNode callRaw(String prompt, int maxTokens, int timeoutSec, String label) {
 		HttpRequest req;
 		try {
 			// No sampling parameters: Sonnet 5 rejects temperature, top_p and top_k outright, and the
