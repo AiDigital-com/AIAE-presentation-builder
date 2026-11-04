@@ -21,13 +21,13 @@ import java.util.regex.Pattern;
 public class WorkbookGeoFilter {
 
 	/** Marker prefix the frontend writes ahead of each tab's rows. */
-	static final String TAB_MARKER_PREFIX = "### TAB:";
+	private static final String TAB_MARKER_PREFIX = "### TAB:";
 
 	/**
 	 * Whole words that mark a row as geography-related. Matched case-insensitively on word boundaries so
 	 * "state" does not drag in "real estate" and "market" does not drag in "marketing objectives".
 	 */
-	static final Pattern GEO_WORDS = Pattern.compile(
+	private static final Pattern GEO_WORDS = Pattern.compile(
 			"\\b(geo|geos|geography|geographic|geographical|geotargeting|geo-targeting|geofencing|"
 					+ "dma|dmas|msa|msas|state|states|market|markets|city|cities|region|regions|"
 					+ "zip|zips|zipcode|zipcodes|postal|county|counties|country|countries|location|locations|"

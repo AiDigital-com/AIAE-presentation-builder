@@ -37,25 +37,25 @@ import java.util.Set;
 public class DeviceTableCompactor {
 
 	/** The table's device-column header, normalized as {@link SlideBlockLocator#normalizeLabel} does. */
-	static final String DEVICE_HEADER = "DEVICE";
+	private static final String DEVICE_HEADER = "DEVICE";
 
 	/** The table's CTR column header, normalized; it also names the note under the table that explains CTR. */
-	static final String CTR_HEADER = "CTR";
+	private static final String CTR_HEADER = "CTR";
 
 	/** The "no figure" mark the device helper writes into every cell of a device the sheet did not fill. */
-	static final String DASH = "—";
+	private static final String DASH = "—";
 
 	/**
 	 * How far, in EMU, an element's left edge may sit from the header's and still count as in the device
 	 * column: two points, which absorbs the template's hand-nudged labels (Tablet sits ~1.4pt right).
 	 */
-	static final double COLUMN_TOLERANCE_EMU = 25_400;
+	private static final double COLUMN_TOLERANCE_EMU = 25_400;
 
 	/**
 	 * Tallest shape, in EMU, still read as a row separator rather than a card: the template's separators are
 	 * 4,200–14,400 EMU high; anything over ~2.4pt is a real shape.
 	 */
-	static final double SEPARATOR_MAX_HEIGHT_EMU = 30_000;
+	private static final double SEPARATOR_MAX_HEIGHT_EMU = 30_000;
 
 	/** Unit of the relative translations this emits. */
 	private static final String EMU = "EMU";

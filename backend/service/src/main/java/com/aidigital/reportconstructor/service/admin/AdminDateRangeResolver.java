@@ -83,7 +83,7 @@ public class AdminDateRangeResolver {
 	 * @param to   last day, inclusive
 	 * @return {@link AdminPeriodUnit#WEEK} for a short span, {@link AdminPeriodUnit#MONTH} beyond it
 	 */
-	public AdminPeriodUnit unitFor(LocalDate from, LocalDate to) {
+	AdminPeriodUnit unitFor(LocalDate from, LocalDate to) {
 		long days = ChronoUnit.DAYS.between(from, to) + 1;
 		return days <= WEEKLY_MAX_SPAN_DAYS ? AdminPeriodUnit.WEEK : AdminPeriodUnit.MONTH;
 	}

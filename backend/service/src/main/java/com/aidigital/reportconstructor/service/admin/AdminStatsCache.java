@@ -25,7 +25,7 @@ import java.util.function.Supplier;
 public class AdminStatsCache {
 
 	/** Name of the cache holding the single dashboard snapshot. */
-	public static final String CACHE_NAME = "adminStats";
+	private static final String CACHE_NAME = "adminStats";
 
 	/**
 	 * Returns the cached snapshot, assembling it on a miss.

@@ -24,7 +24,7 @@ public class JobTokenUsage {
 	 * @param job the persisted report job
 	 * @return true when the job took part in token accounting
 	 */
-	public boolean hasUsage(ReportJobEntity job) {
+	boolean hasUsage(ReportJobEntity job) {
 		return job.getClaudeCalls() != null && job.getClaudeCalls() > 0;
 	}
 

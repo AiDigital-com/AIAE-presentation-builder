@@ -39,27 +39,27 @@ public class SheetPacingTableWriter {
 	/**
 	 * Anchor label for a tactic's monthly pacing block.
 	 */
-	static final Pattern MONTHLY_ANCHOR = Pattern.compile("(?i)^monthly pacing\\s+(\\d+)$");
+	private static final Pattern MONTHLY_ANCHOR = Pattern.compile("(?i)^monthly pacing\\s+(\\d+)$");
 	/**
 	 * Anchor label for a tactic's channel distribution block.
 	 */
-	static final Pattern DISTRIBUTION_ANCHOR = Pattern.compile("(?i)^channel distribution\\s+(\\d+)$");
+	private static final Pattern DISTRIBUTION_ANCHOR = Pattern.compile("(?i)^channel distribution\\s+(\\d+)$");
 
 	/**
 	 * How many rows below a block's anchor cell to search for its tokens.
 	 */
-	static final int SEARCH_ROWS_DOWN = 12;
+	private static final int SEARCH_ROWS_DOWN = 12;
 	/**
 	 * How many columns right of a block's anchor cell to search for its tokens.
 	 */
-	static final int SEARCH_COLS_RIGHT = 8;
+	private static final int SEARCH_COLS_RIGHT = 8;
 	/**
 	 * How many columns left of a block's anchor cell to search for its tokens. The {@code "Daily pacing N"}
 	 * anchor label sits over the impressions column, so a tactic's {@code date} token sits one or more columns
 	 * to its left; the search therefore extends left as well as right. Cross-tactic bleed is impossible because
 	 * every token pattern carries the exact tactic number, so a neighbour's tokens never match.
 	 */
-	static final int SEARCH_COLS_LEFT = 8;
+	private static final int SEARCH_COLS_LEFT = 8;
 
 	private final ChartPivot chartPivot;
 	private final TacticLineItemGrouper lineItemGrouper;

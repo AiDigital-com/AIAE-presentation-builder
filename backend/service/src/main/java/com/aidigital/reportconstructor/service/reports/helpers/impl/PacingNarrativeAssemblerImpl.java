@@ -22,7 +22,7 @@ import java.util.Objects;
 public class PacingNarrativeAssemblerImpl implements PacingNarrativeAssembler {
 
 	/** Value an unresolved or unwritten narrative token flattens to. */
-	static final String DASH = "—";
+	private static final String DASH = "—";
 
 	/**
 	 * The METRIC table's rows in the order the slide draws them, keyed as
@@ -30,11 +30,11 @@ public class PacingNarrativeAssemblerImpl implements PacingNarrativeAssembler {
 	 * with the suffixes because it is a property of the slide, not of the workbook, while the suffixes are
 	 * shared with the reader so a renamed column cannot mean two different things on the two sides.
 	 */
-	static final List<String> METRIC_ROW_ORDER =
+	private static final List<String> METRIC_ROW_ORDER =
 			List.of("impressions", "ctr", "clicks", "reach", "cpm", "spend");
 
 	/** The row labels the prompt sees, in {@link #METRIC_ROW_ORDER} order. */
-	static final Map<String, String> METRIC_ROW_LABELS = Map.of(
+	private static final Map<String, String> METRIC_ROW_LABELS = Map.of(
 			"impressions", "Impressions",
 			"ctr", "CTR",
 			"clicks", "Clicks",
@@ -43,19 +43,19 @@ public class PacingNarrativeAssemblerImpl implements PacingNarrativeAssembler {
 			"spend", "Spend");
 
 	/** Token suffix of the channel's KPI type, which tells the narrative what the channel is judged on. */
-	static final String KPI_TYPE_SUFFIX = " KPI type";
+	private static final String KPI_TYPE_SUFFIX = " KPI type";
 
 	/** Token suffix of the "what worked" takeaway. */
-	static final String WHAT_WORKED_TOKEN = "{{what worked pacing %d}}";
+	private static final String WHAT_WORKED_TOKEN = "{{what worked pacing %d}}";
 
 	/** Token suffix of the "watch outs" takeaway. */
-	static final String WATCH_OUTS_TOKEN = "{{watch outs pacing %d}}";
+	private static final String WATCH_OUTS_TOKEN = "{{watch outs pacing %d}}";
 
 	/** Token suffix of the "recommended action" takeaway. */
-	static final String ACTIONS_TOKEN = "{{actions pacing %d}}";
+	private static final String ACTIONS_TOKEN = "{{actions pacing %d}}";
 
 	/** Token of the month-ahead directive. */
-	static final String NEXT_MONTH_TOKEN = "{{pacing %d next month}}";
+	private static final String NEXT_MONTH_TOKEN = "{{pacing %d next month}}";
 
 	@Override
 	public List<TacticPacingInput> toInputs(Map<String, String> flat, int tacticCount) {

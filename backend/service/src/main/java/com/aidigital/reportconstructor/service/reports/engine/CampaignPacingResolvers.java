@@ -39,7 +39,7 @@ public class CampaignPacingResolvers {
 		this.campaignResolvers = campaignResolvers;
 	}
 
-	static final String TOTAL_IMPS_PACE_AUTO_LABEL = "Total imps pace (auto: fact vs planned impressions)";
+	private static final String TOTAL_IMPS_PACE_AUTO_LABEL = "Total imps pace (auto: fact vs planned impressions)";
 
 	/**
 	 * Formats the campaign-wide impressions pace two different ways, matching how the cover reads it.

@@ -70,7 +70,7 @@ public class EomSlideFinder {
 	 * ">2 breakdowns" gate — its text is written by the Step-3 Claude call, which runs for those tactics
 	 * only, so a copy made for any other tactic would ship five raw tokens.
 	 */
-	static final String THOUGHTS_MARKER = "{{thoughts on tactic n performance 1}}";
+	private static final String THOUGHTS_MARKER = "{{thoughts on tactic n performance 1}}";
 
 	/**
 	 * Finds the deck's master tactic slides: the slides carrying {@code n}-variable tokens that are

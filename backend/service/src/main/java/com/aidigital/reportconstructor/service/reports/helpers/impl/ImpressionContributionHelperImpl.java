@@ -16,13 +16,13 @@ import java.util.Map;
 public class ImpressionContributionHelperImpl implements ImpressionContributionHelper {
 
 	/** Campaign-level impressions token the share is taken against. */
-	static final String TOTAL_IMPS_TOKEN = "{{total imps}}";
+	private static final String TOTAL_IMPS_TOKEN = "{{total imps}}";
 
 	/** Em dash written when the share cannot be computed, matching the deck's other unresolved values. */
-	static final String DASH = "—";
+	private static final String DASH = "—";
 
 	/** A full share; a tactic can never contribute more than the campaign total. */
-	static final double FULL_SHARE = 100.0;
+	private static final double FULL_SHARE = 100.0;
 
 	private final ReportNumberParser reportNumbers;
 	private final Fmt fmt;

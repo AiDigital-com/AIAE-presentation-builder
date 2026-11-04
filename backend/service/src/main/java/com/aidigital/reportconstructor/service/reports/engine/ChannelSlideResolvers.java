@@ -30,22 +30,22 @@ import java.util.Locale;
 public class ChannelSlideResolvers {
 
 	/** Printed when an input is missing, zero or otherwise leaves the cell uncomputable. */
-	static final String DASH = "—";
+	private static final String DASH = "—";
 
 	/** Source tag for a value this class computed itself. */
-	static final String SOURCE_AUTO = "adj";
+	private static final String SOURCE_AUTO = "adj";
 
 	/** Source tag for a value no input could produce. */
-	static final String SOURCE_NOT_FOUND = "not_found";
+	private static final String SOURCE_NOT_FOUND = "not_found";
 
 	/** Days in a week, used to turn the reporting window into the week count reach is planned in. */
-	static final double DAYS_PER_WEEK = 7.0;
+	private static final double DAYS_PER_WEEK = 7.0;
 
 	/** Impressions-to-CPM scale factor. */
-	static final double CPM_UNITS = 1000.0;
+	private static final double CPM_UNITS = 1000.0;
 
 	/** Percentage scale, and the pacing level at or above which a projection may exceed its plan. */
-	static final double FULL_PACE_PCT = 100.0;
+	private static final double FULL_PACE_PCT = 100.0;
 
 	private final SheetRowHelper sheetUtils;
 	private final Fmt fmt;
