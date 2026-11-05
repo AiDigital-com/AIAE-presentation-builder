@@ -59,6 +59,14 @@ public class PaidValueFormatter {
 	}
 
 	/**
+	 * @param v a spend amount
+	 * @return the amount in whole, comma-grouped dollars, e.g. {@code $19,840}, as the slide tables print spend
+	 */
+	public String moneyWhole(double v) {
+		return String.format(Locale.US, "$%,d", Math.round(v));
+	}
+
+	/**
 	 * @param v a unit cost (CPC, CPA), or {@code null} when it has no denominator
 	 * @return the cost with cents, e.g. {@code $19.04}, or an em-dash
 	 */

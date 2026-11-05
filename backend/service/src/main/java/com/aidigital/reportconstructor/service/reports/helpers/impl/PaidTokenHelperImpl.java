@@ -37,29 +37,29 @@ import static com.aidigital.reportconstructor.service.reports.engine.PaidValueFo
 public class PaidTokenHelperImpl implements PaidTokenHelper {
 
 	/** Campaign rows on the Search campaign slide (and legend slots on its group slide and donut). */
-	static final int SEARCH_CAMPAIGN_SLOTS = 3;
+	private static final int SEARCH_CAMPAIGN_SLOTS = 3;
 	/** Ad cards on the Search Top Performing Ads slide. */
-	static final int SEARCH_AD_SLOTS = 3;
+	private static final int SEARCH_AD_SLOTS = 3;
 	/** Legend slots of the Social audience-type donut. */
-	static final int SOCIAL_DONUT_SLOTS = 2;
+	private static final int SOCIAL_DONUT_SLOTS = 2;
 	/** Legend slots of the Social placement conversion-mix donut. */
-	static final int SOCIAL_PLACEMENT_MIX_SLOTS = 5;
+	private static final int SOCIAL_PLACEMENT_MIX_SLOTS = 5;
 	/** The age bands of the Search audience slide, in slide order (export spelling, spaces removed). */
-	static final List<String> AGE_BANDS = List.of("18-24", "25-34", "35-44", "45-54", "55-64", "65+");
+	private static final List<String> AGE_BANDS = List.of("18-24", "25-34", "35-44", "45-54", "55-64", "65+");
 
-	static final String MALE = "male";
-	static final String FEMALE = "female";
+	private static final String MALE = "male";
+	private static final String FEMALE = "female";
 	/** Label separator in Meta names: {@code "Noventra Meta - LAL"}, {@code "Aviation - Reel"}. */
-	static final String NAME_PART_SEPARATOR = " - ";
+	private static final String NAME_PART_SEPARATOR = " - ";
 	/** Ad-card name suffix: the Search export only has responsive search ads. */
-	static final String RSA_SUFFIX = " RSA";
-	static final String HEADLINE_SEPARATOR = " | ";
-	static final String EN_DASH = "–";
-	static final String EOC_PERIOD_LABEL = "the full flight";
-	static final String BADGE_BEST_OVERALL = "BEST OVERALL";
-	static final String BADGE_LOWEST_CPA = "LOWEST CPA";
-	static final String BADGE_HIGHEST_CTR = "HIGHEST CTR";
-	static final String BADGE_STRONG_CONVERTER = "STRONG CONVERTER";
+	private static final String RSA_SUFFIX = " RSA";
+	private static final String HEADLINE_SEPARATOR = " | ";
+	private static final String EN_DASH = "–";
+	private static final String EOC_PERIOD_LABEL = "the full flight";
+	private static final String BADGE_BEST_OVERALL = "BEST OVERALL";
+	private static final String BADGE_LOWEST_CPA = "LOWEST CPA";
+	private static final String BADGE_HIGHEST_CTR = "HIGHEST CTR";
+	private static final String BADGE_STRONG_CONVERTER = "STRONG CONVERTER";
 
 	private final PaidExportCollector collector;
 	private final PaidValueFormatter fmt;

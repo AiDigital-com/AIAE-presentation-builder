@@ -49,6 +49,7 @@ import com.aidigital.reportconstructor.service.reports.helpers.GeoBreakdownHelpe
 import com.aidigital.reportconstructor.service.reports.helpers.ImpressionContributionHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.MpoNarrativeAssembler;
 import com.aidigital.reportconstructor.service.reports.helpers.PaidNarrativeAssembler;
+import com.aidigital.reportconstructor.service.reports.helpers.PaidSlideTableAssembler;
 import com.aidigital.reportconstructor.service.reports.helpers.PaidTokenHelper;
 import com.aidigital.reportconstructor.service.reports.model.PaidChannelData;
 import com.aidigital.reportconstructor.service.reports.helpers.PacingNarrativeAssembler;
@@ -196,6 +197,8 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	private final PaidTokenHelper paidTokens;
 	/** Builds the paid channels' narrative-call inputs from the parsed exports, and writes the replies back. */
 	private final PaidNarrativeAssembler paidNarrative;
+	/** Turns the parsed paid channels into the paid section's table cells and the slides to delete. */
+	private final PaidSlideTableAssembler paidTables;
 
 	/**
 	 * Validates the brief, then enqueues the job and launches the build through the
@@ -361,7 +364,8 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 			// The MPO-only values: the Paid Search / Paid Social figures from the exports, then the copy (HHI,
 			// proposal cards, funnel, recommendations headline), written after every other value so its evidence
 			// lines quote the figures the deck prints. A no-op for a standard deck.
-			fillMpoDeckTokens(claude, flatReplacements, flatTacticCount, payload, live, brief);
+			List<PaidChannelData> paidChannels =
+					fillMpoDeckTokens(claude, flatReplacements, flatTacticCount, payload, live, brief);
 
 			jobProgress.markJobRunningAtStep(jobId, 6, "Building slide deck");
 			String slideUrl = slides.createDeck(
@@ -369,7 +373,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 					payload.templateVariant(), userGoogleToken);
 
 			List<String> deckWarnings = assembleDeck(
-					jobId, slideUrl, flatTacticCount, flatReplacements, payload, data, userGoogleToken);
+					jobId, slideUrl, flatTacticCount, flatReplacements, payload, data, paidChannels, userGoogleToken);
 
 			jobProgress.recordArtifact(jobId, fileName, payload.sheetUrl());
 			recordSlideCount(jobId, slideUrl, userGoogleToken);
@@ -426,12 +430,13 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param flatReplacements the resolved token map
 	 * @param payload          the generation request
 	 * @param data             the collected campaign figures
+	 * @param paidChannels     the parsed paid-media channels whose tokens were written (empty for a standard deck)
 	 * @param userGoogleToken  the caller's Google OAuth token, or null to use the service account
 	 * @return every warning raised while assembling the deck, in the order it was raised
 	 */
 	List<String> assembleDeck(
 			Long jobId, String slideUrl, int flatTacticCount, Map<String, String> flatReplacements,
-			GeneratePayload payload, CampaignData data, String userGoogleToken) {
+			GeneratePayload payload, CampaignData data, List<PaidChannelData> paidChannels, String userGoogleToken) {
 		// Main tactic slides from the single master, same as the sheet flow; a no-op on the legacy
 		// 28-slot template, where the trim below removes the surplus slots instead.
 		List<String> tacticSlideWarnings =
@@ -444,6 +449,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		chartHelper.deleteMasterSlides(slideUrl, payload.reportType(), payload.templateVariant(), userGoogleToken);
 		// EOC-only story slides the EOM deck inherited from the template it was copied from.
 		chartHelper.deleteReportTypeSlides(slideUrl, payload.reportType(), userGoogleToken);
+		finishPaidSlides(slideUrl, paidChannels, payload, userGoogleToken);
 
 		jobProgress.markJobRunningAtStep(jobId, 7, "Building charts");
 		List<String> chartWarnings = chartHelper.buildCharts(
@@ -655,10 +661,10 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		fillPacingNarrative(claude, flatReplacements, tacticCount, payload.reportType(), payload.templateVariant(),
 				live, usageScope, brief);
 		// The MPO-only paid figures and copy, last for the same reason: the copy quotes the reviewed figures.
-		fillMpoDeckTokens(claude, flatReplacements, tacticCount, payload, live, brief);
+		List<PaidChannelData> paid = fillMpoDeckTokens(claude, flatReplacements, tacticCount, payload, live, brief);
 
 		buildDeckFromSheet(
-				jobId, payload, userEmail, grid, flatReplacements, breakdownValues, tacticCount,
+				jobId, payload, userEmail, grid, flatReplacements, breakdownValues, tacticCount, paid,
 				userGoogleToken, jobWarnings);
 	}
 
@@ -860,13 +866,14 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param flatReplacements the resolved token map
 	 * @param breakdownValues  the breakdown slides' own tokens
 	 * @param tacticCount      how many tactic slots the report covers
+	 * @param paidChannels     the parsed paid-media channels whose tokens were written (empty for a standard deck)
 	 * @param userGoogleToken  the caller's Google OAuth token, or null to use the service account
 	 * @param jobWarnings      the accumulating job warnings, appended to in place
 	 */
 	void buildDeckFromSheet(
 			Long jobId, GeneratePayload payload, String userEmail, List<List<String>> grid,
 			Map<String, String> flatReplacements, Map<String, String> breakdownValues, int tacticCount,
-			String userGoogleToken, List<String> jobWarnings) {
+			List<PaidChannelData> paidChannels, String userGoogleToken, List<String> jobWarnings) {
 		jobProgress.markJobRunningAtStep(jobId, 6, "Building slide deck");
 		String fileName = fileNamer.buildFileName(
 				payload.reportType(), flatReplacements.get(CLIENT_NAME_TOKEN), userEmail);
@@ -899,6 +906,8 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		// Slides an EOM deck must never ship (the frequency & velocity play, the awareness / market-share
 		// slide): the EOM template is a copy of the EOC one, so they arrive with it and are deleted here.
 		chartHelper.deleteReportTypeSlides(slideUrl, payload.reportType(), userGoogleToken);
+		// The MPO deck's paid tables, written by row and column, and the slides of a channel without an export.
+		finishPaidSlides(slideUrl, paidChannels, payload, userGoogleToken);
 
 		jobProgress.markJobRunningAtStep(jobId, 7, "Building charts");
 		List<String> chartWarnings = chartHelper.buildChartsFromSheet(
@@ -1123,13 +1132,35 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param payload     the generation request
 	 * @param live        whether this run calls Claude at all
 	 * @param brief       free-text campaign brief passed through to the narrative call
+	 * @return the parsed paid channels whose tokens were written, for the deck's paid tables; empty for a standard
+	 *         deck or without exports
 	 */
-	void fillMpoDeckTokens(
+	List<PaidChannelData> fillMpoDeckTokens(
 			ClaudeClient claude, Map<String, String> flat, int tacticCount, GeneratePayload payload, boolean live,
 			String brief) {
 		List<PaidChannelData> channels = fillPaidTokens(flat, payload);
 		fillPaidNarrative(claude, flat, channels, payload, live, brief);
 		fillMpoNarrative(claude, flat, tacticCount, payload, live, brief);
+		return channels;
+	}
+
+	/**
+	 * Finishes the MPO deck's Paid Search / Paid Social section once the deck exists: writes the marker tables from
+	 * the parsed exports and deletes the slides of a channel without one. Asked of the slides provider first, so a
+	 * standard deck, which has no paid section, is left alone.
+	 *
+	 * @param slideUrl        the deck created from the template
+	 * @param channels        the parsed paid channels, as returned by {@link #fillMpoDeckTokens}
+	 * @param payload         the generation request
+	 * @param userGoogleToken the caller's Google OAuth token, or null to use the service account
+	 */
+	void finishPaidSlides(
+			String slideUrl, List<PaidChannelData> channels, GeneratePayload payload, String userGoogleToken) {
+		if (!slides.carriesMpoNarrative(payload.reportType(), payload.templateVariant())) {
+			return;
+		}
+		boolean eom = EOM_REPORT_TYPE.equalsIgnoreCase(payload.reportType());
+		chartHelper.fillPaidSlides(slideUrl, paidTables.assemble(channels, eom), userGoogleToken);
 	}
 
 	/**

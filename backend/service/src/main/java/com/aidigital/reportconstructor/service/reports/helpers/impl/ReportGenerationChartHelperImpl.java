@@ -19,6 +19,7 @@ import com.aidigital.reportconstructor.service.reports.helpers.ReportNumberParse
 import com.aidigital.reportconstructor.service.reports.helpers.ReportSheetHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.SheetChartDataReader;
 import com.aidigital.reportconstructor.service.reports.helpers.TacticExtractionHelper;
+import com.aidigital.reportconstructor.service.reports.model.PaidSlidesFill;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartJob;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartRequest;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartSlice;
@@ -338,6 +339,19 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 		} catch (RuntimeException ex) {
 			log.warn("[slides] deleteReportTypeSlides failed for {} (non-fatal): {}",
 					presentationId, ex.getMessage());
+		}
+	}
+
+	@Override
+	public void fillPaidSlides(String slideUrl, PaidSlidesFill fill, String userGoogleToken) {
+		String presentationId = extractPresentationId(slideUrl);
+		if (presentationId == null || fill == null || fill.isEmpty()) {
+			return;
+		}
+		try {
+			slides.fillPaidSlides(presentationId, fill, userGoogleToken);
+		} catch (RuntimeException ex) {
+			log.warn("[slides] fillPaidSlides failed for {} (non-fatal): {}", presentationId, ex.getMessage());
 		}
 	}
 

@@ -3,6 +3,7 @@ package com.aidigital.reportconstructor.service.reports.helpers;
 import com.aidigital.reportconstructor.service.reports.dto.CampaignData;
 import com.aidigital.reportconstructor.service.reports.dto.GeneratePayload;
 import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
+import com.aidigital.reportconstructor.service.reports.model.PaidSlidesFill;
 
 import java.util.List;
 import java.util.Map;
@@ -181,4 +182,15 @@ public interface ReportGenerationChartHelper {
 	 * @param userGoogleToken OAuth token for Google Slides API, or null when unavailable
 	 */
 	void deleteReportTypeSlides(String slideUrl, String reportType, String userGoogleToken);
+
+	/**
+	 * Writes the MPO deck's Paid Search / Paid Social tables and deletes the slides of a channel without an export.
+	 * A no-op for an empty fill. Non-fatal: a failure is logged and the deck is delivered with the template's sample
+	 * tables.
+	 *
+	 * @param slideUrl        URL of the generated Google Slides deck
+	 * @param fill            the tables to write and the channels to delete
+	 * @param userGoogleToken OAuth token for Google Slides API, or null when unavailable
+	 */
+	void fillPaidSlides(String slideUrl, PaidSlidesFill fill, String userGoogleToken);
 }

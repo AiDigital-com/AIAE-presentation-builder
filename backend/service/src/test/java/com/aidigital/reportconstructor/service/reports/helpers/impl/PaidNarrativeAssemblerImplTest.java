@@ -92,4 +92,43 @@ class PaidNarrativeAssemblerImplTest {
 				.containsEntry("{{pso_reco_4}}", "—")
 				.hasSize(assembler.fields(PaidChannelKind.SOCIAL, false).size());
 	}
+
+	@Test
+	void shouldDropTheSlideLabelAnEomTakeawayRepeatsTest() {
+		// Given: EOM replies that start with the label the metric slide already prints above each box
+		PaidNarrativeAssemblerImpl assembler = new PaidNarrativeAssemblerImpl(new PaidValueFormatter());
+		Map<String, String> flat = new HashMap<>();
+		Map<String, String> copy = Map.of(
+				"eom_worked", "What worked: August delivered 50 conversions at a $30.01 CPA.",
+				"eom_top_creative", "Top Creative — Aviation - Carousel earned 38 conversions.",
+				"eom_optimise", "October's $450.02 CPA; cut Auto - Single Post.",
+				"eom_next_month", "next month: scale Retargeting.");
+
+		// When:
+		assembler.write(flat, PaidChannelKind.SOCIAL, true, copy);
+
+		// Then: the label goes, the rest is capitalised, and copy without the label is left alone
+		assertThat(flat)
+				.containsEntry("{{pso_eom_worked}}", "August delivered 50 conversions at a $30.01 CPA.")
+				.containsEntry("{{pso_eom_top_creative}}", "Aviation - Carousel earned 38 conversions.")
+				.containsEntry("{{pso_eom_optimise}}", "October's $450.02 CPA; cut Auto - Single Post.")
+				.containsEntry("{{pso_eom_next_month}}", "Scale Retargeting.");
+	}
+
+	@Test
+	void shouldTellThePromptNotToRepeatTheSlideLabelTest() {
+		// Given:
+		PaidNarrativeAssemblerImpl assembler = new PaidNarrativeAssemblerImpl(new PaidValueFormatter());
+
+		// When:
+		List<PaidCopyField> fields = assembler.fields(PaidChannelKind.SEARCH, true);
+
+		// Then: the labelled EOM boxes name their label; a box without one gets no such rule
+		assertThat(fields).filteredOn(f -> f.key().equals("eom_worked")).singleElement()
+				.extracting(PaidCopyField::guidance).asString()
+				.contains("already prints the label \"What worked\"");
+		assertThat(fields).filteredOn(f -> f.key().equals("verdict")).singleElement()
+				.extracting(PaidCopyField::guidance).asString()
+				.doesNotContain("already prints the label");
+	}
 }

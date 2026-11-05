@@ -24,6 +24,16 @@ class PaidValueFormatterTest {
 	}
 
 	@Test
+	void shouldFormatTableSpendInWholeDollarsTest() {
+		// Given:
+		PaidValueFormatter fmt = new PaidValueFormatter();
+
+		// When-Then: the slide tables print spend rounded to the dollar and comma-grouped
+		assertThat(fmt.moneyWhole(124_983.6)).isEqualTo("$124,984");
+		assertThat(fmt.moneyWhole(698.4)).isEqualTo("$698");
+	}
+
+	@Test
 	void shouldDashRatesAndSharesWithoutADenominatorTest() {
 		// Given:
 		PaidValueFormatter fmt = new PaidValueFormatter();

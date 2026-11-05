@@ -1859,12 +1859,27 @@ public class RealClaudeClient implements ClaudeClient {
 		if (prompt.isEmpty()) {
 			return null;
 		}
-		JsonNode parsed = messagesClient.callJsonObject(prompt.get(), PaidPromptSpec.PAID_NARRATIVE_MAX_TOKENS,
-				BREAKDOWN_TIMEOUT_SEC, PaidPromptSpec.PAID_NARRATIVE_LABEL, true);
+		JsonNode parsed = callPaidNarrative(prompt.get());
+		if (parsed == null) {
+			// One retry: an unusable reply dashes every copy slot of the channel, and the next sample is usually
+			// clean. The prompt is cached, so the second call costs little.
+			log.warn("[claude:{}] reply unusable for {} - retrying once", PaidPromptSpec.PAID_NARRATIVE_LABEL,
+					input.channelName());
+			parsed = callPaidNarrative(prompt.get());
+		}
 		if (parsed == null) {
 			return null;
 		}
 		return paidNarrativeFrom(parsed, input.fields());
+	}
+
+	/**
+	 * @param prompt the paid narrative prompt
+	 * @return the reply's JSON object, or {@code null} when the call failed or the reply could not be parsed
+	 */
+	JsonNode callPaidNarrative(String prompt) {
+		return messagesClient.callJsonObject(prompt, PaidPromptSpec.PAID_NARRATIVE_MAX_TOKENS,
+				BREAKDOWN_TIMEOUT_SEC, PaidPromptSpec.PAID_NARRATIVE_LABEL, true);
 	}
 
 	/**

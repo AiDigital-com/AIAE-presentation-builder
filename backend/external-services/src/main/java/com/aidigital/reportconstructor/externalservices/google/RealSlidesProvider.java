@@ -5,6 +5,7 @@ import com.aidigital.reportconstructor.service.common.error.ErrorReason;
 import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
 import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
 import com.aidigital.reportconstructor.service.reports.helpers.BreakdownThoughtsGate;
+import com.aidigital.reportconstructor.service.reports.model.PaidSlidesFill;
 import com.aidigital.reportconstructor.service.reports.ports.SlidesProvider;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.services.drive.Drive;
@@ -157,6 +158,27 @@ public class RealSlidesProvider implements SlidesProvider {
 			+ "slides.pageElements(objectId,size,transform,shape.shapeType,shape.text.textElements.textRun.content,"
 			+ "table.tableRows.tableCells.text.textElements.textRun.content)";
 
+	/**
+	 * Field mask for the {@code presentations.get} used by {@link #fillPaidSlides}: slide ids, each element's id and
+	 * alt-text title (the table markers), shape text inside groups two levels deep (the tokens and divider titles a
+	 * channel's slides are found by), and table-cell text (the current value each cell write replaces).
+	 */
+	private static final String PAID_FIELDS = "slides(objectId,pageElements(objectId,title,"
+			+ "shape.text.textElements.textRun.content,"
+			+ "table.tableRows.tableCells.text.textElements.textRun.content,"
+			+ "elementGroup.children(objectId,title,shape.text.textElements.textRun.content,"
+			+ "elementGroup.children(objectId,title,shape.text.textElements.textRun.content))))";
+
+	/**
+	 * Field mask for the {@code presentations.get} used by {@link #dashUnresolvedTokens}: the text of
+	 * {@link #BREAKDOWN_FIELDS} plus the shape text inside groups, three levels deep, so a token in a grouped shape
+	 * is swept too.
+	 */
+	private static final String DASH_FIELDS = BREAKDOWN_FIELDS + ","
+			+ "slides.pageElements.elementGroup.children(shape.text.textElements.textRun.content,"
+			+ "elementGroup.children(shape.text.textElements.textRun.content,"
+			+ "elementGroup.children(shape.text.textElements.textRun.content)))";
+
 	/** Startup-log marker for a master slide that is not configured. */
 	private static final String UNSET_MARKER = "(unset)";
 
@@ -216,6 +238,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	private final BreakdownThoughtsGate thoughtsGate;
 	private final SummaryTableRowTrimmer summaryTableRowTrimmer;
 	private final DeckMarkupRequestBuilder deckMarkup;
+	private final PaidSlidesWriter paidSlidesWriter;
 
 	public RealSlidesProvider(
 			GoogleCredentialsFactory creds, GoogleProperties props, DriveSharer driveSharer,
@@ -224,8 +247,10 @@ public class RealSlidesProvider implements SlidesProvider {
 			SummaryTableRowTrimmer summaryTableRowTrimmer, EomDeckPolicy eomDeckPolicy,
 			MpoDeckPolicy mpoDeckPolicy, EomSlideFinder eomSlideFinder, DeckMarkupRequestBuilder deckMarkup,
 			SlideBlockLocator slideBlockLocator, TacticSlideRelayout tacticSlideRelayout,
-			DeviceTableCompactor deviceTableCompactor, CreativeTableCompactor creativeTableCompactor) {
+			DeviceTableCompactor deviceTableCompactor, CreativeTableCompactor creativeTableCompactor,
+			PaidSlidesWriter paidSlidesWriter) {
 		String slidesTemplateId = props.getSlidesTemplateId();
+		this.paidSlidesWriter = paidSlidesWriter;
 		this.eomDeckPolicy = eomDeckPolicy;
 		this.mpoDeckPolicy = mpoDeckPolicy;
 		this.eomSlideFinder = eomSlideFinder;
@@ -913,7 +938,7 @@ public class RealSlidesProvider implements SlidesProvider {
 		Slides slidesClient = asUser ? buildSlides(userGoogleAccessToken) : slides;
 		try {
 			Presentation deck = retrier.execute(
-					slidesClient.presentations().get(presentationId).setFields(BREAKDOWN_FIELDS),
+					slidesClient.presentations().get(presentationId).setFields(DASH_FIELDS),
 					"dashUnresolvedTokens get " + presentationId);
 			List<String> tokens = unresolvedTokens(deck.getSlides());
 			if (tokens.isEmpty()) {
@@ -958,6 +983,28 @@ public class RealSlidesProvider implements SlidesProvider {
 		}
 	}
 
+	@Override
+	public void fillPaidSlides(String presentationId, PaidSlidesFill fill, String userGoogleAccessToken) {
+		if (fill == null || fill.isEmpty()) {
+			return;
+		}
+		boolean asUser = userGoogleAccessToken != null && !userGoogleAccessToken.isBlank();
+		Slides slidesClient = asUser ? buildSlides(userGoogleAccessToken) : slides;
+		try {
+			Presentation deck = retrier.execute(
+					slidesClient.presentations().get(presentationId).setFields(PAID_FIELDS),
+					"fillPaidSlides get " + presentationId);
+			List<Request> requests = paidSlidesWriter.requests(deck.getSlides(), fill);
+			if (!requests.isEmpty()) {
+				executeInChunks(slidesClient, presentationId, requests,
+						"fillPaidSlides batchUpdate for " + presentationId);
+			}
+		} catch (IOException ex) {
+			log.error("[slides] fillPaidSlides failed for {}", presentationId, ex);
+			throw new AppException(ErrorReason.C000, "Google Slides fillPaidSlides failed: " + ex.getMessage());
+		}
+	}
+
 	/**
 	 * Collects every {@code {{…}}} token still present in a finished deck, deduplicated and in deck order.
 	 *
@@ -971,8 +1018,34 @@ public class RealSlidesProvider implements SlidesProvider {
 		}
 		for (Page page : slides) {
 			tokens.addAll(extractRenumberableTokens(page));
+			collectGroupTokens(page.getPageElements(), tokens);
 		}
 		return new ArrayList<>(tokens);
+	}
+
+	/**
+	 * Adds the tokens of every shape inside a group, at any depth. {@link #extractRenumberableTokens} reads only
+	 * top-level shapes and tables, which left a token in a grouped shape (the EOM cover's headline figures) out of
+	 * the final sweep, so it shipped raw.
+	 *
+	 * @param elements a slide's or a group's page elements (may be {@code null})
+	 * @param tokens   the accumulating set of distinct tokens
+	 */
+	void collectGroupTokens(List<PageElement> elements, Set<String> tokens) {
+		if (elements == null) {
+			return;
+		}
+		for (PageElement element : elements) {
+			if (element.getElementGroup() == null || element.getElementGroup().getChildren() == null) {
+				continue;
+			}
+			for (PageElement child : element.getElementGroup().getChildren()) {
+				if (child.getShape() != null) {
+					collectTokens(child.getShape().getText(), tokens);
+				}
+			}
+			collectGroupTokens(element.getElementGroup().getChildren(), tokens);
+		}
 	}
 
 	@Override

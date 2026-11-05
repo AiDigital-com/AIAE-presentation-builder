@@ -2071,6 +2071,39 @@ class RealClaudeClientTest {
 	}
 
 	@Test
+	void shouldRetryAPaidNarrativeCallOnceWhenTheReplyIsUnusableTest() throws Exception {
+		// Given: a first reply that could not be parsed (null) and a clean second one
+		ClaudeResponseNormalizer normalizer = new ClaudeResponseNormalizer();
+		RealClaudeClient client = new RealClaudeClient(
+				messagesClient, new ClaudeBatchPromptBuilder(normalizer, new Fmt()), normalizer, compressionService,
+				new ReportClaudeDefaults(), new WorkbookGeoFilter(), new PromptTokenEstimator(),
+				new ClaudeFailureLogImpl(), new TacticThoughtsCompleteness(), new AnthropicProperties());
+		PaidNarrativeInput input = new PaidNarrativeInput("Paid Social (Meta)", "the full flight",
+				List.of("TOTAL: conversions 90"), List.of(new PaidCopyField("verdict", 115, "verdict")));
+		String prompt = client.paidNarrativePrompt(input, "brief").orElseThrow();
+		when(messagesClient.callJsonObject(eq(prompt), eq(3000), eq(90), eq("PaidNarrative"), eq(true)))
+				.thenReturn(null)
+				.thenReturn(json.readTree("{\"verdict\": \"Meta Ads drove 90 conversions.\"}"));
+		when(compressionService.compress(org.mockito.ArgumentMatchers.anyList(), eq("PaidNarrative")))
+				.thenAnswer(invocation -> {
+					List<ClaudeCompressionField> fields = invocation.getArgument(0);
+					Map<String, String> out = new LinkedHashMap<>();
+					for (ClaudeCompressionField field : fields) {
+						out.put(field.key(), field.text());
+					}
+					return out;
+				});
+
+		// When:
+		Map<String, String> copy = client.paidNarrative(input, "brief");
+
+		// Then: the second reply is used, after exactly two calls
+		assertThat(copy).containsOnly(Map.entry("verdict", "Meta Ads drove 90 conversions."));
+		verify(messagesClient, times(2))
+				.callJsonObject(eq(prompt), eq(3000), eq(90), eq("PaidNarrative"), eq(true));
+	}
+
+	@Test
 	void tacticPacingIsANoopWithoutAnInputTest() {
 		ClaudeResponseNormalizer normalizer = new ClaudeResponseNormalizer();
 		RealClaudeClient client = new RealClaudeClient(

@@ -16,8 +16,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.aidigital.reportconstructor.service.reports.engine.PaidValueFormatter.DASH;
@@ -31,13 +34,16 @@ import static com.aidigital.reportconstructor.service.reports.engine.PaidValueFo
 public class PaidNarrativeAssemblerImpl implements PaidNarrativeAssembler {
 
 	/** Rows of a breakdown sent to the prompt: the slides' largest table (Group Breakdown) shows 15. */
-	static final int MAX_ROWS = 15;
+	private static final int MAX_ROWS = 15;
 	/** Ads sent to the prompt: the Top Performing Ads slide shows 3 cards. */
-	static final int MAX_ADS = 3;
-	static final String TITLE_SUFFIX = "_title";
-	static final String TITLE_GUIDANCE = "heading of entry ";
-	static final String TEXT_GUIDANCE = "text of entry ";
-	static final String NUMBER_SEPARATOR = "_";
+	private static final int MAX_ADS = 3;
+	private static final String TITLE_SUFFIX = "_title";
+	private static final String TITLE_GUIDANCE = "heading of entry ";
+	private static final String TEXT_GUIDANCE = "text of entry ";
+	private static final String NUMBER_SEPARATOR = "_";
+	/** Appended to a labelled box's guidance, with the label filled in. */
+	private static final String LABEL_RULE = " — the slide already prints the label \"%s\" above this box, so start with "
+			+ "the finding itself, never with that label";
 
 	private final PaidValueFormatter fmt;
 
@@ -46,7 +52,9 @@ public class PaidNarrativeAssemblerImpl implements PaidNarrativeAssembler {
 		List<PaidCopyField> fields = new ArrayList<>();
 		for (PaidCopySlot slot : PaidCopySlot.forChannel(kind, eom)) {
 			if (!slot.numbered()) {
-				fields.add(new PaidCopyField(slot.key(), slot.limit(), slot.guidance()));
+				String guidance = slot.slideLabel().isEmpty()
+						? slot.guidance() : slot.guidance() + String.format(LABEL_RULE, slot.slideLabel());
+				fields.add(new PaidCopyField(slot.key(), slot.limit(), guidance));
 				continue;
 			}
 			for (int n = 1; n <= slot.count(); n++) {
@@ -91,10 +99,37 @@ public class PaidNarrativeAssemblerImpl implements PaidNarrativeAssembler {
 
 	@Override
 	public void write(Map<String, String> flat, PaidChannelKind kind, boolean eom, Map<String, String> copy) {
+		Map<String, String> labels = new HashMap<>();
+		for (PaidCopySlot slot : PaidCopySlot.forChannel(kind, eom)) {
+			if (!slot.numbered() && !slot.slideLabel().isEmpty()) {
+				labels.put(slot.key(), slot.slideLabel());
+			}
+		}
 		for (PaidCopyField field : fields(kind, eom)) {
 			String text = copy == null ? null : copy.get(field.key());
+			if (text != null && labels.containsKey(field.key())) {
+				text = stripLabel(text, labels.get(field.key()));
+			}
 			flat.put("{{" + kind.tokenPrefix() + field.key() + "}}", text == null || text.isBlank() ? DASH : text);
 		}
+	}
+
+	/**
+	 * Removes a leading copy of the label the slide already prints above the box ({@code "What worked: August
+	 * delivered…"} under "What Worked" read the label twice), and capitalises what follows.
+	 *
+	 * @param text  the copy
+	 * @param label the slide's label for the box
+	 * @return the copy without the leading label; unchanged when it does not start with it
+	 */
+	String stripLabel(String text, String label) {
+		Matcher m = Pattern.compile("^\\s*" + Pattern.quote(label) + "\\s*[:\\-–—]\\s*",
+				Pattern.CASE_INSENSITIVE).matcher(text);
+		if (!m.find() || m.end() >= text.length()) {
+			return text;
+		}
+		String rest = text.substring(m.end());
+		return Character.toUpperCase(rest.charAt(0)) + rest.substring(1);
 	}
 
 	/**

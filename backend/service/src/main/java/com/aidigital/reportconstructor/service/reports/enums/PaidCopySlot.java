@@ -42,13 +42,13 @@ public enum PaidCopySlot {
 	SEARCH_RECO(PaidChannelKind.SEARCH, "reco", 4, true, 105, 33, ReportScope.EOC,
 			"PAID SEARCH RECOMMENDATIONS: four next steps (tracking, budget, search terms/match types, ad copy "
 					+ "or assets), title a short headline in Title Case, text one actionable sentence"),
-	SEARCH_EOM_WORKED(PaidChannelKind.SEARCH, "eom_worked", 1, false, 110, 0, ReportScope.EOM,
+	SEARCH_EOM_WORKED(PaidChannelKind.SEARCH, "eom_worked", 1, false, 110, 0, ReportScope.EOM, "What worked",
 			"EOM metric slide \"What worked\": the month's strongest result, with its figure"),
-	SEARCH_EOM_TOP_WINDOW(PaidChannelKind.SEARCH, "eom_top_window", 1, false, 110, 0, ReportScope.EOM,
+	SEARCH_EOM_TOP_WINDOW(PaidChannelKind.SEARCH, "eom_top_window", 1, false, 110, 0, ReportScope.EOM, "Top window",
 			"EOM metric slide \"Top window\": the best-performing campaign, group or keyword this month"),
-	SEARCH_EOM_OPTIMISE(PaidChannelKind.SEARCH, "eom_optimise", 1, false, 110, 0, ReportScope.EOM,
+	SEARCH_EOM_OPTIMISE(PaidChannelKind.SEARCH, "eom_optimise", 1, false, 110, 0, ReportScope.EOM, "Optimise",
 			"EOM metric slide \"Optimise\": the weakest spot and what to change"),
-	SEARCH_EOM_NEXT_MONTH(PaidChannelKind.SEARCH, "eom_next_month", 1, false, 110, 0, ReportScope.EOM,
+	SEARCH_EOM_NEXT_MONTH(PaidChannelKind.SEARCH, "eom_next_month", 1, false, 110, 0, ReportScope.EOM, "Next month",
 			"EOM metric slide \"Next month\": the plan for the coming month"),
 
 	SOCIAL_VERDICT(PaidChannelKind.SOCIAL, "verdict", 1, false, 115, 0, ReportScope.BOTH,
@@ -73,13 +73,14 @@ public enum PaidCopySlot {
 	SOCIAL_RECO(PaidChannelKind.SOCIAL, "reco", 4, true, 110, 33, ReportScope.EOC,
 			"PAID SOCIAL RECOMMENDATIONS: four next steps (Pixel/CAPI tracking, budget stability, audiences and "
 					+ "exclusions, creative), title a short headline in Title Case, text one actionable sentence"),
-	SOCIAL_EOM_WORKED(PaidChannelKind.SOCIAL, "eom_worked", 1, false, 110, 0, ReportScope.EOM,
+	SOCIAL_EOM_WORKED(PaidChannelKind.SOCIAL, "eom_worked", 1, false, 110, 0, ReportScope.EOM, "What worked",
 			"EOM metric slide \"What worked\": the month's strongest result, with its figure"),
 	SOCIAL_EOM_TOP_CREATIVE(PaidChannelKind.SOCIAL, "eom_top_creative", 1, false, 110, 0, ReportScope.EOM,
+			"Top creative",
 			"EOM metric slide \"Top creative\": the month's best creative and its figures"),
-	SOCIAL_EOM_OPTIMISE(PaidChannelKind.SOCIAL, "eom_optimise", 1, false, 110, 0, ReportScope.EOM,
+	SOCIAL_EOM_OPTIMISE(PaidChannelKind.SOCIAL, "eom_optimise", 1, false, 110, 0, ReportScope.EOM, "Optimise",
 			"EOM metric slide \"Optimise\": the weakest spot and what to change"),
-	SOCIAL_EOM_NEXT_MONTH(PaidChannelKind.SOCIAL, "eom_next_month", 1, false, 110, 0, ReportScope.EOM,
+	SOCIAL_EOM_NEXT_MONTH(PaidChannelKind.SOCIAL, "eom_next_month", 1, false, 110, 0, ReportScope.EOM, "Next month",
 			"EOM metric slide \"Next month\": the plan for the coming month");
 
 	private final PaidChannelKind channel;
@@ -89,10 +90,41 @@ public enum PaidCopySlot {
 	private final int limit;
 	private final int titleLimit;
 	private final ReportScope scope;
+	private final String slideLabel;
 	private final String guidance;
 
+	/**
+	 * A slot whose box carries no printed label of its own.
+	 *
+	 * @param channel    the paid channel
+	 * @param key        the token name without prefix and number
+	 * @param count      the entry count
+	 * @param titled     whether each entry has a heading token
+	 * @param limit      the text's character budget
+	 * @param titleLimit the heading's character budget
+	 * @param scope      the report types carrying the slot
+	 * @param guidance   what the copy says, for the prompt
+	 */
 	PaidCopySlot(PaidChannelKind channel, String key, int count, boolean titled, int limit, int titleLimit,
 			ReportScope scope, String guidance) {
+		this(channel, key, count, titled, limit, titleLimit, scope, "", guidance);
+	}
+
+	/**
+	 * A slot whose box sits under a label the slide prints itself (the EOM metric slide's "What worked").
+	 *
+	 * @param channel    the paid channel
+	 * @param key        the token name without prefix and number
+	 * @param count      the entry count
+	 * @param titled     whether each entry has a heading token
+	 * @param limit      the text's character budget
+	 * @param titleLimit the heading's character budget
+	 * @param scope      the report types carrying the slot
+	 * @param slideLabel the label printed above the box, which the copy must not repeat
+	 * @param guidance   what the copy says, for the prompt
+	 */
+	PaidCopySlot(PaidChannelKind channel, String key, int count, boolean titled, int limit, int titleLimit,
+			ReportScope scope, String slideLabel, String guidance) {
 		this.channel = channel;
 		this.key = key;
 		this.count = count;
@@ -100,7 +132,17 @@ public enum PaidCopySlot {
 		this.limit = limit;
 		this.titleLimit = titleLimit;
 		this.scope = scope;
+		this.slideLabel = slideLabel;
 		this.guidance = guidance;
+	}
+
+	/**
+	 * The label the slide prints above this slot's box, which the copy must not start with.
+	 *
+	 * @return the label, e.g. {@code "What worked"}; empty when the box has none
+	 */
+	public String slideLabel() {
+		return slideLabel;
 	}
 
 	/**

@@ -2,10 +2,12 @@ package com.aidigital.reportconstructor.service.reports.services.impl;
 
 import com.aidigital.reportconstructor.service.reports.dto.PaidNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.PaidNarrativeAssemblerImpl;
+import com.aidigital.reportconstructor.service.reports.helpers.impl.PaidSlideTableAssemblerImpl;
 import com.aidigital.reportconstructor.service.reports.engine.PaidValueFormatter;
 import com.aidigital.reportconstructor.service.reports.enums.PaidChannelKind;
 import com.aidigital.reportconstructor.service.reports.model.PaidChannelData;
 import com.aidigital.reportconstructor.service.reports.model.PaidMetrics;
+import com.aidigital.reportconstructor.service.reports.model.PaidSlidesFill;
 import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
@@ -70,6 +72,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.HashMap;
@@ -157,7 +160,8 @@ class ReportGenerationServiceImplTest {
 				new ImpressionContributionHelperImpl(new ReportNumberParserImpl(), new Fmt()), resumeState,
 				new SheetTacticCountHelperImpl(), new PacingNarrativeAssemblerImpl(), new MpoNarrativeAssemblerImpl(),
 				new DeckStyleTokenHelperImpl(new SheetRowHelperImpl()), paidTokens,
-				new PaidNarrativeAssemblerImpl(new PaidValueFormatter()));
+				new PaidNarrativeAssemblerImpl(new PaidValueFormatter()),
+				new PaidSlideTableAssemblerImpl(new PaidValueFormatter()));
 	}
 
 	@Test
@@ -590,6 +594,39 @@ class ReportGenerationServiceImplTest {
 
 		// Then:
 		verifyNoInteractions(paidTokens);
+	}
+
+	@Test
+	void shouldDeleteBothPaidSectionsOfAnMpoDeckWithoutExportsTest() {
+		// Given: an MPO EOC deck generated without a paid export
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.MPO, Map.of(), Map.of());
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.MPO)).thenReturn(true);
+
+		// When:
+		service.finishPaidSlides("https://docs.google.com/presentation/d/deck1/edit", List.of(), payload, "tok");
+
+		// Then:
+		PaidSlidesFill expected = new PaidSlidesFill(List.of(),
+				EnumSet.of(PaidChannelKind.SEARCH, PaidChannelKind.SOCIAL));
+		verify(chartHelper).fillPaidSlides(
+				eq("https://docs.google.com/presentation/d/deck1/edit"), eq(expected), eq("tok"));
+	}
+
+	@Test
+	void shouldLeaveAStandardDeckWithoutAPaidSectionAloneTest() {
+		// Given:
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.STANDARD, Map.of(), Map.of());
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.STANDARD)).thenReturn(false);
+
+		// When:
+		service.finishPaidSlides("https://docs.google.com/presentation/d/deck1/edit", List.of(), payload, "tok");
+
+		// Then:
+		verifyNoInteractions(chartHelper);
 	}
 
 	@Test
