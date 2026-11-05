@@ -164,6 +164,10 @@ class ClaudeBatchPromptBuilderTest {
 				"never mention the change log or its absence");
 		assertThat(prompt).doesNotContain("EXPECTED to be reconstructed", "infer the most plausible optimisation");
 
+		// Then: the optimisation opens with a bracketed lead clause like the three insights above it
+		assertThat(prompt).contains("This applies to ALL four strings: string 4 (the optimisation) also opens with "
+				+ "its own bracketed lead clause");
+
 		// Then: the licence stops at the action — names and numbers still come from the table
 		assertThat(prompt).contains("must come from the table (never invent a metric)");
 

@@ -48,6 +48,9 @@ import com.aidigital.reportconstructor.service.reports.helpers.DeviceBreakdownHe
 import com.aidigital.reportconstructor.service.reports.helpers.GeoBreakdownHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.ImpressionContributionHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.MpoNarrativeAssembler;
+import com.aidigital.reportconstructor.service.reports.helpers.PaidNarrativeAssembler;
+import com.aidigital.reportconstructor.service.reports.helpers.PaidTokenHelper;
+import com.aidigital.reportconstructor.service.reports.model.PaidChannelData;
 import com.aidigital.reportconstructor.service.reports.helpers.PacingNarrativeAssembler;
 import com.aidigital.reportconstructor.service.reports.helpers.PublisherBreakdownHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportSheetHelper;
@@ -114,6 +117,9 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 
 	/** Report type whose deck ships without the frequency slide (and therefore without its narrative). */
 	private static final String EOM_REPORT_TYPE = "EOM";
+
+	/** Paid-channel token (after the channel prefix) holding the period the paid figures cover. */
+	private static final String PAID_PERIOD_LABEL_KEY = "period_label";
 
 	/** Max tactics the report template carries; the derived tactic count is clamped to this. */
 	private static final int MAX_TACTICS = 28;
@@ -186,6 +192,10 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	private final MpoNarrativeAssembler mpoNarrative;
 	/** Derives the MPO-style template's campaign period, geo summary and top-content KPI from the final map. */
 	private final DeckStyleTokenHelper deckStyleTokens;
+	/** Fills the MPO deck's Paid Search / Paid Social data tokens from the connected paid-media exports. */
+	private final PaidTokenHelper paidTokens;
+	/** Builds the paid channels' narrative-call inputs from the parsed exports, and writes the replies back. */
+	private final PaidNarrativeAssembler paidNarrative;
 
 	/**
 	 * Validates the brief, then enqueues the job and launches the build through the
@@ -348,9 +358,10 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 			// sits on.
 			fillPacingNarrative(claude, flatReplacements, flatTacticCount, payload.reportType(),
 					payload.templateVariant(), live, usageScope, brief);
-			// The MPO-only copy (HHI, proposal cards, funnel, recommendations headline), written after every other
-			// value so its evidence lines quote the figures the deck prints. A no-op for a standard deck.
-			fillMpoNarrative(claude, flatReplacements, flatTacticCount, payload, live, brief);
+			// The MPO-only values: the Paid Search / Paid Social figures from the exports, then the copy (HHI,
+			// proposal cards, funnel, recommendations headline), written after every other value so its evidence
+			// lines quote the figures the deck prints. A no-op for a standard deck.
+			fillMpoDeckTokens(claude, flatReplacements, flatTacticCount, payload, live, brief);
 
 			jobProgress.markJobRunningAtStep(jobId, 6, "Building slide deck");
 			String slideUrl = slides.createDeck(
@@ -643,8 +654,8 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		// map now carries, so the copy cannot contradict the figures it sits on.
 		fillPacingNarrative(claude, flatReplacements, tacticCount, payload.reportType(), payload.templateVariant(),
 				live, usageScope, brief);
-		// The MPO-only copy, last for the same reason: it quotes the reviewed figures the map now carries.
-		fillMpoNarrative(claude, flatReplacements, tacticCount, payload, live, brief);
+		// The MPO-only paid figures and copy, last for the same reason: the copy quotes the reviewed figures.
+		fillMpoDeckTokens(claude, flatReplacements, tacticCount, payload, live, brief);
 
 		buildDeckFromSheet(
 				jobId, payload, userEmail, grid, flatReplacements, breakdownValues, tacticCount,
@@ -1059,6 +1070,66 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 			narratives = joinPacing(dispatchPacing(claude, inputs, usageScope, brief));
 		}
 		pacingNarrative.write(flat, tacticCount, narratives);
+	}
+
+	/**
+	 * Writes the MPO deck's Paid Search / Paid Social figures from the paid-media exports the request carries.
+	 * Asked of the slides provider first, like the MPO narrative: a standard deck, or an MPO request that fell back
+	 * to the standard template, has no paid slides, so its exports are not even parsed.
+	 *
+	 * @param flat    the resolved placeholder map, mutated in place
+	 * @param payload the generation request, whose report type, design, window and exports decide what is written
+	 * @return the parsed paid channels whose tokens were written; empty for a standard deck or without exports
+	 */
+	List<PaidChannelData> fillPaidTokens(Map<String, String> flat, GeneratePayload payload) {
+		if (!slides.carriesMpoNarrative(payload.reportType(), payload.templateVariant())) {
+			return List.of();
+		}
+		return paidTokens.fillPaidTokens(flat, payload);
+	}
+
+	/**
+	 * Generates and writes the Claude copy of each paid channel's slides (verdict, takeaways, tiles, highlights,
+	 * recommendations): one call per channel the request carries an export for. A dry run, or a call that comes
+	 * back unusable, dashes the channel's copy tokens rather than leaving them raw.
+	 *
+	 * @param claude   the run's report-type-specific Claude client
+	 * @param flat     the resolved placeholder map, mutated in place
+	 * @param channels the parsed paid channels, as returned by {@link #fillPaidTokens}
+	 * @param payload  the generation request, whose report type decides EOC or EOM copy
+	 * @param live     whether this run calls Claude at all
+	 * @param brief    free-text campaign brief passed through to the call
+	 */
+	void fillPaidNarrative(
+			ClaudeClient claude, Map<String, String> flat, List<PaidChannelData> channels, GeneratePayload payload,
+			boolean live, String brief) {
+		boolean eom = EOM_REPORT_TYPE.equalsIgnoreCase(payload.reportType());
+		for (PaidChannelData channel : channels) {
+			String period = flat.get("{{" + channel.kind().tokenPrefix() + PAID_PERIOD_LABEL_KEY + "}}");
+			Map<String, String> copy = live
+					? claude.paidNarrative(paidNarrative.toInput(channel, eom, period), brief)
+					: null;
+			paidNarrative.write(flat, channel.kind(), eom, copy);
+		}
+	}
+
+	/**
+	 * Writes everything only the MPO deck carries, in order: the paid-media figures first, then the MPO narrative.
+	 * Both steps are no-ops for a standard deck.
+	 *
+	 * @param claude      the run's report-type-specific Claude client
+	 * @param flat        the resolved placeholder map, mutated in place
+	 * @param tacticCount number of real tactics in the campaign
+	 * @param payload     the generation request
+	 * @param live        whether this run calls Claude at all
+	 * @param brief       free-text campaign brief passed through to the narrative call
+	 */
+	void fillMpoDeckTokens(
+			ClaudeClient claude, Map<String, String> flat, int tacticCount, GeneratePayload payload, boolean live,
+			String brief) {
+		List<PaidChannelData> channels = fillPaidTokens(flat, payload);
+		fillPaidNarrative(claude, flat, channels, payload, live, brief);
+		fillMpoNarrative(claude, flat, tacticCount, payload, live, brief);
 	}
 
 	/**

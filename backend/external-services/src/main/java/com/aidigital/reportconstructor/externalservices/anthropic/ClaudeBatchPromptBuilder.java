@@ -1143,7 +1143,7 @@ public class ClaudeBatchPromptBuilder {
 		String text =
 				"You are a senior digital media analyst writing the 'Creative analysis' slide for ONE tactic in "
 						+ sectionReportKind() + ".\n\n"
-						+ sectionPrinciples() + LeadPhraseSpec.CLAUSE
+						+ sectionPrinciples() + LeadPhraseSpec.CREATIVE
 						+ "Return them in THIS order. Takeaways 1-3 read the creative mix: ONE sentence "
 						+ "each, at most " + prompt + " characters, grounded in the numbers (name real creatives, cite "
 						+ "impressions shares, CTR and the completion rate exactly as the table below labels it — VCR "

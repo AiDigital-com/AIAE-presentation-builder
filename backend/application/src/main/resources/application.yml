@@ -534,14 +534,16 @@ external:
   # through MpoDeckPolicy. Blank = an MPO request for that report type is built on the standard template,
   # so the design is switched on per environment by setting the id, and rolled back by clearing it.
   # Defaults are the Shared Drive copies in the Templates folder (2026-11), readable by the service account;
+  # since 2026-11-05 they are the "(paid search & social WIP)" copies of 1OBji_9D… (EOC) / 1dByMDjM… (EOM),
+  # which add the tokenised Paid Search / Paid Social slides (.claude/tasks/mpo-paid-search-social/plan.md);
   # the placeholder-marked originals were 1WOeSKZP… (EOC) and 1nqPbcaP… (EOM), see
   # .claude/tasks/eoc-mpo-template-migration/plan.md. Override with an empty value to fall back.
   mpo-deck:
-    eoc-slides-template-id: ${MPO_EOC_SLIDES_TEMPLATE_ID:1OBji_9D6n_uMOf9rRu8jvCiFAHV_6RL6kpJEKLNGnoo}
+    eoc-slides-template-id: ${MPO_EOC_SLIDES_TEMPLATE_ID:1hOJLCNqlL0rrx6a2mTFhPrmkB38uAnDE8-lmykIjhNk}
     # The EOM MPO copy was marked up 2026-10-30 with the EOM template's own tokens, so it needs no slide ids:
     # an EOM deck finds its masters by the tokens they carry (EomSlideFinder). Setting this id alone moves
     # MPO EOM decks onto the EOM slide model, whether or not external.eom-deck.slides-template-id is set.
-    eom-slides-template-id: ${MPO_EOM_SLIDES_TEMPLATE_ID:1dByMDjMJ_FzfEw5adtuishjdZpQHIbYMkYrepU0Auzc}
+    eom-slides-template-id: ${MPO_EOM_SLIDES_TEMPLATE_ID:1_uY41QFNy7MmRqsc9wlmO0u_I8lW0KRI6Tn0EqKAias}
     # Slide ids of the EOC MPO template, used in place of external.google's ids for every deck cloned from
     # eoc-slides-template-id (an MPO request that falls back to the standard template keeps the standard
     # ids). Same meaning as their external.google namesakes; master tactic-slide model only. A blank id turns

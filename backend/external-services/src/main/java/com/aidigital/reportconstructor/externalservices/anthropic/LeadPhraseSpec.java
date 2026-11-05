@@ -20,6 +20,14 @@ final class LeadPhraseSpec {
 			+ "[[double brackets]], and the sentence runs on from it, e.g. \"[[The 300x250 carried 62.7% of "
 			+ "delivery]] (233,621 impr) at a 0.20% CTR.\" The brackets count toward the limit. ";
 
+	/**
+	 * Creative strings: all four take a lead clause, the optimisation included — it sits in the same KEY TAKEAWAYS
+	 * list as the three insights, so a plain fourth bullet would read as a styling slip.
+	 */
+	static final String CREATIVE = CLAUSE + "This applies to ALL four strings: string 4 (the optimisation) also "
+			+ "opens with its own bracketed lead clause naming the action, e.g. \"[[Raise HomeLoan and AutoLoan "
+			+ "spend]] up to 20% next flight and refresh Checking's creative.\" ";
+
 	/** Geo strings: the insights take a lead clause, the recommendation (under its own label) does not. */
 	static final String GEO = CLAUSE + "This applies to strings 1-3 only: string 4 has NO brackets. ";
 

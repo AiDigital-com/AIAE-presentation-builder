@@ -388,15 +388,20 @@ describe("ReportConstructorPage — adopting a filled sheet", () => {
 function sheetRead(over: Partial<SheetReadResult> = {}): SheetReadResult {
     return {
         ok: true,
-        tab: "Paid Search",
+        tab: "FULL-FLIGHT PERFORMANCE",
         title: "Acme Google Ads",
         sheetId: "ads1",
-        rows: 12,
-        cols: 8,
-        tabs: ["Paid Search"],
-        headers: ["Campaign", "Clicks"],
+        rows: 4,
+        cols: 6,
+        tabs: ["FULL-FLIGHT PERFORMANCE"],
+        headers: ["Date", "Channel", "Impressions", "Clicks", "Cost", "Conversions"],
         preview: [],
-        rawRows: [["Campaign", "Clicks"], ["Brand", "1124"]],
+        rawRows: [
+            ["Date", "Channel", "Impressions", "Clicks", "Cost", "Conversions"],
+            ["", "", "0", "0", "0", "0"],
+            ["46302", "Google Search", "59", "6", "34.57", "3.81"],
+            ["46303", "Google Search", "180", "20", "98.6", "18.44"],
+        ],
         ...over,
     } as SheetReadResult;
 }
@@ -438,9 +443,13 @@ describe("ReportConstructorPage — MPO performance channels", () => {
         expect(screen.getByText(/paid social \(meta\) export/i)).toBeTruthy();
     });
 
-    it("should read a Paid Search export from its default tab test", async () => {
-        // Given
-        readSheetTab.mockResolvedValue(sheetRead());
+    it("should read the whole Paid Search export and name its missing breakdown tabs test", async () => {
+        // Given: an export with FULL-FLIGHT and the keyword tab only
+        readSheetTab.mockImplementation(async (_url: string, tab: string) =>
+            tab === "FULL-FLIGHT PERFORMANCE"
+                ? sheetRead({ tabs: ["FULL-FLIGHT PERFORMANCE", "KEYWORD BREAKDOWN"] })
+                : sheetRead({ tab, rawRows: [["KEYWORD BREAKDOWN"], ["Keyword", "Clicks"], ["velmora", "204"]] })
+        );
         goToDataInputsOn(/mpo templates/i);
         const input = screen.getAllByPlaceholderText("https://docs.google.com/spreadsheets/…")[2];
         fireEvent.change(input, { target: { value: "https://docs.google.com/spreadsheets/d/ads1/edit" } });
@@ -448,36 +457,35 @@ describe("ReportConstructorPage — MPO performance channels", () => {
         // When
         fireEvent.click(screen.getAllByRole("button", { name: /^connect$/i })[2]);
 
-        // Then: the export's own tab is read and shown as connected
-        await waitFor(() =>
-            expect(readSheetTab).toHaveBeenCalledWith("https://docs.google.com/spreadsheets/d/ads1/edit", "Paid Search")
+        // Then: both tabs are read, the row counts the dated rows, and the absent tabs are named
+        expect(await screen.findByText("Acme Google Ads · 2 daily rows · 2 tabs")).toBeTruthy();
+        expect(readSheetTab.mock.calls).toEqual([
+            ["https://docs.google.com/spreadsheets/d/ads1/edit", "FULL-FLIGHT PERFORMANCE"],
+            ["https://docs.google.com/spreadsheets/d/ads1/edit", "KEYWORD BREAKDOWN"],
+        ]);
+        expect(screen.getByRole("note").textContent).toBe(
+            "Not in this export: GROUP BREAKDOWN, PMAX PLACEMENT BREAKDOWN, AGE DISTRIBUTION, GENDER SPLIT, " +
+                "AD BREAKDOWN. The slides built from them will be left empty."
         );
-        expect(await screen.findByText("Acme Google Ads · Paid Search · 12 rows")).toBeTruthy();
     });
 
-    it("should let the user pick the tab when the export has no Paid Social tab test", async () => {
-        // Given: a Meta export whose data sits on a tab named after the ad account
-        readSheetTab.mockImplementation(async (_url: string, tab: string) =>
-            tab === "Paid Social"
-                ? sheetRead({ ok: false, error: "tab_not_found", tabs: ["Meta - Azure Cove", "Notes"] })
-                : sheetRead({ tab, title: "Azure Cove Meta", rows: 6 })
-        );
+    it("should reject a Paid Social link that is not an export test", async () => {
+        // Given: a workbook without the FULL-FLIGHT tab
+        readSheetTab.mockResolvedValue(sheetRead({ ok: false, error: "tab_not_found", tabs: ["Meta - Azure Cove"] }));
         goToDataInputsOn(/mpo templates/i);
         const input = screen.getAllByPlaceholderText("https://docs.google.com/spreadsheets/…")[3];
         fireEvent.change(input, { target: { value: "https://docs.google.com/spreadsheets/d/meta1/edit" } });
-        fireEvent.click(screen.getAllByRole("button", { name: /^connect$/i })[3]);
-        expect(await screen.findByText(/pick the tab that holds the paid social export/i)).toBeTruthy();
 
         // When
-        fireEvent.click(screen.getByRole("button", { name: /use this tab/i }));
+        fireEvent.click(screen.getAllByRole("button", { name: /^connect$/i })[3]);
 
-        // Then: the first listed tab is read and connected
-        await waitFor(() =>
-            expect(readSheetTab).toHaveBeenLastCalledWith(
-                "https://docs.google.com/spreadsheets/d/meta1/edit",
-                "Meta - Azure Cove"
+        // Then: the user is told why, and nothing is connected
+        expect(
+            await screen.findByText(
+                "No \"FULL-FLIGHT PERFORMANCE\" tab in that workbook — connect the export sheet itself."
             )
-        );
-        expect(await screen.findByText("Azure Cove Meta · Meta - Azure Cove · 6 rows")).toBeTruthy();
+        ).toBeTruthy();
+        expect(readSheetTab).toHaveBeenCalledTimes(1);
+        expect(screen.queryByText(/daily rows/)).toBeNull();
     });
 });

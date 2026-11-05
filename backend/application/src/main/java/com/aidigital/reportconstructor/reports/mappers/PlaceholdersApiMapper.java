@@ -55,6 +55,8 @@ public interface PlaceholdersApiMapper {
 	@Mapping(target = "breakdownSelections", ignore = true)
 	@Mapping(target = "estimateDaypartGender", ignore = true)
 	@Mapping(target = "templateVariant", ignore = true)
+	@Mapping(target = "paidSearchTabs", ignore = true)
+	@Mapping(target = "paidSocialTabs", ignore = true)
 	GeneratePayload toPayload(PreviewRequestV1 body);
 
 	/**

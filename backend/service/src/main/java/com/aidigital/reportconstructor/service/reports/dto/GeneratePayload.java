@@ -1,6 +1,7 @@
 package com.aidigital.reportconstructor.service.reports.dto;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Inbound request describing a single marketing report to generate, carrying the
@@ -45,6 +46,9 @@ import java.util.List;
  *                        results to the actual actions taken. {@code null}/blank when the user leaves it empty.
  * @param templateVariant deck design to clone (standard or MPO); {@code null} is read as
  *                        {@link TemplateVariant#STANDARD}, so callers that predate the choice keep today's deck
+ * @param paidSearchTabs  the Paid Search (Google Ads) export's tabs keyed by tab name, MPO decks only; empty when no
+ *                        export was connected ({@code null} is read as empty)
+ * @param paidSocialTabs  the Paid Social (Meta) export's tabs keyed by tab name, like {@code paidSearchTabs}
  */
 public record GeneratePayload(
 		String brief,
@@ -62,14 +66,62 @@ public record GeneratePayload(
 		String sheetUrl,
 		String changeLog,
 		Boolean estimateDaypartGender,
-		TemplateVariant templateVariant
+		TemplateVariant templateVariant,
+		Map<String, List<List<String>>> paidSearchTabs,
+		Map<String, List<List<String>>> paidSocialTabs
 ) {
 
 	/**
-	 * Normalizes a missing template variant to {@link TemplateVariant#STANDARD}.
+	 * Normalizes a missing template variant to {@link TemplateVariant#STANDARD} and missing paid exports to empty.
 	 */
 	public GeneratePayload {
 		templateVariant = templateVariant == null ? TemplateVariant.STANDARD : templateVariant;
+		paidSearchTabs = paidSearchTabs == null ? Map.of() : paidSearchTabs;
+		paidSocialTabs = paidSocialTabs == null ? Map.of() : paidSocialTabs;
+	}
+
+	/**
+	 * Backward-compatible constructor for callers that predate the paid-media exports; carries none, so the deck
+	 * has no Paid Search / Paid Social section.
+	 *
+	 * @param brief                 free-text campaign brief
+	 * @param reportType            report template code
+	 * @param marketVolume          maximum addressable audience volume entered in the UI
+	 * @param sheetRows             raw Media Plan grid rows
+	 * @param adjRows               manual Adjustments grid rows
+	 * @param audienceRows          raw audience-breakdown grid rows
+	 * @param estimatesRows         raw per-tactic estimates grid rows
+	 * @param geoRows               every workbook tab flattened into one grid
+	 * @param lineItemMapping       media-plan tactic to BigQuery line-item mapping
+	 * @param breakdownSelections   per-tactic Step-3 breakdown toggle state
+	 * @param bqSheetId             Google Sheet ID backing the BigQuery export
+	 * @param dateFilter            user-confirmed raw-data date window
+	 * @param sheetUrl              URL of a previously generated sheet (slides-from-sheet only)
+	 * @param changeLog             optional free-text log of mid-flight changes
+	 * @param estimateDaypartGender whether Claude may estimate dayparting and gender split
+	 * @param templateVariant       deck design to clone
+	 */
+	public GeneratePayload(
+			String brief,
+			String reportType,
+			String marketVolume,
+			List<List<String>> sheetRows,
+			List<List<String>> adjRows,
+			List<List<String>> audienceRows,
+			List<List<String>> estimatesRows,
+			List<List<String>> geoRows,
+			List<LineItemMapping> lineItemMapping,
+			List<BreakdownSelection> breakdownSelections,
+			String bqSheetId,
+			DateFilter dateFilter,
+			String sheetUrl,
+			String changeLog,
+			Boolean estimateDaypartGender,
+			TemplateVariant templateVariant
+	) {
+		this(brief, reportType, marketVolume, sheetRows, adjRows, audienceRows, estimatesRows, geoRows,
+				lineItemMapping, breakdownSelections, bqSheetId, dateFilter, sheetUrl, changeLog,
+				estimateDaypartGender, templateVariant, Map.of(), Map.of());
 	}
 
 	/**

@@ -37,8 +37,15 @@ export interface ElevateState extends ConnectedSheet {
 // MPO performance channels, each fed by an optional sheet export (Google Ads / Meta).
 export type PaidChannel = "search" | "social";
 
-export interface PaidChannelState extends ConnectedSheet {
-    rawRows: Rows2D;
+export interface PaidChannelState {
+    title: string;
+    sheetId: string;
+    // Export tabs keyed by the workbook's own tab name (FULL-FLIGHT PERFORMANCE always present).
+    tabs: Record<string, Rows2D>;
+    // Breakdown tabs the deck uses that this export lacks; their slides stay blank.
+    missingTabs: string[];
+    // Dated FULL-FLIGHT rows, shown on the connect row.
+    dataRows: number;
 }
 
 type OptionalTabs = Pick<MediaPlanState, "audienceRows" | "estimatesRows" | "geoRows">;

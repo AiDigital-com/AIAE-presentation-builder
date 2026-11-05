@@ -9,13 +9,37 @@ export const MEDIA_PLAN_PRIMARY_TAB = "Proposal";
 export const MEDIA_PLAN_FALLBACK_TAB = "Estimates";
 export const MEDIA_PLAN_OPTIONAL_TABS = ["Audience&Inventory", "Estimates", "Geo"] as const;
 export const ELEVATE_TAB = "Basic";
-// Default tabs for the MPO performance-channel exports; a workbook without them gets a tab picker.
-export const PAID_SEARCH_TAB = "Paid Search";
-export const PAID_SOCIAL_TAB = "Paid Social";
+// MPO performance-channel exports ("EOC report | raw data for automation | Search / Social"). Every export
+// carries the daily "FULL-FLIGHT PERFORMANCE" tab; the breakdown tabs feed the Paid Search / Paid Social
+// slides and are optional (a missing one only blanks the slide that needs it). Only the tabs the deck uses
+// are read: the exports' device, geo and conversion-action tabs feed no slide yet, and the Meta export's
+// CREATIVE BREAKDOWN tab is hidden (unreadable) — its rows are rebuilt from FULL-FLIGHT's Creative column.
+export const PAID_EXPORT_REQUIRED_TAB = "FULL-FLIGHT PERFORMANCE";
+export const PAID_SEARCH_EXPORT_TABS = [
+    PAID_EXPORT_REQUIRED_TAB,
+    "GROUP BREAKDOWN",
+    "KEYWORD BREAKDOWN",
+    "PMAX PLACEMENT BREAKDOWN",
+    "AGE DISTRIBUTION",
+    "GENDER SPLIT",
+    "AD BREAKDOWN",
+] as const;
+export const PAID_SOCIAL_EXPORT_TABS = [
+    PAID_EXPORT_REQUIRED_TAB,
+    "PLACEMENT BREAKDOWN",
+    "AUDIENCE TARGETING BREAKDOWN",
+    "AGE DISTRIBUTION",
+    "GENDER SPLIT",
+] as const;
 
 /** Legacy gate: "Pull data" is enabled only for a Google Sheets URL. */
 export function isGoogleSheetUrl(url: string): boolean {
     return /docs\.google\.com\/spreadsheets/.test(url.trim());
+}
+
+/** Canonical Google Sheet URL from its id, so admins can reopen the source; undefined when no sheet. */
+export function sheetUrlFromId(sheetId: string | undefined): string | undefined {
+    return sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}` : undefined;
 }
 
 /**
