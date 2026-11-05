@@ -42,8 +42,8 @@ public class PaidNarrativeAssemblerImpl implements PaidNarrativeAssembler {
 	private static final String TEXT_GUIDANCE = "text of entry ";
 	private static final String NUMBER_SEPARATOR = "_";
 	/** Appended to a labelled box's guidance, with the label filled in. */
-	private static final String LABEL_RULE = " — the slide already prints the label \"%s\" above this box, so start with "
-			+ "the finding itself, never with that label";
+	private static final String LABEL_RULE = " — the slide already prints the label \"%s\" above this box, "
+			+ "so start with the finding itself, never with that label";
 
 	private final PaidValueFormatter fmt;
 
