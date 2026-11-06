@@ -10,15 +10,53 @@ import java.util.Set;
  */
 public enum PaidExportTab {
 
-	/** The daily delivery table every export carries; totals, campaigns, creatives and months come from it. */
+	/**
+	 * The daily delivery table every export carries, one row per date. Both channels require it: the window totals,
+	 * the previous-month comparison, the per-month delivery, and the Paid Search campaign-type and Paid Social
+	 * creative rankings are all summed from it. Without a usable FULL-FLIGHT tab the channel's slides are left out.
+	 */
 	FULL_FLIGHT("FULL-FLIGHT PERFORMANCE", PaidExportColumn.DATE),
+
+	/**
+	 * Paid Search only: delivery per ad group, each row tied to its campaign; ranked by delivery.
+	 */
 	GROUP_BREAKDOWN("GROUP BREAKDOWN", PaidExportColumn.GROUP),
+
+	/**
+	 * Paid Search only: delivery per keyword, each row tied to its campaign; ranked by delivery.
+	 */
 	KEYWORD_BREAKDOWN("KEYWORD BREAKDOWN", PaidExportColumn.KEYWORD),
+
+	/**
+	 * Paid Search only: Performance Max delivery per placement channel; ranked by delivery.
+	 */
 	PMAX_PLACEMENT_BREAKDOWN("PMAX PLACEMENT BREAKDOWN", PaidExportColumn.CHANNEL),
+
+	/**
+	 * Both channels: delivery per age band, kept in the export's own order so the bands stay chronological.
+	 */
 	AGE_DISTRIBUTION("AGE DISTRIBUTION", PaidExportColumn.AGE),
+
+	/**
+	 * Both channels: delivery per gender, kept in the export's own order.
+	 */
 	GENDER_SPLIT("GENDER SPLIT", PaidExportColumn.GENDER),
+
+	/**
+	 * Paid Search only: one row per responsive search ad with its campaign, ad group, headlines, descriptions and
+	 * landing page; read into ranked ads rather than a plain breakdown. Keyed by Headline 1, the column every ad row
+	 * carries.
+	 */
 	AD_BREAKDOWN("AD BREAKDOWN", PaidExportColumn.HEADLINE_1),
+
+	/**
+	 * Paid Social only: Meta delivery per placement; ranked by delivery.
+	 */
 	PLACEMENT_BREAKDOWN("PLACEMENT BREAKDOWN", PaidExportColumn.PLACEMENT),
+
+	/**
+	 * Paid Social only: delivery per ad set, i.e. per targeted audience; ranked by delivery.
+	 */
 	AUDIENCE_TARGETING_BREAKDOWN("AUDIENCE TARGETING BREAKDOWN", PaidExportColumn.AD_SET);
 
 	private final String tabName;
