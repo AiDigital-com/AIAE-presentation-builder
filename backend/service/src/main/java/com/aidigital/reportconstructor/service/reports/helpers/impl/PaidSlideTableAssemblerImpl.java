@@ -60,7 +60,7 @@ public class PaidSlideTableAssemblerImpl implements PaidSlideTableAssembler {
 	 * @param eom whether the deck is an EOM report
 	 * @return the Paid Search tables, in slide order
 	 */
-	List<PaidSlideTable> searchTables(PaidChannelData d, boolean eom) {
+	private List<PaidSlideTable> searchTables(PaidChannelData d, boolean eom) {
 		List<PaidSlideTable> tables = new ArrayList<>();
 		if (eom) {
 			tables.add(metricTable(PaidTableMarker.SEARCH_EOM_METRICS, d.total()));
@@ -88,7 +88,7 @@ public class PaidSlideTableAssemblerImpl implements PaidSlideTableAssembler {
 	 * @param eom whether the deck is an EOM report
 	 * @return the Paid Social tables, in slide order
 	 */
-	List<PaidSlideTable> socialTables(PaidChannelData d, boolean eom) {
+	private List<PaidSlideTable> socialTables(PaidChannelData d, boolean eom) {
 		List<PaidSlideTable> tables = new ArrayList<>();
 		if (eom) {
 			tables.add(metricTable(PaidTableMarker.SOCIAL_EOM_METRICS, d.total()));
@@ -112,7 +112,7 @@ public class PaidSlideTableAssemblerImpl implements PaidSlideTableAssembler {
 	 * @param rows   the breakdown rows, ranked
 	 * @return the table
 	 */
-	PaidSlideTable shareTable(PaidTableMarker marker, List<PaidRow> rows) {
+	private PaidSlideTable shareTable(PaidTableMarker marker, List<PaidRow> rows) {
 		PaidMetrics total = sum(rows);
 		List<List<String>> body = new ArrayList<>();
 		for (PaidRow r : rows) {
@@ -138,7 +138,7 @@ public class PaidSlideTableAssemblerImpl implements PaidSlideTableAssembler {
 	 * @param total  the channel's delivery inside the report window
 	 * @return the table, rows Clicks, CTR, CPC
 	 */
-	PaidSlideTable metricTable(PaidTableMarker marker, PaidMetrics total) {
+	private PaidSlideTable metricTable(PaidTableMarker marker, PaidMetrics total) {
 		List<List<String>> rows = List.of(
 				List.of(CLICKS_LABEL, DASH, fmt.count(total.clicks()), DASH, DASH),
 				List.of(CTR_LABEL, DASH, fmt.pct1(total.ctr()), DASH, DASH),
@@ -160,7 +160,7 @@ public class PaidSlideTableAssemblerImpl implements PaidSlideTableAssembler {
 	 * @param m     the row's figures
 	 * @return label, impr, clicks, CTR, CPC, conv, CPA, spend (mutable, so a share cell can be appended)
 	 */
-	List<String> standardRow(String label, PaidMetrics m) {
+	private List<String> standardRow(String label, PaidMetrics m) {
 		return new ArrayList<>(List.of(label, fmt.count(m.impressions()), fmt.count(m.clicks()), fmt.pct1(m.ctr()),
 				fmt.money(m.cpc()), fmt.count(m.conversions()), fmt.money(m.cpa()), fmt.moneyWhole(m.cost())));
 	}
@@ -170,7 +170,7 @@ public class PaidSlideTableAssemblerImpl implements PaidSlideTableAssembler {
 	 * @param m     the row's figures
 	 * @return label, impr, clicks, CTR, CPC, spend, conv, CPA: the Creative Performance column order
 	 */
-	List<String> creativeRow(String label, PaidMetrics m) {
+	private List<String> creativeRow(String label, PaidMetrics m) {
 		return List.of(label, fmt.count(m.impressions()), fmt.count(m.clicks()), fmt.pct1(m.ctr()),
 				fmt.money(m.cpc()), fmt.moneyWhole(m.cost()), fmt.count(m.conversions()), fmt.money(m.cpa()));
 	}
@@ -179,7 +179,7 @@ public class PaidSlideTableAssemblerImpl implements PaidSlideTableAssembler {
 	 * @param cells the number of cells after the label
 	 * @return a TOTAL row with every figure dashed, for a table the export has no rows for
 	 */
-	List<String> dashedTotal(int cells) {
+	private List<String> dashedTotal(int cells) {
 		List<String> row = new ArrayList<>();
 		row.add(TOTAL_LABEL);
 		row.addAll(Collections.nCopies(cells, DASH));

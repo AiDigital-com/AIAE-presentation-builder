@@ -402,7 +402,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param data             the collected campaign figures
 	 * @param userGoogleToken  the caller's Google OAuth token, or null to use the service account
 	 */
-	void buildSheetArtifact(
+	private void buildSheetArtifact(
 			Long jobId, String fileName, Map<String, String> flatReplacements,
 			GeneratePayload payload, CampaignData data, String userGoogleToken) {
 		jobProgress.markJobRunningAtStep(jobId, 6, "Building sheet");
@@ -434,7 +434,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param userGoogleToken  the caller's Google OAuth token, or null to use the service account
 	 * @return every warning raised while assembling the deck, in the order it was raised
 	 */
-	List<String> assembleDeck(
+	private List<String> assembleDeck(
 			Long jobId, String slideUrl, int flatTacticCount, Map<String, String> flatReplacements,
 			GeneratePayload payload, CampaignData data, List<PaidChannelData> paidChannels, String userGoogleToken) {
 		// Main tactic slides from the single master, same as the sheet flow; a no-op on the legacy
@@ -517,7 +517,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param clerkUserId Clerk identity used to fetch the Google access token for sheet/deck access
 	 * @param userEmail   email of the triggering user, used to name the generated deck
 	 */
-	void runSlidesFromSheet(Long jobId, GeneratePayload payload, String clerkUserId, String userEmail) {
+	private void runSlidesFromSheet(Long jobId, GeneratePayload payload, String clerkUserId, String userEmail) {
 		jobProgress.markJobRunningAtStep(jobId, 1, "Reading sheet data");
 		UserGoogleTokenProvider clerk = userGoogleTokens.getIfAvailable();
 		String userGoogleToken = clerk == null ? null : clerk.googleAccessToken(clerkUserId);
@@ -676,7 +676,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param sections the breakdown section reads for the run
 	 * @return a new mutable map holding the publisher, creative, geo, audience and device data tokens
 	 */
-	Map<String, String> mergeSectionDataValues(BreakdownSectionBundle sections) {
+	private Map<String, String> mergeSectionDataValues(BreakdownSectionBundle sections) {
 		Map<String, String> values = new LinkedHashMap<>();
 		values.putAll(sections.publisher().dataValues());
 		values.putAll(sections.creative().dataValues());
@@ -701,7 +701,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param data            the collected campaign figures, for the flight dates
 	 * @return the aligned narrative, or {@code null} when nothing was aligned
 	 */
-	ClaudeNarrative alignCampaignNarrative(
+	private ClaudeNarrative alignCampaignNarrative(
 			ClaudeClient claude, boolean live, ClaudeStrategic strategic, ClaudeResults results,
 			Map<String, String> breakdownValues, String brief, CampaignData data) {
 		if (!live) {
@@ -745,7 +745,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param userGoogleToken the caller's Google OAuth token, or null to use the service account
 	 * @return all five sections, joined
 	 */
-	BreakdownSectionBundle readBreakdownSections(
+	private BreakdownSectionBundle readBreakdownSections(
 			GeneratePayload payload, Map<String, String> prelim, ClaudeUsageScope usageScope,
 			String userGoogleToken) {
 		CompletableFuture<BreakdownSectionInputs<PublisherObservationInput>> pubF = CompletableFuture.supplyAsync(
@@ -792,7 +792,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param jobWarnings the accumulating job warnings, appended to in place
 	 * @return the campaign results with the per-tactic overviews merged in
 	 */
-	ClaudeResults buildCampaignResults(
+	private ClaudeResults buildCampaignResults(
 			Long jobId, GeneratePayload payload, CampaignData data, ClaudeClient claude, boolean live,
 			String brief, CampaignFrequencies frequencies, List<TacticNarrativeDigest> digests,
 			List<TacticConclusion> conclusions, List<String> jobWarnings) {
@@ -828,7 +828,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param prelim          the resolved placeholder map, source of the tactic names in warnings
 	 * @return every warning the five writers raised, in breakdown order
 	 */
-	List<String> writeBreakdownInsights(
+	private List<String> writeBreakdownInsights(
 			Map<String, String> breakdownValues,
 			BreakdownSectionInputs<PublisherObservationInput> pub,
 			BreakdownSectionInputs<CreativeTakeawayInput> cre,
@@ -870,7 +870,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param userGoogleToken  the caller's Google OAuth token, or null to use the service account
 	 * @param jobWarnings      the accumulating job warnings, appended to in place
 	 */
-	void buildDeckFromSheet(
+	private void buildDeckFromSheet(
 			Long jobId, GeneratePayload payload, String userEmail, List<List<String>> grid,
 			Map<String, String> flatReplacements, Map<String, String> breakdownValues, int tacticCount,
 			List<PaidChannelData> paidChannels, String userGoogleToken, List<String> jobWarnings) {
@@ -945,7 +945,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param tacticCount number of active tactics on the sheet
 	 * @return both pacing pivot maps; empty when the grid carries no pacing blocks
 	 */
-	SheetChartData readPacing(List<List<String>> grid, CampaignData data, int tacticCount) {
+	private SheetChartData readPacing(List<List<String>> grid, CampaignData data, int tacticCount) {
 		Map<Integer, String> kpiTypes = new LinkedHashMap<>();
 		for (int n = 1; n <= tacticCount; n++) {
 			Tactic tactic = data == null || data.tactics() == null ? null : data.tactics().get(n);
@@ -968,7 +968,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param dev  the device section inputs
 	 * @return every covered tactic number, ascending
 	 */
-	List<Integer> conclusionTacticNums(
+	private List<Integer> conclusionTacticNums(
 			CampaignData data,
 			BreakdownSectionInputs<PublisherObservationInput> pub,
 			BreakdownSectionInputs<CreativeTakeawayInput> cre,
@@ -1000,7 +1000,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param <T>        the section's per-tactic input type
 	 * @return tactic number → the running future of its section call
 	 */
-	<T> Map<Integer, CompletableFuture<List<String>>> dispatchSection(
+	private <T> Map<Integer, CompletableFuture<List<String>>> dispatchSection(
 			Map<Integer, T> inputs, ClaudeUsageScope usageScope, Function<T, List<String>> call) {
 		Map<Integer, CompletableFuture<List<String>>> futures = new LinkedHashMap<>();
 		// Both scopes are read here, on the run's own thread, and bound around each call on its worker thread —
@@ -1026,7 +1026,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param brief      free-text campaign brief passed through to every call
 	 * @return the running futures, in input order
 	 */
-	List<CompletableFuture<TacticThoughts>> dispatchThoughts(
+	private List<CompletableFuture<TacticThoughts>> dispatchThoughts(
 			ClaudeClient claude, List<TacticThoughtsInput> inputs, ClaudeUsageScope usageScope, String brief) {
 		List<CompletableFuture<TacticThoughts>> futures = new ArrayList<>();
 		// Both scopes are read here, on the run's own thread, and bound around each call on its worker thread —
@@ -1063,7 +1063,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param usageScope      the usage scope each call is billed to
 	 * @param brief           free-text campaign brief passed through to every call
 	 */
-	void fillPacingNarrative(
+	private void fillPacingNarrative(
 			ClaudeClient claude, Map<String, String> flat, int tacticCount, String reportType,
 			TemplateVariant templateVariant, boolean live, ClaudeUsageScope usageScope, String brief) {
 		if (!EOM_REPORT_TYPE.equals(reportType)) {
@@ -1135,7 +1135,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @return the parsed paid channels whose tokens were written, for the deck's paid tables; empty for a standard
 	 *         deck or without exports
 	 */
-	List<PaidChannelData> fillMpoDeckTokens(
+	private List<PaidChannelData> fillMpoDeckTokens(
 			ClaudeClient claude, Map<String, String> flat, int tacticCount, GeneratePayload payload, boolean live,
 			String brief) {
 		List<PaidChannelData> channels = fillPaidTokens(flat, payload);
@@ -1199,7 +1199,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param brief      free-text campaign brief passed through to every call
 	 * @return the running futures, in input order
 	 */
-	List<CompletableFuture<TacticPacing>> dispatchPacing(
+	private List<CompletableFuture<TacticPacing>> dispatchPacing(
 			ClaudeClient claude, List<TacticPacingInput> inputs, ClaudeUsageScope usageScope, String brief) {
 		List<CompletableFuture<TacticPacing>> futures = new ArrayList<>();
 		ClaudeFailureScope failureScope = failureLog.current();
@@ -1219,7 +1219,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param futures the running futures from {@link #dispatchPacing}, in input order
 	 * @return one entry per tactic that produced a usable reply, in input order
 	 */
-	List<TacticPacing> joinPacing(List<CompletableFuture<TacticPacing>> futures) {
+	private List<TacticPacing> joinPacing(List<CompletableFuture<TacticPacing>> futures) {
 		List<TacticPacing> narratives = new ArrayList<>();
 		for (CompletableFuture<TacticPacing> future : futures) {
 			TacticPacing value = future.join();
@@ -1238,7 +1238,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param futures the running futures from {@link #dispatchThoughts}, in input order
 	 * @return one entry per tactic that produced a usable reply, in input order
 	 */
-	List<TacticThoughts> joinThoughts(List<CompletableFuture<TacticThoughts>> futures) {
+	private List<TacticThoughts> joinThoughts(List<CompletableFuture<TacticThoughts>> futures) {
 		List<TacticThoughts> thoughts = new ArrayList<>();
 		for (CompletableFuture<TacticThoughts> future : futures) {
 			TacticThoughts value = future.join();
@@ -1257,7 +1257,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param futures tactic number → the running future of its section call, from {@link #dispatchSection}
 	 * @return tactic number → its validated strings, only for tactics that returned a usable reply
 	 */
-	Map<Integer, List<String>> joinSection(Map<Integer, CompletableFuture<List<String>>> futures) {
+	private Map<Integer, List<String>> joinSection(Map<Integer, CompletableFuture<List<String>>> futures) {
 		Map<Integer, List<String>> out = new LinkedHashMap<>();
 		futures.forEach((tacticNum, future) -> {
 			List<String> value = future.join();
@@ -1295,7 +1295,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param tacticCount the active tactic count
 	 * @return the clamped 1-based tactic number → enabled breakdown sections map
 	 */
-	Map<Integer, Set<BreakdownType>> qualifyingSelections(GeneratePayload payload, int tacticCount) {
+	private Map<Integer, Set<BreakdownType>> qualifyingSelections(GeneratePayload payload, int tacticCount) {
 		Map<Integer, Set<BreakdownType>> enabledByTactic = new LinkedHashMap<>();
 		breakdownResolver.resolve(payload.breakdownSelections()).forEach((tacticNum, enabled) -> {
 			if (tacticNum != null && tacticNum >= 1 && tacticNum <= tacticCount && !enabled.isEmpty()) {
@@ -1335,7 +1335,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param thoughts        the Step-3 thoughts that were produced
 	 * @param flatReplacements the seed placeholder map, read for each tactic's {@code {{tactic n}}} display name
 	 */
-	void writeThoughtsTokens(
+	private void writeThoughtsTokens(
 			Map<String, String> breakdownValues, Set<Integer> qualifying, List<TacticThoughts> thoughts,
 			Map<String, String> flatReplacements) {
 		Map<Integer, List<String>> byTactic = new LinkedHashMap<>();
@@ -1367,7 +1367,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param conclusions the Step-2 conclusions, source of the per-tactic overviews
 	 * @return the campaign results with the per-tactic overviews filled in
 	 */
-	ClaudeResults mergeTacticOverviews(ClaudeResults campaign, List<TacticConclusion> conclusions) {
+	private ClaudeResults mergeTacticOverviews(ClaudeResults campaign, List<TacticConclusion> conclusions) {
 		Map<Integer, String> overviews = new LinkedHashMap<>();
 		for (TacticConclusion c : conclusions) {
 			if (c.overview() != null && !c.overview().isBlank()) {
@@ -1389,7 +1389,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param campaign the raw {@link ClaudeResults} returned by {@code batchCampaignResults}, before overview merge
 	 * @return {@code true} when the results overviews, performance thoughts and recommendations are all empty
 	 */
-	boolean isCampaignResultsEmpty(ClaudeResults campaign) {
+	private boolean isCampaignResultsEmpty(ClaudeResults campaign) {
 		return campaign.resultsOverviews().isEmpty()
 				&& campaign.thoughtsOnPerformance().isEmpty()
 				&& campaign.recommendations().isEmpty();
@@ -1403,7 +1403,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param data the aggregated campaign snapshot whose tactic keys bound the count
 	 * @return the real tactic count (1..28)
 	 */
-	int maxTacticNumber(CampaignData data) {
+	private int maxTacticNumber(CampaignData data) {
 		int max = 0;
 		if (data != null && data.tactics() != null) {
 			for (Integer n : data.tactics().keySet()) {
@@ -1423,7 +1423,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param flatReplacements the placeholder map read back from the sheet
 	 * @return the active tactic count (1..28)
 	 */
-	int deriveTacticCount(Map<String, String> flatReplacements) {
+	private int deriveTacticCount(Map<String, String> flatReplacements) {
 		// A deck is always built for at least one tactic: this flow only runs on a workbook that
 		// already passed review, so an unnamed first tactic means a bad read, not an empty report.
 		return Math.clamp(tacticCounter.countFromPlaceholders(flatReplacements), 1, MAX_TACTICS);
@@ -1438,7 +1438,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param payload the inbound generation payload
 	 * @return a narrative-only payload carrying no raw media-plan/adjustment/estimate grids
 	 */
-	GeneratePayload narrativeOnly(GeneratePayload payload) {
+	private GeneratePayload narrativeOnly(GeneratePayload payload) {
 		return new GeneratePayload(
 				payload.brief(), payload.reportType(), null,
 				List.of(), List.of(), List.of(), List.of(), List.of(),
@@ -1461,7 +1461,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param sheetValues the reviewed-sheet placeholder values overlaid on top of the narrative
 	 * @return the merged placeholder map, sheet values winning over narrative, with aliases applied
 	 */
-	Map<String, String> buildSheetFlatReplacements(
+	private Map<String, String> buildSheetFlatReplacements(
 			GeneratePayload payload, CampaignData data, ClaudeStrategic ccA, ClaudeResults ccC,
 			CampaignFrequencies frequencies, int tacticCount, Map<String, String> sheetValues) {
 		GeneratePayload narrativePayload = narrativeOnly(payload);
@@ -1484,7 +1484,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 *                 may be empty when its section was not selected
 	 * @return one short line per non-blank breakdown conclusion, bounded in both line length and count
 	 */
-	List<String> buildBreakdownDigest(List<BreakdownValues> sections) {
+	private List<String> buildBreakdownDigest(List<BreakdownValues> sections) {
 		List<String> digest = new ArrayList<>();
 		for (BreakdownValues section : sections) {
 			if (section == null || section.values() == null) {
@@ -1564,7 +1564,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 *                  reviewed sheet for the slides-from-sheet flow); {@code null}/blank leaves the brief untouched
 	 * @return the brief, optionally followed by a labelled change-log section
 	 */
-	String combineBriefWithChangeLog(String brief, String changeLog) {
+	private String combineBriefWithChangeLog(String brief, String changeLog) {
 		String safeBrief = brief == null ? "" : brief;
 		if (changeLog == null || changeLog.isBlank()) {
 			return safeBrief;
@@ -1613,7 +1613,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param tacticCount the active tactic count
 	 * @param reportType  report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
 	 */
-	void fillEomDashboards(Map<String, String> flat, int tacticCount, String reportType) {
+	private void fillEomDashboards(Map<String, String> flat, int tacticCount, String reportType) {
 		if (EOM_REPORT_TYPE.equals(reportType)) {
 			eomDashboards.fill(flat, tacticCount);
 		}
@@ -1627,7 +1627,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param from the source token key whose value is parsed and abbreviated
 	 * @param to   the destination token key receiving the compact string
 	 */
-	void compactToken(Map<String, String> flat, String from, String to) {
+	private void compactToken(Map<String, String> flat, String from, String to) {
 		String value = flat.get(from);
 		if (value == null || value.isBlank()) {
 			return;
@@ -1643,7 +1643,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param from the source token key
 	 * @param to   the destination token key
 	 */
-	void copyToken(Map<String, String> flat, String from, String to) {
+	private void copyToken(Map<String, String> flat, String from, String to) {
 		String value = flat.get(from);
 		if (value != null && !value.isBlank()) {
 			flat.put(to, value);
@@ -1658,7 +1658,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	 * @param data the campaign data reconstructed from the sheet
 	 * @return a {@code "n=name spend=… imps=…"} summary, joined by {@code "; "}
 	 */
-	String describeTactics(CampaignData data) {
+	private String describeTactics(CampaignData data) {
 		if (data == null || data.tactics() == null) {
 			return "";
 		}
