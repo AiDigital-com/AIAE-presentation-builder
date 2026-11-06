@@ -575,7 +575,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @return the {@code count} normalized strings in slide order (blank where the model never answered), or an
 	 * empty list when no attempt produced a single usable field
 	 */
-	private List<String> runSection(
+	List<String> runSection(
 			String label, int tacticNum, java.util.Optional<String> prompt, int count,
 			java.util.function.IntUnaryOperator limitAt) {
 		if (prompt.isEmpty()) {
@@ -625,7 +625,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param values one attempt's field values in slide order, blank where unanswered
 	 * @return the number of non-blank values
 	 */
-	private int filledCount(List<String> values) {
+	int filledCount(List<String> values) {
 		return (int) values.stream().filter(value -> value != null && !value.isBlank()).count();
 	}
 
@@ -638,7 +638,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param tacticNum the tactic whose section reply was rejected
 	 * @param reason    what was wrong with the reply, in words that survive being shown to a user
 	 */
-	private void rejectSection(String label, int tacticNum, String reason) {
+	void rejectSection(String label, int tacticNum, String reason) {
 		log.warn("[claude:{}] tactic {} rejected: {}", label, tacticNum, reason);
 		failureLog.record(label, "tactic " + tacticNum + " — " + reason + ".");
 	}
@@ -652,7 +652,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param reason    what was wrong with the reply, in words that survive being shown to a user
 	 * @return a failed attempt carrying the reason
 	 */
-	private ClaudeSectionAttempt rejectedSection(String label, int tacticNum, String reason) {
+	ClaudeSectionAttempt rejectedSection(String label, int tacticNum, String reason) {
 		rejectSection(label, tacticNum, reason);
 		return new ClaudeSectionAttempt(List.of(), reason);
 	}
@@ -695,7 +695,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @return the attempt carrying {@code count} values in slide order (blank where unanswered), with a
 	 * rejection reason when any field is missing; empty values with a reason when the call itself failed
 	 */
-	private ClaudeSectionAttempt sectionOnce(
+	ClaudeSectionAttempt sectionOnce(
 			String label, int tacticNum, String prompt, int count, java.util.function.IntUnaryOperator limitAt) {
 		// allowPartial lets the transport repair a reply the model never closed — the same salvage the tactic
 		// overviews and campaign results already get, and the reason a reply cut off in its last field still
@@ -746,7 +746,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param count the number of fields expected
 	 * @return the node to read the fields off
 	 */
-	private JsonNode sectionFieldsNode(JsonNode obj, int count) {
+	JsonNode sectionFieldsNode(JsonNode obj, int count) {
 		if (obj.has("field_1") || obj.isArray()) {
 			return obj;
 		}
@@ -767,7 +767,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param index the zero-based slide slot
 	 * @return the trimmed value, or an empty string when the reply does not carry it
 	 */
-	private String sectionFieldValue(JsonNode node, int index) {
+	String sectionFieldValue(JsonNode node, int index) {
 		if (node == null) {
 			return "";
 		}
@@ -899,7 +899,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param node the parsed takeaway array (may be {@code null} or not an array)
 	 * @return the takeaways in slide order, empty when the reply carried none
 	 */
-	private List<String> readPacingTakeaways(JsonNode node) {
+	List<String> readPacingTakeaways(JsonNode node) {
 		if (node == null || !node.isArray()) {
 			return List.of();
 		}
@@ -1156,7 +1156,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param node the {@code what_we_did} node of the parsed reply (may be null or a non-array)
 	 * @return the chains in reply order, empty when the reply carried none
 	 */
-	private List<WhatWeDidStep> readWhatWeDid(JsonNode node) {
+	List<WhatWeDidStep> readWhatWeDid(JsonNode node) {
 		List<WhatWeDidStep> steps = new ArrayList<>();
 		if (node == null || !node.isArray()) {
 			return steps;
@@ -1193,7 +1193,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @return the three columns, or {@code null} when the reply carried none of them — which is every
 	 * end-of-campaign run, whose deck has no such slide
 	 */
-	private FocusNextMonth readFocusNextMonth(JsonNode parsed) {
+	FocusNextMonth readFocusNextMonth(JsonNode parsed) {
 		List<String> carryForward = readFocusColumn(parsed.get("carry_forward"));
 		List<String> pivots = readFocusColumn(parsed.get("pivot"));
 		List<String> tests = readFocusColumn(parsed.get("new_test"));
@@ -1210,7 +1210,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param node the parsed column array (may be {@code null} or not an array)
 	 * @return the column's lines in slot order, empty when the reply carried none
 	 */
-	private List<String> readFocusColumn(JsonNode node) {
+	List<String> readFocusColumn(JsonNode node) {
 		if (node == null || !node.isArray()) {
 			return List.of();
 		}
@@ -1284,7 +1284,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param values the strings to weigh; may contain nulls
 	 * @return the number of values holding non-blank text
 	 */
-	private int countNonBlank(String... values) {
+	int countNonBlank(String... values) {
 		int count = 0;
 		for (String value : values) {
 			if (value != null && !value.isBlank()) {
@@ -1307,7 +1307,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param maxTokens output budget for the reply
 	 * @return the parsed reply object, or {@code null} when no attempt produced a usable one
 	 */
-	private JsonNode callAlignWithRetry(String prompt, int maxTokens) {
+	JsonNode callAlignWithRetry(String prompt, int maxTokens) {
 		for (int attempt = 1; attempt <= ALIGN_ATTEMPTS; attempt++) {
 			String attemptPrompt = attempt == 1 ? prompt : prompt + ALIGN_RETRY_SUFFIX;
 			JsonNode parsed = messagesClient.callJsonObject(
@@ -1364,7 +1364,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param dailyPivots tactic number to its daily pacing series, passed through to the prompt
 	 * @return every chunk's conclusions, ordered by tactic number
 	 */
-	private List<TacticConclusion> runConclusionChunks(
+	List<TacticConclusion> runConclusionChunks(
 			CampaignData data, List<List<Integer>> chunks, String brief, Map<Integer, Pivot> dailyPivots) {
 		if (chunks.size() == 1) {
 			return tacticConclusionsResilient(data, chunks.getFirst(), brief, dailyPivots);
@@ -1390,7 +1390,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param future the chunk's pending conclusions
 	 * @return the chunk's conclusions, or empty when it failed
 	 */
-	private List<TacticConclusion> joinConclusions(CompletableFuture<List<TacticConclusion>> future) {
+	List<TacticConclusion> joinConclusions(CompletableFuture<List<TacticConclusion>> future) {
 		try {
 			return future.join();
 		} catch (CompletionException | CancellationException e) {
@@ -1415,7 +1415,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param dailyPivots tactic number to its daily pacing series, passed through to the prompt
 	 * @return the tactics' conclusions; empty only when every attempt failed
 	 */
-	private List<TacticConclusion> tacticConclusionsResilient(
+	List<TacticConclusion> tacticConclusionsResilient(
 			CampaignData data, List<Integer> chunk, String brief, Map<Integer, Pivot> dailyPivots) {
 		if (chunk == null || chunk.isEmpty()) {
 			return List.of();
@@ -1455,7 +1455,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param conclusions the conclusions parsed out of one reply
 	 * @return the answered tactic numbers
 	 */
-	private Set<Integer> answeredTactics(List<TacticConclusion> conclusions) {
+	Set<Integer> answeredTactics(List<TacticConclusion> conclusions) {
 		return conclusions.stream()
 				.filter(conclusion -> conclusion.overview() != null && !conclusion.overview().isBlank())
 				.map(TacticConclusion::tacticNum)
@@ -1469,7 +1469,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param chunk the tactics this call covers
 	 * @return the {@code max_tokens} to send
 	 */
-	private int conclusionsMaxTokens(List<Integer> chunk) {
+	int conclusionsMaxTokens(List<Integer> chunk) {
 		return Math.min(CONCLUSIONS_MAX_TOKENS_CAP, CONCLUSIONS_BASE_TOKENS
 				+ CONCLUSIONS_TOKENS_PER_TACTIC * chunk.size());
 	}
@@ -1485,7 +1485,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param dailyPivots tactic number to its daily pacing series, read by the end-of-month wording only
 	 * @return the tactics' conclusions; empty when the chunk produced no usable reply
 	 */
-	private List<TacticConclusion> tacticConclusionsChunk(
+	List<TacticConclusion> tacticConclusionsChunk(
 			CampaignData data, List<Integer> chunk, String brief, Map<Integer, Pivot> dailyPivots) {
 		List<TacticConclusion> out = new ArrayList<>();
 		var prompt = promptBuilder.tacticConclusionsPrompt(data, chunk, brief, dailyPivots);
@@ -1542,7 +1542,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param parsed   the parsed reply, possibly a bare conclusion object
 	 * @param chunk    the tactics this call covered; recovery applies only to a single-tactic chunk
 	 */
-	private void recoverBareConclusion(Map<Integer, JsonNode> byTactic, JsonNode parsed, List<Integer> chunk) {
+	void recoverBareConclusion(Map<Integer, JsonNode> byTactic, JsonNode parsed, List<Integer> chunk) {
 		if (!byTactic.isEmpty() || chunk == null || chunk.size() != 1 || parsed == null || !parsed.isObject()) {
 			return;
 		}
@@ -1563,7 +1563,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param parsed the parsed combined reply
 	 * @return tactic number → its conclusion object, first writer wins per number
 	 */
-	private Map<Integer, JsonNode> conclusionsByTactic(JsonNode parsed) {
+	Map<Integer, JsonNode> conclusionsByTactic(JsonNode parsed) {
 		Map<Integer, JsonNode> byTactic = new LinkedHashMap<>();
 		var fields = parsed.fields();
 		while (fields.hasNext()) {
@@ -1587,7 +1587,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param node   the raw JSON value (may be null/blank)
 	 * @param limit  the field's character budget
 	 */
-	private void addConclusionField(List<ClaudeCompressionField> fields, String key, JsonNode node, int limit) {
+	void addConclusionField(List<ClaudeCompressionField> fields, String key, JsonNode node, int limit) {
 		String raw = node == null ? "" : node.asText("").trim();
 		fields.add(new ClaudeCompressionField(key, raw, limit));
 	}
@@ -1612,7 +1612,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param brief free-text campaign brief passed through to the prompt
 	 * @return the tactic's thoughts, or {@code null} when neither attempt produced a usable one
 	 */
-	private TacticThoughts tacticThoughtsResilient(TacticThoughtsInput input, String brief) {
+	TacticThoughts tacticThoughtsResilient(TacticThoughtsInput input, String brief) {
 		TacticThoughts first = tacticThoughtsOne(input, brief);
 		if (thoughtsCompleteness.isCompleteThoughts(first)) {
 			return first;
@@ -1643,7 +1643,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param brief free-text campaign brief passed through to the prompt
 	 * @return the tactic's thoughts, possibly with fewer than four filled, or {@code null} when unusable
 	 */
-	private TacticThoughts tacticThoughtsOne(TacticThoughtsInput input, String brief) {
+	TacticThoughts tacticThoughtsOne(TacticThoughtsInput input, String brief) {
 		int thoughtLimit = input.compact() ? COMPACT_THOUGHT_LIMIT : copyLimits().getThoughtLimit();
 		int storyLimit = input.compact() ? COMPACT_STORY_LIMIT : copyLimits().getStoryLimit();
 		var prompt = promptBuilder.buildTacticThoughtsPrompt(input, brief, thoughtLimit, storyLimit);
@@ -1724,7 +1724,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param nextMonthLimit the character budget of the month-ahead directive
 	 * @return the tactic's narrative, or {@code null} when the reply carried nothing usable
 	 */
-	private TacticPacing pacingFrom(int tacticNum, JsonNode parsed, int takeawayLimit, int nextMonthLimit) {
+	TacticPacing pacingFrom(int tacticNum, JsonNode parsed, int takeawayLimit, int nextMonthLimit) {
 		List<ClaudeCompressionField> fields = List.of(
 				pacingField(tacticNum, "what_worked", parsed, takeawayLimit),
 				pacingField(tacticNum, "watch_outs", parsed, takeawayLimit),
@@ -1753,7 +1753,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param limit     the field's character budget
 	 * @return the compression field, carrying an empty string when the reply omitted the field
 	 */
-	private ClaudeCompressionField pacingField(int tacticNum, String field, JsonNode parsed, int limit) {
+	ClaudeCompressionField pacingField(int tacticNum, String field, JsonNode parsed, int limit) {
 		return new ClaudeCompressionField(pacingKey(tacticNum, field), parsed.path(field).asText("").trim(), limit);
 	}
 
@@ -1764,7 +1764,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param field     the reply's JSON field name
 	 * @return the key the compressed value is read back under
 	 */
-	private String pacingKey(int tacticNum, String field) {
+	String pacingKey(int tacticNum, String field) {
 		return tacticNum + "_pacing_" + field;
 	}
 
@@ -1790,7 +1790,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param parsed the reply's JSON object
 	 * @return the MPO copy, or {@code null} when the reply carried nothing usable
 	 */
-	private MpoNarrative mpoNarrativeFrom(JsonNode parsed) {
+	MpoNarrative mpoNarrativeFrom(JsonNode parsed) {
 		List<ClaudeCompressionField> fields = new ArrayList<>();
 		addConclusionField(fields, "hhi", parsed.path("audience_hhi"), MpoPromptSpec.MPO_HHI_LIMIT);
 		addConclusionField(fields, "headline", parsed.path("recommendations_headline"),
@@ -1877,7 +1877,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param prompt the paid narrative prompt
 	 * @return the reply's JSON object, or {@code null} when the call failed or the reply could not be parsed
 	 */
-	private JsonNode callPaidNarrative(String prompt) {
+	JsonNode callPaidNarrative(String prompt) {
 		return messagesClient.callJsonObject(prompt, PaidPromptSpec.PAID_NARRATIVE_MAX_TOKENS,
 				BREAKDOWN_TIMEOUT_SEC, PaidPromptSpec.PAID_NARRATIVE_LABEL, true);
 	}
@@ -1919,7 +1919,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param wanted the fields the prompt asked for
 	 * @return the copy, or {@code null} when the reply carried nothing usable
 	 */
-	private Map<String, String> paidNarrativeFrom(JsonNode parsed, List<PaidCopyField> wanted) {
+	Map<String, String> paidNarrativeFrom(JsonNode parsed, List<PaidCopyField> wanted) {
 		List<ClaudeCompressionField> fields = new ArrayList<>();
 		for (PaidCopyField field : wanted) {
 			addConclusionField(fields, field.key(), parsed.path(field.key()), field.limit());
@@ -1973,7 +1973,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param timeoutSec per-request HTTP timeout in seconds
 	 * @return the campaign-level copy, or {@code null} when the call produced nothing usable
 	 */
-	private ClaudeResults campaignResultsOne(String prompt, int maxTokens, int timeoutSec) {
+	ClaudeResults campaignResultsOne(String prompt, int maxTokens, int timeoutSec) {
 		JsonNode parsed = messagesClient.callJsonObject(prompt, maxTokens, timeoutSec, "BatchCampaign", true);
 		if (parsed == null) {
 			return null;
@@ -2088,7 +2088,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @param recTexts         the four recommendation texts, blank where the reply had none
 	 * @return {@code true} when at least one of the three main sections carries content
 	 */
-	private boolean campaignReplyUsable(
+	boolean campaignReplyUsable(
 			Map<Integer, String> resultsOverviews, List<String> thoughts, String[] recTitles, String[] recTexts) {
 		for (String overview : resultsOverviews.values()) {
 			if (normalizer.notBlank(overview)) {

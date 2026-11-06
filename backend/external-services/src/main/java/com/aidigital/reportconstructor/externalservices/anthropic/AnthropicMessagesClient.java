@@ -204,7 +204,7 @@ public class AnthropicMessagesClient {
 	 *                     had, and the only way a reply that merely forgot its final {@code ]} survives
 	 * @return the parsed array node, or {@code null} when no usable array could be recovered
 	 */
-	private JsonNode callJsonArray(
+	JsonNode callJsonArray(
 			String prompt, int maxTokens, int timeoutSec, String label, boolean allowPartial) {
 		JsonNode resp = callRaw(prompt, maxTokens, timeoutSec, label);
 		if (resp == null) {
@@ -277,7 +277,7 @@ public class AnthropicMessagesClient {
 	 * @param text candidate JSON text
 	 * @return the array node, or {@code null}
 	 */
-	private JsonNode readArray(String text) {
+	JsonNode readArray(String text) {
 		if (text == null || text.isBlank()) {
 			return null;
 		}
@@ -341,7 +341,7 @@ public class AnthropicMessagesClient {
 	 * @param text the candidate JSON text
 	 * @return the text with stray inner quotes escaped; unchanged when it had none
 	 */
-	private String escapeStrayQuotes(String text) {
+	String escapeStrayQuotes(String text) {
 		StringBuilder out = new StringBuilder(text.length() + 16);
 		boolean inString = false;
 		for (int i = 0; i < text.length(); i++) {
@@ -379,7 +379,7 @@ public class AnthropicMessagesClient {
 	 * @param quote index of a {@code "} met inside a string
 	 * @return {@code true} when the quote closes the string, {@code false} when it is a quotation mark in the prose
 	 */
-	private boolean closesString(String text, int quote) {
+	boolean closesString(String text, int quote) {
 		int next = skipBlanks(text, quote + 1);
 		if (next >= text.length() || ":}]".indexOf(text.charAt(next)) >= 0) {
 			return true;
@@ -396,7 +396,7 @@ public class AnthropicMessagesClient {
 	 * @param from  the index to start at
 	 * @return the index of the first non-blank character at or after {@code from}, or the text's length
 	 */
-	private int skipBlanks(String text, int from) {
+	int skipBlanks(String text, int from) {
 		int i = from;
 		while (i < text.length() && Character.isWhitespace(text.charAt(i))) {
 			i++;
@@ -411,7 +411,7 @@ public class AnthropicMessagesClient {
 	 * @param text candidate JSON text
 	 * @return the object node, or {@code null}
 	 */
-	private JsonNode readObject(String text) {
+	JsonNode readObject(String text) {
 		if (text == null || text.isBlank()) {
 			return null;
 		}
@@ -445,7 +445,7 @@ public class AnthropicMessagesClient {
 	 * @param shape the expected top-level JSON shape, named in the message (e.g. {@code "object"})
 	 * @param text  the reply text, with any Markdown code fences already stripped
 	 */
-	private void logUnparseableReply(String label, String shape, String text) {
+	void logUnparseableReply(String label, String shape, String text) {
 		log.warn("[claude:{}] JSON {} parse failed ({} chars); reply began: {}",
 				label, shape, text.length(), snippet(text));
 		log.debug("[claude:{}] full unparseable reply:\n{}", label, text);
@@ -467,7 +467,7 @@ public class AnthropicMessagesClient {
 	 * @param label     batch tag the call was logged under
 	 * @param maxTokens the output budget the reply ran out of
 	 */
-	private void noteSalvagedTruncation(String label, int maxTokens) {
+	void noteSalvagedTruncation(String label, int maxTokens) {
 		log.warn("[claude:{}] reply ran out of its {}-token output budget; salvaged the part that arrived, so "
 				+ "later fields kept their previous values", label, maxTokens);
 		failureLog.record(label, "reply ran out of its " + maxTokens + "-token output budget; the fields it "
@@ -559,7 +559,7 @@ public class AnthropicMessagesClient {
 	 * @return either the plain prompt string, or a two-element list of content blocks with a cache breakpoint
 	 * on the first
 	 */
-	private Object buildUserContent(String prompt) {
+	Object buildUserContent(String prompt) {
 		int marker = prompt.indexOf(CACHE_BREAKPOINT);
 		String cachedPrefix = marker > 0 ? prompt.substring(0, marker) : "";
 		if (marker <= 0 || cachedPrefix.isBlank()) {
@@ -601,7 +601,7 @@ public class AnthropicMessagesClient {
 	 * @param maxTokens the caller's requested reply budget
 	 * @return the budget sent to the API, never below the caller's figure
 	 */
-	private int effectiveMaxTokens(int maxTokens) {
+	int effectiveMaxTokens(int maxTokens) {
 		return (int) Math.ceil(maxTokens * outputTokenHeadroom);
 	}
 
@@ -670,7 +670,7 @@ public class AnthropicMessagesClient {
 	 * @param label  short tag identifying this call in log messages
 	 * @return the parsed Messages API response, or {@code null} once the status is permanent or retries run out
 	 */
-	private JsonNode sendWithRetry(HttpRequest req, String prompt, String label) {
+	JsonNode sendWithRetry(HttpRequest req, String prompt, String label) {
 		int attempts = maxRetries + 1;
 		for (int attempt = 1; attempt <= attempts; attempt++) {
 			boolean lastAttempt = attempt == attempts;

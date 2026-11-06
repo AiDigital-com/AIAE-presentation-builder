@@ -88,7 +88,7 @@ public class PaidTokenHelperImpl implements PaidTokenHelper {
 	 * @param window the report window, or {@code null}
 	 * @return the tokens, keyed {@code {{ps_…}}}
 	 */
-	private Map<String, String> searchTokens(PaidChannelData d, boolean eom, FlightDates window) {
+	Map<String, String> searchTokens(PaidChannelData d, boolean eom, FlightDates window) {
 		Map<String, String> t = commonTokens(d, eom, window);
 		String p = d.kind().tokenPrefix();
 		for (int n = 1; n <= SEARCH_CAMPAIGN_SLOTS; n++) {
@@ -125,7 +125,7 @@ public class PaidTokenHelperImpl implements PaidTokenHelper {
 	 * @param window the report window, or {@code null}
 	 * @return the tokens, keyed {@code {{pso_…}}}
 	 */
-	private Map<String, String> socialTokens(PaidChannelData d, boolean eom, FlightDates window) {
+	Map<String, String> socialTokens(PaidChannelData d, boolean eom, FlightDates window) {
 		Map<String, String> t = commonTokens(d, eom, window);
 		String p = d.kind().tokenPrefix();
 		for (int n = 1; n <= SOCIAL_DONUT_SLOTS; n++) {
@@ -175,7 +175,7 @@ public class PaidTokenHelperImpl implements PaidTokenHelper {
 	 * @param window the report window, or {@code null}
 	 * @return the tokens, in a mutable insertion-ordered map
 	 */
-	private Map<String, String> commonTokens(PaidChannelData d, boolean eom, FlightDates window) {
+	Map<String, String> commonTokens(PaidChannelData d, boolean eom, FlightDates window) {
 		String p = d.kind().tokenPrefix();
 		PaidMetrics total = d.total();
 		Map<String, String> t = new LinkedHashMap<>();
@@ -214,7 +214,7 @@ public class PaidTokenHelperImpl implements PaidTokenHelper {
 	 * @param p    the channel token prefix
 	 * @param ages the export's age rows
 	 */
-	private void putAges(Map<String, String> t, String p, List<PaidRow> ages) {
+	void putAges(Map<String, String> t, String p, List<PaidRow> ages) {
 		Map<String, PaidMetrics> byBand = new LinkedHashMap<>();
 		for (String band : AGE_BANDS) {
 			byBand.put(band, PaidMetrics.ZERO);
@@ -242,7 +242,7 @@ public class PaidTokenHelperImpl implements PaidTokenHelper {
 	 * @param n   the 1-based card number
 	 * @param ads the export's ads, ranked
 	 */
-	private void putAd(Map<String, String> t, String p, int n, List<PaidAd> ads) {
+	void putAd(Map<String, String> t, String p, int n, List<PaidAd> ads) {
 		String k = "ad_" + n + "_";
 		if (n > ads.size()) {
 			for (String field : List.of("badge", "name", "campaign", "group", "url", "headline", "desc", "clicks",
@@ -275,7 +275,7 @@ public class PaidTokenHelperImpl implements PaidTokenHelper {
 	 * @param prefix the row's token prefix, e.g. {@code camp_1_} or {@code camp_total_}
 	 * @param m      the row's figures, or {@code null} for an empty row
 	 */
-	private void putCampaignRow(Map<String, String> t, String p, String prefix, PaidMetrics m) {
+	void putCampaignRow(Map<String, String> t, String p, String prefix, PaidMetrics m) {
 		t.put(token(p, prefix + "imps"), m == null ? DASH : fmt.count(m.impressions()));
 		t.put(token(p, prefix + "clicks"), m == null ? DASH : fmt.count(m.clicks()));
 		t.put(token(p, prefix + "ctr"), m == null ? DASH : fmt.pct1(m.ctr()));
@@ -318,7 +318,7 @@ public class PaidTokenHelperImpl implements PaidTokenHelper {
 	 * @param rows the rows to search
 	 * @param rate the rate to minimise
 	 */
-	private void putBest(Map<String, String> t, String p, String base, List<PaidRow> rows,
+	void putBest(Map<String, String> t, String p, String base, List<PaidRow> rows,
 			Function<PaidMetrics, Double> rate) {
 		Optional<PaidRow> best = lowest(rows, rate);
 		t.put(token(p, base), best.map(r -> fmt.money(rate.apply(r.metrics()))).orElse(DASH));
@@ -334,7 +334,7 @@ public class PaidTokenHelperImpl implements PaidTokenHelper {
 	 * @param rows the rows to search
 	 * @param rate the rate to minimise
 	 */
-	private void putBestValue(Map<String, String> t, String p, String key, List<PaidRow> rows,
+	void putBestValue(Map<String, String> t, String p, String key, List<PaidRow> rows,
 			Function<PaidMetrics, Double> rate) {
 		t.put(token(p, key), lowest(rows, rate).map(r -> fmt.money(rate.apply(r.metrics()))).orElse(DASH));
 	}
@@ -349,8 +349,7 @@ public class PaidTokenHelperImpl implements PaidTokenHelper {
 	 * @param rows  the ranked rows
 	 * @param label how to label the row
 	 */
-	private void putTop(
-			Map<String, String> t, String p, String base, List<PaidRow> rows, Function<PaidRow, String> label) {
+	void putTop(Map<String, String> t, String p, String base, List<PaidRow> rows, Function<PaidRow, String> label) {
 		Optional<PaidRow> top = rows.stream().findFirst();
 		double total = conversions(rows);
 		t.put(token(p, base + "_name"), top.map(r -> label.apply(r).toUpperCase(Locale.ROOT)).orElse(DASH));
@@ -390,7 +389,7 @@ public class PaidTokenHelperImpl implements PaidTokenHelper {
 	 * @param name a Meta name such as {@code "Noventra Meta - LAL"} or {@code "Aviation - Reel"}
 	 * @return the part after the last {@code " - "} ({@code "LAL"}, {@code "Reel"}), or the whole name
 	 */
-	private String lastPart(String name) {
+	String lastPart(String name) {
 		int i = name.lastIndexOf(NAME_PART_SEPARATOR);
 		return i < 0 ? name : name.substring(i + NAME_PART_SEPARATOR.length());
 	}

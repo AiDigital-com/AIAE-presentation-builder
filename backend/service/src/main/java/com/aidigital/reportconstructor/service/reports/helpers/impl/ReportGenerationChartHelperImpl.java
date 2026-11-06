@@ -175,7 +175,7 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 	 * @param pivots tactic number &rarr; its reconstructed pacing pivot
 	 * @return tactic number &rarr; the pivot's data-row count
 	 */
-	private Map<Integer, Integer> pivotSizes(Map<Integer, Pivot> pivots) {
+	Map<Integer, Integer> pivotSizes(Map<Integer, Pivot> pivots) {
 		Map<Integer, Integer> sizes = new LinkedHashMap<>();
 		pivots.forEach((n, pivot) -> sizes.put(n, pivot.data().size()));
 		return sizes;
@@ -191,7 +191,7 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 	 * @param distImps         out: tactic number &rarr; impressions
 	 * @param kpiTypes         out: tactic number &rarr; KPI type derived from the tactic's channel name
 	 */
-	private void populateTacticMaps(
+	void populateTacticMaps(
 			Map<String, String> flatReplacements, int tacticCount,
 			Map<Integer, String> distNames, Map<Integer, Double> distImps, Map<Integer, String> kpiTypes) {
 		for (int n = 1; n <= tacticCount; n++) {
@@ -422,8 +422,7 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 	 * @param tacticCount     the active tactic count; tactics above it are dropped
 	 * @return the qualifying tactic numbers, ascending
 	 */
-	private Set<Integer> tacticsWith(
-			Map<Integer, Set<BreakdownType>> enabledByTactic, BreakdownType type, int tacticCount) {
+	Set<Integer> tacticsWith(Map<Integer, Set<BreakdownType>> enabledByTactic, BreakdownType type, int tacticCount) {
 		Set<Integer> out = new TreeSet<>();
 		enabledByTactic.forEach((tacticNum, enabled) -> {
 			if (tacticNum != null && tacticNum >= 1 && tacticNum <= tacticCount
@@ -445,7 +444,7 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 	 * @return one age job per tactic (empty when its age sub-table had no row) plus a segment job for every
 	 *         tactic whose segment sub-table carried a row
 	 */
-	private List<BreakdownChartJob> audienceJobs(String sheetUrl, Set<Integer> tacticNums, String userGoogleToken) {
+	List<BreakdownChartJob> audienceJobs(String sheetUrl, Set<Integer> tacticNums, String userGoogleToken) {
 		if (tacticNums.isEmpty()) {
 			return List.of();
 		}
@@ -485,7 +484,7 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 	 * @param userGoogleToken OAuth token for Google Sheets, or null
 	 * @return one job per tactic, with no slices when its device table had no row
 	 */
-	private List<BreakdownChartJob> deviceJobs(String sheetUrl, Set<Integer> tacticNums, String userGoogleToken) {
+	List<BreakdownChartJob> deviceJobs(String sheetUrl, Set<Integer> tacticNums, String userGoogleToken) {
 		if (tacticNums.isEmpty()) {
 			return List.of();
 		}

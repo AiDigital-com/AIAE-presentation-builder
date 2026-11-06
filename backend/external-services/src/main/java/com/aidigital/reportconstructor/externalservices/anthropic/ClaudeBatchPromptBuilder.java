@@ -307,7 +307,7 @@ public class ClaudeBatchPromptBuilder {
 	 *
 	 * @return the field spec line, newline-terminated
 	 */
-	private String audienceSegmentsSpec() {
+	String audienceSegmentsSpec() {
 		return "  \"audience_segments\": string,   // ≤" + audienceSegmentsLimit() + " chars. WHO is targeted — "
 				+ "1-3 short segment names, comma-separated, e.g. \"Luxury Travel, Honeymoons & Romantic Getaways\" "
 				+ "(each one is its own chip on the slide). No platforms/budgets/KPIs. null if no info.\n";
@@ -758,7 +758,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param label the stat's prompt label
 	 * @param value the stat's value as typed in the sheet, possibly blank
 	 */
-	private void appendCreativeStat(StringBuilder block, String label, String value) {
+	void appendCreativeStat(StringBuilder block, String label, String value) {
 		if (value != null && !value.isBlank()) {
 			block.append(label).append(": ").append(value).append('\n');
 		}
@@ -772,7 +772,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param input the tactic's geo block
 	 * @return the tactic's {@code tactic_<n>} context block
 	 */
-	private String geoContextBlock(GeoInsightInput input) {
+	String geoContextBlock(GeoInsightInput input) {
 		GeoTable table = input.table();
 		StringBuilder block = new StringBuilder();
 		block.append("tactic_").append(input.tacticNum()).append(" — ").append(input.tacticName());
@@ -798,7 +798,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param kpiType the tactic's KPI type as the deck spells it, possibly blank
 	 * @return the KPI column header for the prompt block
 	 */
-	private String kpiColumnLabel(String kpiType) {
+	String kpiColumnLabel(String kpiType) {
 		return kpiType == null || kpiType.isBlank() ? "KPI" : kpiType.trim();
 	}
 
@@ -810,7 +810,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param input the tactic's audience block
 	 * @return the tactic's {@code tactic_<n>} context block
 	 */
-	private String audienceContextBlock(AudienceInsightInput input) {
+	String audienceContextBlock(AudienceInsightInput input) {
 		AudienceTable table = input.table();
 		StringBuilder block = new StringBuilder();
 		block.append("tactic_").append(input.tacticNum()).append(" — ").append(input.tacticName()).append('\n');
@@ -839,7 +839,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param input the tactic's device block
 	 * @return the tactic's {@code tactic_<n>} context block
 	 */
-	private String deviceContextBlock(DeviceInsightInput input) {
+	String deviceContextBlock(DeviceInsightInput input) {
 		DeviceTable table = input.table();
 		// Same reason as creativeContextBlock: an audio tactic's completion metric is ACR, not VCR.
 		String completionLabel = completionRateLabel(input.tacticName());
@@ -929,7 +929,7 @@ public class ClaudeBatchPromptBuilder {
 	 *
 	 * @return the instruction block, ending in a blank line before the campaign context
 	 */
-	private String conclusionsInstruction() {
+	String conclusionsInstruction() {
 		return conclusionsRole()
 				+ "For EACH tactic below, return a JSON object carrying exactly ONE field: \"overview\".\n\n"
 				+ conclusionPrinciples()
@@ -959,7 +959,7 @@ public class ClaudeBatchPromptBuilder {
 	 *
 	 * @return the principles block, newline-terminated
 	 */
-	private String conclusionPrinciples() {
+	String conclusionPrinciples() {
 		return conclusionPrincipleList() + "\n";
 	}
 
@@ -1352,7 +1352,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param kpiType the tactic's KPI type as the deck spells it, or blank/null when unknown
 	 * @return the parenthetical KPI suffix, or an empty string when no KPI type is present
 	 */
-	private String kpiSuffix(String kpiType) {
+	String kpiSuffix(String kpiType) {
 		return normalizer.notBlank(kpiType) ? " (KPI: " + kpiType + ")" : "";
 	}
 
@@ -1392,7 +1392,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param input the tactic's publisher input
 	 * @return the tactic's publisher context block
 	 */
-	private String publisherContextBlock(PublisherObservationInput input) {
+	String publisherContextBlock(PublisherObservationInput input) {
 		StringBuilder block = new StringBuilder();
 		block.append("Publisher | Impressions | Share of voice\n");
 		for (PublisherRow row : input.rows()) {
@@ -1434,7 +1434,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param tactic the tactic's parsed performance metrics
 	 * @return the pipe-separated metric line (may be empty when the tactic carries no figures)
 	 */
-	private String tacticMetricLine(Tactic tactic) {
+	String tacticMetricLine(Tactic tactic) {
 		StringBuilder line = new StringBuilder();
 		if (tactic.spend() > 0) {
 			line.append("Actual Spend $").append(fmt.intGroup(Math.round(tactic.spend())));
@@ -1656,7 +1656,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param input the tactic's assembled conclusions
 	 * @return the tactic's conclusions block (blank when it carries nothing to reason over)
 	 */
-	private String tacticThoughtsDataBlock(TacticThoughtsInput input) {
+	String tacticThoughtsDataBlock(TacticThoughtsInput input) {
 		StringBuilder block = new StringBuilder();
 		block.append("tactic_").append(input.tacticNum());
 		if (input.tacticName() != null && !input.tacticName().isBlank()) {
@@ -1683,7 +1683,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param label   the section header (e.g. {@code "GEO"})
 	 * @param bullets the section's bullets, possibly {@code null} or holding blank entries
 	 */
-	private void appendConclusionSection(StringBuilder block, String label, List<String> bullets) {
+	void appendConclusionSection(StringBuilder block, String label, List<String> bullets) {
 		if (bullets == null) {
 			return;
 		}
@@ -1763,7 +1763,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param overviews one entry per group, group 1 first; an entry may be {@code null}
 	 * @return {@code "Group N: text"} lines, or a single line saying there are none
 	 */
-	private List<String> numberedOverviews(List<String> overviews) {
+	List<String> numberedOverviews(List<String> overviews) {
 		List<String> lines = new ArrayList<>();
 		for (int g = 0; overviews != null && g < overviews.size(); g++) {
 			String overview = overviews.get(g);
@@ -1779,7 +1779,7 @@ public class ClaudeBatchPromptBuilder {
 	 *
 	 * @return the fields spec, ending in a blank line
 	 */
-	private String mpoNarrativeFieldsSpec() {
+	String mpoNarrativeFieldsSpec() {
 		return "Write these fields:\n"
 				+ "\"audience_hhi\" (at most " + bufferedLimit(MpoPromptSpec.MPO_HHI_LIMIT)
 				+ " characters) — the household-income "
@@ -1822,7 +1822,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param lines the lines, may be {@code null}
 	 * @return the lines joined by newlines, ending in a newline when not empty
 	 */
-	private String linesOf(List<String> lines) {
+	String linesOf(List<String> lines) {
 		return lines == null || lines.isEmpty() ? "" : String.join("\n", lines) + "\n";
 	}
 
@@ -1831,7 +1831,7 @@ public class ClaudeBatchPromptBuilder {
 	 *
 	 * @return the role paragraph, ending in a blank line
 	 */
-	private String tacticPacingRole() {
+	String tacticPacingRole() {
 		return "You are a senior digital media analyst writing the key-takeaways column of ONE channel's "
 				+ "\"performance vs. plan\" slide in an end-of-month report. The slide shows that channel's "
 				+ "month-to-date figures against the month's goal and against the full flight, and your copy sits "
@@ -1847,7 +1847,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param nextMonthLimit the buffered budget quoted for the month-ahead directive
 	 * @return the fields spec, ending in a blank line
 	 */
-	private String tacticPacingFieldsSpec(int takeawayLimit, int nextMonthLimit) {
+	String tacticPacingFieldsSpec(int takeawayLimit, int nextMonthLimit) {
 		return "Write four fields about THIS channel, each one or two sentences, present tense, "
 				+ "client-friendly:\n"
 				+ "\"what_worked\" (at most " + takeawayLimit + " characters) — what worked best in this channel "
@@ -1869,7 +1869,7 @@ public class ClaudeBatchPromptBuilder {
 	 *
 	 * @return the rules block, ending in a blank line
 	 */
-	private String tacticPacingOutputRules() {
+	String tacticPacingOutputRules() {
 		return "Ground every field in the table given; never invent a metric and never quote a figure the table "
 				+ "does not carry. Analyst tone, no bullet characters, no markdown.\n\n"
 				+ "Return ONLY a JSON object: {\"what_worked\": \"...\", \"watch_outs\": \"...\", "
@@ -1888,7 +1888,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param input the tactic's name, KPI type and METRIC table
 	 * @return the tactic's table block (blank when it carries no figure)
 	 */
-	private String tacticPacingDataBlock(TacticPacingInput input) {
+	String tacticPacingDataBlock(TacticPacingInput input) {
 		StringBuilder rows = new StringBuilder();
 		if (input.metrics() != null) {
 			for (TacticPacingMetric metric : input.metrics()) {
@@ -1918,7 +1918,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param block  the block being built
 	 * @param metric the row to append (may be {@code null})
 	 */
-	private void appendPacingMetric(StringBuilder block, TacticPacingMetric metric) {
+	void appendPacingMetric(StringBuilder block, TacticPacingMetric metric) {
 		if (metric == null || metric.label() == null || metric.label().isBlank()) {
 			return;
 		}
@@ -1942,7 +1942,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param value the cell as the slide prints it (may be {@code null})
 	 * @return the trimmed cell, or an empty string when it carries no figure
 	 */
-	private String pacingCell(String value) {
+	String pacingCell(String value) {
 		if (value == null) {
 			return "";
 		}
@@ -2477,7 +2477,7 @@ public class ClaudeBatchPromptBuilder {
 	 * @param storyLimit   the character budget of the closing story, the last of those strings
 	 * @return the schema line, newline-terminated
 	 */
-	private String alignThoughtsSchema(int thoughtCount, int storyLimit) {
+	String alignThoughtsSchema(int thoughtCount, int storyLimit) {
 		return "  \"thoughts_on_performance\": array, // EXACTLY " + thoughtCount
 				+ " strings, same order as the draft: the analytical paragraphs at ≤"
 				+ copyLimits().getThoughtLimit() + " chars each, then the "

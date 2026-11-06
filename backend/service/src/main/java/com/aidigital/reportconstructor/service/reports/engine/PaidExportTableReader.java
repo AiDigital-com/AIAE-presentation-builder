@@ -80,7 +80,7 @@ public class PaidExportTableReader {
 	 * @param tabName the tab name to look for
 	 * @return the tab's grid, or {@code null} when absent
 	 */
-	private List<List<String>> findTab(Map<String, List<List<String>>> tabs, String tabName) {
+	List<List<String>> findTab(Map<String, List<List<String>>> tabs, String tabName) {
 		if (tabs == null) {
 			return null;
 		}
@@ -100,7 +100,7 @@ public class PaidExportTableReader {
 	 * @param required the columns the header must carry
 	 * @return the header row index, or {@code -1} when no top row has them all
 	 */
-	private int findHeaderRow(List<List<String>> rows, Set<PaidExportColumn> required) {
+	int findHeaderRow(List<List<String>> rows, Set<PaidExportColumn> required) {
 		int limit = Math.min(rows.size(), HEADER_SCAN_ROWS);
 		for (int i = 0; i < limit; i++) {
 			List<String> row = rows.get(i);
@@ -117,7 +117,7 @@ public class PaidExportTableReader {
 	 * @param header the header row
 	 * @return each recognised column's zero-based index
 	 */
-	private Map<PaidExportColumn, Integer> mapColumns(List<String> header) {
+	Map<PaidExportColumn, Integer> mapColumns(List<String> header) {
 		Map<PaidExportColumn, Integer> columns = new EnumMap<>(PaidExportColumn.class);
 		for (int i = 0; i < header.size(); i++) {
 			String cell = normalise(header.get(i));

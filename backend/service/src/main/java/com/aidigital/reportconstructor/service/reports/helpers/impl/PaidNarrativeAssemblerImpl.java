@@ -122,7 +122,7 @@ public class PaidNarrativeAssemblerImpl implements PaidNarrativeAssembler {
 	 * @param label the slide's label for the box
 	 * @return the copy without the leading label; unchanged when it does not start with it
 	 */
-	private String stripLabel(String text, String label) {
+	String stripLabel(String text, String label) {
 		Matcher m = Pattern.compile("^\\s*" + Pattern.quote(label) + "\\s*[:\\-–—]\\s*",
 				Pattern.CASE_INSENSITIVE).matcher(text);
 		if (!m.find() || m.end() >= text.length()) {
@@ -139,7 +139,7 @@ public class PaidNarrativeAssemblerImpl implements PaidNarrativeAssembler {
 	 * @param label the breakdown's label, e.g. {@code KEYWORD}
 	 * @param rows  the breakdown's rows, ranked
 	 */
-	private void addRows(List<String> facts, String label, List<PaidRow> rows) {
+	void addRows(List<String> facts, String label, List<PaidRow> rows) {
 		rows.stream().limit(MAX_ROWS).forEach(r -> facts.add(metricsLine(label + " " + rowName(r), r.metrics())));
 	}
 
@@ -149,7 +149,7 @@ public class PaidNarrativeAssemblerImpl implements PaidNarrativeAssembler {
 	 * @param row the row
 	 * @return e.g. {@code "Brand Exact (Brand)"}
 	 */
-	private String rowName(PaidRow row) {
+	String rowName(PaidRow row) {
 		return row.parent() == null || row.parent().isBlank() ? row.name() : row.name() + " (" + row.parent() + ")";
 	}
 
@@ -160,7 +160,7 @@ public class PaidNarrativeAssemblerImpl implements PaidNarrativeAssembler {
 	 * @param m     the figures
 	 * @return e.g. {@code "TOTAL: impressions 104K, clicks 1.2K, CTR 1.1%, …"}
 	 */
-	private String metricsLine(String label, PaidMetrics m) {
+	String metricsLine(String label, PaidMetrics m) {
 		return label + ": impressions " + fmt.compact(m.impressions())
 				+ ", clicks " + fmt.compact(m.clicks())
 				+ ", CTR " + fmt.pct1(m.ctr())
@@ -177,7 +177,7 @@ public class PaidNarrativeAssemblerImpl implements PaidNarrativeAssembler {
 	 * @param ad the ad
 	 * @return the ad's group, headlines and figures
 	 */
-	private String adLine(PaidAd ad) {
+	String adLine(PaidAd ad) {
 		return metricsLine("AD in " + ad.campaign() + " / " + ad.group() + " — headlines \""
 				+ String.join(" | ", ad.headlines()) + "\"", ad.metrics());
 	}

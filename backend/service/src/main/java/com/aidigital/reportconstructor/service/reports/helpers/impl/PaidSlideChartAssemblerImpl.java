@@ -54,7 +54,7 @@ public class PaidSlideChartAssemblerImpl implements PaidSlideChartAssembler {
 	 * @param d      the channel's parsed export
 	 * @return the chart's data
 	 */
-	private PaidSlideChart chart(PaidChartMarker marker, PaidChannelData d) {
+	PaidSlideChart chart(PaidChartMarker marker, PaidChannelData d) {
 		return switch (marker) {
 			case SEARCH_CLICKS_CTR, SOCIAL_CLICKS_CTR -> clicksCtr(marker, d.months());
 			case SEARCH_SPEND, SOCIAL_SPEND -> spend(marker, d.months());
@@ -69,7 +69,7 @@ public class PaidSlideChartAssemblerImpl implements PaidSlideChartAssembler {
 	 * @param months the delivery per month inside the window
 	 * @return monthly clicks as the columns and monthly CTR (a fraction) as the line
 	 */
-	private PaidSlideChart clicksCtr(PaidChartMarker marker, List<PaidMonth> months) {
+	PaidSlideChart clicksCtr(PaidChartMarker marker, List<PaidMonth> months) {
 		List<Double> clicks = new ArrayList<>();
 		List<Double> ctr = new ArrayList<>();
 		for (PaidMonth m : months) {
@@ -85,7 +85,7 @@ public class PaidSlideChartAssemblerImpl implements PaidSlideChartAssembler {
 	 * @param months the delivery per month inside the window
 	 * @return monthly spend as the columns
 	 */
-	private PaidSlideChart spend(PaidChartMarker marker, List<PaidMonth> months) {
+	PaidSlideChart spend(PaidChartMarker marker, List<PaidMonth> months) {
 		List<Double> cost = months.stream().map(m -> m.metrics().cost()).toList();
 		return new PaidSlideChart(marker, monthLabels(months), cost, List.of(), null);
 	}

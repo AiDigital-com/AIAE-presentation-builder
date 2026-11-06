@@ -109,7 +109,7 @@ public class CreativeBreakdownHelperImpl implements CreativeBreakdownHelper {
 	 * @param enabledByTactic 1-based tactic number → the breakdown sections that tactic enabled
 	 * @return the tactic numbers with Creative analysis enabled (empty when none did)
 	 */
-	private Set<Integer> creativeTactics(Map<Integer, Set<BreakdownType>> enabledByTactic) {
+	Set<Integer> creativeTactics(Map<Integer, Set<BreakdownType>> enabledByTactic) {
 		Set<Integer> tacticNums = new TreeSet<>();
 		if (enabledByTactic == null) {
 			return tacticNums;
@@ -210,7 +210,7 @@ public class CreativeBreakdownHelperImpl implements CreativeBreakdownHelper {
 	 * @param bullet the takeaway as Claude returned it
 	 * @return the bullet unchanged when it already has a lead (or is too short to split), else with one marked
 	 */
-	private String withLead(String bullet) {
+	String withLead(String bullet) {
 		String text = bullet.trim();
 		if (text.isEmpty() || text.contains(DeckMarkup.LEAD_OPEN)) {
 			return bullet;
@@ -234,7 +234,7 @@ public class CreativeBreakdownHelperImpl implements CreativeBreakdownHelper {
 	 * @param phrase a candidate lead
 	 * @return {@code true} when its last word is a connector such as "and" or "to"
 	 */
-	private boolean endsOnConnector(String phrase) {
+	boolean endsOnConnector(String phrase) {
 		String last = phrase.substring(phrase.lastIndexOf(' ') + 1);
 		return CONNECTORS.contains(last.toLowerCase(Locale.ROOT));
 	}
@@ -243,7 +243,7 @@ public class CreativeBreakdownHelperImpl implements CreativeBreakdownHelper {
 	 * @param text a phrase
 	 * @return how many space-separated words it has
 	 */
-	private int wordCount(String text) {
+	int wordCount(String text) {
 		String t = text.trim();
 		return t.isEmpty() ? 0 : t.split("\\s+").length;
 	}
@@ -253,7 +253,7 @@ public class CreativeBreakdownHelperImpl implements CreativeBreakdownHelper {
 	 * @param words how many leading words to keep
 	 * @return the index just past the given number of words, or {@code -1} when the sentence has no more words
 	 */
-	private int endOfWords(String text, int words) {
+	int endOfWords(String text, int words) {
 		int at = 0;
 		for (int i = 0; i < words; i++) {
 			int space = text.indexOf(' ', at);

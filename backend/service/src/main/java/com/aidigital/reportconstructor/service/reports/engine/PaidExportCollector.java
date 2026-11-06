@@ -102,7 +102,7 @@ public class PaidExportCollector {
 	 * @param window the inclusive window, or {@code null} for every dated row
 	 * @return the rows to sum
 	 */
-	private List<List<String>> rowsInWindow(PaidTable daily, FlightDates window) {
+	List<List<String>> rowsInWindow(PaidTable daily, FlightDates window) {
 		List<List<String>> kept = new ArrayList<>();
 		for (List<String> row : daily.rows()) {
 			LocalDate d = reader.date(daily, row);
@@ -163,7 +163,7 @@ public class PaidExportCollector {
 	 * @param by    the label column
 	 * @return one row per distinct non-blank label, ranked; empty when the export has no such column
 	 */
-	private List<PaidRow> groupDaily(PaidTable daily, List<List<String>> rows, PaidExportColumn by) {
+	List<PaidRow> groupDaily(PaidTable daily, List<List<String>> rows, PaidExportColumn by) {
 		if (!daily.has(by)) {
 			return List.of();
 		}

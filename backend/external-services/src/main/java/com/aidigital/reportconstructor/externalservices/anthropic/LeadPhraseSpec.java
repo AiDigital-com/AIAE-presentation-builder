@@ -16,7 +16,7 @@ final class LeadPhraseSpec {
 			+ "control adjacency: 39.9% of impr at $6.36 CPM.\" The headline and brackets count toward the limit.";
 
 	/** Creative and geo strings: the key fact as a short lead clause that the sentence runs on from. */
-	private static final String CLAUSE = "Each string opens with its key fact as a 3-7 word lead clause wrapped in "
+	static final String CLAUSE = "Each string opens with its key fact as a 3-7 word lead clause wrapped in "
 			+ "[[double brackets]], and the sentence runs on from it, e.g. \"[[The 300x250 carried 62.7% of "
 			+ "delivery]] (233,621 impr) at a 0.20% CTR.\" The brackets count toward the limit. ";
 

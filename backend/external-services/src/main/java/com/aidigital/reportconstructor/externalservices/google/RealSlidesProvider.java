@@ -321,7 +321,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param tacticMaster   the main tactic master slide id (may be {@code null})
 	 * @return the normalized model
 	 */
-	private SlideModel slideModel(
+	SlideModel slideModel(
 			Map<Integer, String> summaryTables, Map<Integer, String> summarySlides,
 			Map<Integer, String> resultsSlides, Map<Integer, String> tacticSlides,
 			Map<String, String> breakdownMasters, String thoughtsMaster, String tacticMaster) {
@@ -573,7 +573,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param requests the accumulating request list
 	 * @param objectId the slide/page-element object id to delete (may be {@code null}/blank)
 	 */
-	private void addDeleteObject(List<Request> requests, String objectId) {
+	void addDeleteObject(List<Request> requests, String objectId) {
 		if (objectId != null && !objectId.isBlank()) {
 			requests.add(new Request().setDeleteObject(new DeleteObjectRequest().setObjectId(objectId)));
 		}
@@ -700,7 +700,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param tacticNum the 1-based tactic number
 	 * @return the main slide object id, or {@code null} when the legacy model has no slot configured
 	 */
-	private String mainTacticSlideId(SlideModel model, int tacticNum) {
+	String mainTacticSlideId(SlideModel model, int tacticNum) {
 		return model.masterTacticModel()
 				? breakdownSlideNaming.tacticSlideId(tacticNum)
 				: model.tacticSlideObjectIds().get(tacticNum);
@@ -1031,7 +1031,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param elements a slide's or a group's page elements (may be {@code null})
 	 * @param tokens   the accumulating set of distinct tokens
 	 */
-	private void collectGroupTokens(List<PageElement> elements, Set<String> tokens) {
+	void collectGroupTokens(List<PageElement> elements, Set<String> tokens) {
 		if (elements == null) {
 			return;
 		}
@@ -1100,7 +1100,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param tacticCount           number of real tactics in the campaign
 	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token
 	 */
-	private void trimEomDashboardSlides(String presentationId, int tacticCount, String userGoogleAccessToken) {
+	void trimEomDashboardSlides(String presentationId, int tacticCount, String userGoogleAccessToken) {
 		boolean asUser = userGoogleAccessToken != null && !userGoogleAccessToken.isBlank();
 		Slides slidesClient = asUser ? buildSlides(userGoogleAccessToken) : slides;
 		try {
@@ -1140,7 +1140,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param tacticCount number of real tactics in the campaign
 	 * @return the row-delete requests, bottom-up per table; empty when the last block is full
 	 */
-	private List<Request> eomDashboardRowRequests(List<Page> pages, int tacticCount) {
+	List<Request> eomDashboardRowRequests(List<Page> pages, int tacticCount) {
 		List<Request> requests = new ArrayList<>();
 		int usedInLastBlock = tacticCount % TACTICS_PER_GROUP;
 		if (usedInLastBlock == 0) {
@@ -1164,7 +1164,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param placeholderMap        resolved token → value pairs
 	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token
 	 */
-	private void addEomTacticSlides(
+	void addEomTacticSlides(
 			String presentationId, int tacticCount, Map<String, String> placeholderMap,
 			String userGoogleAccessToken) {
 		Map<String, String> values = placeholderMap == null ? Map.of() : placeholderMap;
@@ -1272,7 +1272,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param breakdownValues       renumbered token → value to write
 	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token
 	 */
-	private void addEomBreakdownSlides(
+	void addEomBreakdownSlides(
 			String presentationId, Map<Integer, Set<BreakdownType>> enabledByTactic,
 			Map<String, String> breakdownValues, String userGoogleAccessToken) {
 		if (enabledByTactic == null || enabledByTactic.isEmpty()) {
@@ -1310,7 +1310,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param presentationId  the deck being built
 	 * @param enabledByTactic 1-based tactic number → the breakdown sections that tactic enabled
 	 */
-	private void compactDeviceTables(
+	void compactDeviceTables(
 			Slides slidesClient, String presentationId, Map<Integer, Set<BreakdownType>> enabledByTactic) {
 		Set<String> deviceSlideIds = new HashSet<>();
 		Set<String> creativeSlideIds = new HashSet<>();
@@ -1393,7 +1393,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param presentationId        the already-built deck to clean
 	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token
 	 */
-	private void deleteEomMasterSlides(String presentationId, String userGoogleAccessToken) {
+	void deleteEomMasterSlides(String presentationId, String userGoogleAccessToken) {
 		boolean asUser = userGoogleAccessToken != null && !userGoogleAccessToken.isBlank();
 		Slides slidesClient = asUser ? buildSlides(userGoogleAccessToken) : slides;
 		try {
@@ -1549,7 +1549,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param slideDeletes the delete requests built by {@link #buildTitleDeleteRequests}
 	 * @return the ids of the slides being deleted whole
 	 */
-	private Set<String> deletedSlideIds(List<Request> slideDeletes) {
+	Set<String> deletedSlideIds(List<Request> slideDeletes) {
 		Set<String> ids = new HashSet<>();
 		for (Request request : slideDeletes) {
 			if (request.getDeleteObject() != null) {
@@ -1617,7 +1617,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param page the slide to read (may carry no page elements)
 	 * @return the slide's text, or an empty string when it carries none
 	 */
-	private String slideText(Page page) {
+	String slideText(Page page) {
 		StringBuilder joined = new StringBuilder();
 		if (page.getPageElements() == null) {
 			return "";
@@ -1666,7 +1666,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param configured the raw configured slide object ids (may be null/empty)
 	 * @return the normalized, non-blank object ids
 	 */
-	private Set<String> normalizeSlideIds(List<String> configured) {
+	Set<String> normalizeSlideIds(List<String> configured) {
 		Set<String> normalized = new LinkedHashSet<>();
 		if (configured == null) {
 			return normalized;
@@ -1688,7 +1688,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param raw the configured slide object id (may be {@code null})
 	 * @return the normalized object id, or an empty string when unconfigured
 	 */
-	private String normalizeSlideId(String raw) {
+	String normalizeSlideId(String raw) {
 		if (raw == null) {
 			return "";
 		}
@@ -1705,7 +1705,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param configured the raw configured title phrases (may be null/empty)
 	 * @return the normalized, non-blank titles
 	 */
-	private List<String> normalizeTitles(List<String> configured) {
+	List<String> normalizeTitles(List<String> configured) {
 		List<String> normalized = new ArrayList<>();
 		if (configured == null) {
 			return normalized;
@@ -1726,7 +1726,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param value the raw text (may be {@code null})
 	 * @return the normalized text, or an empty string when there is nothing to match
 	 */
-	private String normalizeTitle(String value) {
+	String normalizeTitle(String value) {
 		if (value == null) {
 			return "";
 		}
@@ -1817,7 +1817,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param token    the master's generic token
 	 * @param value    the token's final value, or {@code null} when it is only renumbered
 	 */
-	private void emitPercentSuffixReplacements(List<Request> requests, String copyId, String token, String value) {
+	void emitPercentSuffixReplacements(List<Request> requests, String copyId, String token, String value) {
 		if (value == null) {
 			return;
 		}
@@ -1908,7 +1908,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param tacticNum the 1-based tactic number
 	 * @return the copy's slide object id
 	 */
-	private String breakdownSlideId(BreakdownType type, int tacticNum) {
+	String breakdownSlideId(BreakdownType type, int tacticNum) {
 		return breakdownSlideNaming.slideId(type, tacticNum);
 	}
 

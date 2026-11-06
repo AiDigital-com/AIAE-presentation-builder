@@ -81,7 +81,7 @@ public class PaidSlidesWriter {
 	 * @param table  the table's values
 	 * @return the cell writes, then the row deletions bottom-up; empty when the deck has no such table
 	 */
-	private List<Request> tableRequests(List<Page> slides, PaidSlideTable table) {
+	List<Request> tableRequests(List<Page> slides, PaidSlideTable table) {
 		PageElement element = findTable(slides, table.marker());
 		if (element == null) {
 			log.warn("[slides] fillPaidSlides: no table titled {} in the deck - its sample values stay",
@@ -196,7 +196,7 @@ public class PaidSlidesWriter {
 	 * @param channel the channel to remove
 	 * @return one deletion per slide, in deck order
 	 */
-	private List<Request> slideDeleteRequests(List<Page> slides, PaidChannelKind channel) {
+	List<Request> slideDeleteRequests(List<Page> slides, PaidChannelKind channel) {
 		String tokenStart = TOKEN_OPEN + channel.tokenPrefix();
 		String divider = normalize(channel.dividerTitle());
 		List<Request> requests = new ArrayList<>();
@@ -222,7 +222,7 @@ public class PaidSlidesWriter {
 	 * @param channel the channel
 	 * @return {@code true} when the element's alt-text title is one of the channel's table markers
 	 */
-	private boolean carriesMarker(PageElement element, PaidChannelKind channel) {
+	boolean carriesMarker(PageElement element, PaidChannelKind channel) {
 		if (element.getTitle() == null) {
 			return false;
 		}
@@ -250,7 +250,7 @@ public class PaidSlidesWriter {
 	 * @param elements page elements, possibly groups
 	 * @param out      the accumulator every non-group element is added to
 	 */
-	private void flatten(List<PageElement> elements, List<PageElement> out) {
+	void flatten(List<PageElement> elements, List<PageElement> out) {
 		for (PageElement element : elements) {
 			if (element.getElementGroup() != null && element.getElementGroup().getChildren() != null) {
 				flatten(element.getElementGroup().getChildren(), out);
@@ -283,7 +283,7 @@ public class PaidSlidesWriter {
 	 * @param text a text container (may be {@code null})
 	 * @return its runs joined, empty when it has none
 	 */
-	private String cellText(TextContent text) {
+	String cellText(TextContent text) {
 		StringBuilder joined = new StringBuilder();
 		if (text != null && text.getTextElements() != null) {
 			for (TextElement element : text.getTextElements()) {
@@ -299,7 +299,7 @@ public class PaidSlidesWriter {
 	 * @param row a template row
 	 * @return a row of dashes as wide as the template row, for a table the export has no data for
 	 */
-	private List<String> dashRow(TableRow row) {
+	List<String> dashRow(TableRow row) {
 		int cells = row.getTableCells() == null ? 0 : row.getTableCells().size();
 		return Collections.nCopies(cells, DASH);
 	}
