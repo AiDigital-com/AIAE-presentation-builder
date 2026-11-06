@@ -2,6 +2,7 @@ package com.aidigital.reportconstructor.externalservices.google;
 
 import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
 import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
+import com.aidigital.reportconstructor.service.reports.model.PaidSlidesFill;
 import com.aidigital.reportconstructor.service.reports.ports.SlidesProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -96,6 +97,11 @@ public class StubSlidesProvider implements SlidesProvider {
 	@Override
 	public void applyDeckMarkup(String presentationId, String userGoogleAccessToken) {
 		// No-op: the stub never clones a real deck, so there is no markup to apply.
+	}
+
+	@Override
+	public void fillPaidSlides(String presentationId, PaidSlidesFill fill, String userGoogleAccessToken) {
+		// No-op: the stub never clones a real deck, so there are no paid tables to write.
 	}
 
 	@Override

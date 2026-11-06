@@ -8,6 +8,7 @@ import com.aidigital.reportconstructor.service.reports.dto.DeviceInsightInput;
 import com.aidigital.reportconstructor.service.reports.dto.GeoInsightInput;
 import com.aidigital.reportconstructor.service.reports.dto.MpoNarrative;
 import com.aidigital.reportconstructor.service.reports.dto.MpoNarrativeInput;
+import com.aidigital.reportconstructor.service.reports.dto.PaidNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.dto.PublisherObservationInput;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeNarrative;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeResults;
@@ -258,6 +259,18 @@ public interface ClaudeClient {
 	 * @return the MPO copy, or {@code null} when the call produced no usable reply
 	 */
 	MpoNarrative mpoNarrative(MpoNarrativeInput input, String brief);
+
+	/**
+	 * The Claude-written copy of one paid channel's MPO slides (Paid Search or Paid Social): verdict, takeaways,
+	 * tiles, highlights and recommendations. One call per channel present in the request, grounded only in the
+	 * channel's export figures.
+	 *
+	 * @param input the channel's figures and the fields to write
+	 * @param brief free-text campaign brief the copy must stay faithful to
+	 * @return field key → text, normalized to each field's limit (a field the reply left out is absent), or
+	 *         {@code null} when the call produced no usable reply
+	 */
+	Map<String, String> paidNarrative(PaidNarrativeInput input, String brief);
 
 	/**
 	 * Step 4 of the restructured slides-from-sheet flow — the campaign-level results call. It fills the

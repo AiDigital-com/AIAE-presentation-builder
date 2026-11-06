@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { MEDIA_PLAN_FALLBACK_TAB, MEDIA_PLAN_PRIMARY_TAB, readSheetSummary, readSheetTab } from "@/shared/api/sheets";
+import {
+    MEDIA_PLAN_FALLBACK_TAB,
+    MEDIA_PLAN_PRIMARY_TAB,
+    readSheetSummary,
+    readSheetTab,
+    sheetUrlFromId,
+} from "@/shared/api/sheets";
 import type {
     BreakdownSelection,
     GenerateRequest,
@@ -14,6 +20,7 @@ import { WizardProvider, useWizard } from "@/shared/wizard/WizardContext";
 import { extractTacticBudgets, looksLikeMediaPlan, type TacticBudget } from "../lib/mediaPlanBudget";
 import { keepActive, toPayloadMapping } from "../lib/tacticSelection";
 import { eomWindow } from "../lib/reportingMonth";
+import { paidExportPayload } from "../lib/paidExport";
 import { useDetectDateRange } from "../api/useDetectDateRange";
 import { useMatchLineItems } from "../api/useMatchLineItems";
 import { fetchReportJob, startReportJob } from "../api/useReportJob";
@@ -58,11 +65,6 @@ function compactUnits(n: number): string {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}M`;
     if (n >= 10_000) return `${Math.round(n / 1000)}K`;
     return grouped.format(n);
-}
-
-/** Canonical Google Sheet URL from its id, so admins can reopen the source; undefined when no sheet. */
-function sheetUrlFromId(sheetId: string | undefined): string | undefined {
-    return sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}` : undefined;
 }
 
 /** One compact media-plan line, e.g. "$25,518 · 10M @ $2.5 CPM". */
@@ -580,16 +582,7 @@ function PageInner() {
             audienceRows: w.mediaPlan?.audienceRows ?? [],
             estimatesRows: w.mediaPlan?.estimatesRows ?? [],
             geoRows: w.mediaPlan?.geoRows ?? [],
-            // The performance-channel exports only exist on the MPO design; a standard deck never carries them,
-            // even if the user connected one before switching back to the standard tab.
-            ...(w.templateVariant === "MPO"
-                ? {
-                      paidSearchRows: w.paidChannels.search?.rawRows,
-                      paidSocialRows: w.paidChannels.social?.rawRows,
-                      paidSearchUrl: sheetUrlFromId(w.paidChannels.search?.sheetId),
-                      paidSocialUrl: sheetUrlFromId(w.paidChannels.social?.sheetId),
-                  }
-                : {}),
+            ...paidExportPayload(w.templateVariant, w.paidChannels),
             lineItemMapping: w.mapping ? toPayloadMapping(w.activeMapping) : undefined,
             // Step-3 breakdown toggles → the backend clears the sections a tactic didn't enable on the
             // generated sheet's "Breakdowns" tab. One entry per mapped tactic (empty list = none enabled).

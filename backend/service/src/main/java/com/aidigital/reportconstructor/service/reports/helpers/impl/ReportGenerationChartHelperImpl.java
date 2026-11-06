@@ -19,11 +19,14 @@ import com.aidigital.reportconstructor.service.reports.helpers.ReportNumberParse
 import com.aidigital.reportconstructor.service.reports.helpers.ReportSheetHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.SheetChartDataReader;
 import com.aidigital.reportconstructor.service.reports.helpers.TacticExtractionHelper;
+import com.aidigital.reportconstructor.service.reports.model.PaidSlideChart;
+import com.aidigital.reportconstructor.service.reports.model.PaidSlidesFill;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartJob;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartRequest;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartSlice;
 import com.aidigital.reportconstructor.service.reports.ports.ChartProvider;
 import com.aidigital.reportconstructor.service.reports.ports.ChartRequest;
+import com.aidigital.reportconstructor.service.reports.ports.PaidChartRequest;
 import com.aidigital.reportconstructor.service.reports.ports.SlidesProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -338,6 +341,39 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 		} catch (RuntimeException ex) {
 			log.warn("[slides] deleteReportTypeSlides failed for {} (non-fatal): {}",
 					presentationId, ex.getMessage());
+		}
+	}
+
+	@Override
+	public void fillPaidSlides(String slideUrl, PaidSlidesFill fill, String userGoogleToken) {
+		String presentationId = extractPresentationId(slideUrl);
+		if (presentationId == null || fill == null || fill.isEmpty()) {
+			return;
+		}
+		try {
+			slides.fillPaidSlides(presentationId, fill, userGoogleToken);
+		} catch (RuntimeException ex) {
+			log.warn("[slides] fillPaidSlides failed for {} (non-fatal): {}", presentationId, ex.getMessage());
+		}
+	}
+
+	@Override
+	public List<String> buildPaidCharts(
+			String slideUrl, List<PaidSlideChart> paidCharts, Map<String, String> flatReplacements,
+			String userGoogleToken) {
+		if (paidCharts == null || paidCharts.isEmpty()) {
+			return List.of();
+		}
+		String presentationId = extractPresentationId(slideUrl);
+		if (presentationId == null) {
+			return List.of("Paid charts skipped — could not determine presentation id from " + slideUrl);
+		}
+		try {
+			return charts.buildPaidCharts(new PaidChartRequest(
+					presentationId, campaignTitle(flatReplacements), paidCharts, userGoogleToken));
+		} catch (RuntimeException ex) {
+			log.warn("[charts] buildPaidCharts failed for {} (non-fatal): {}", presentationId, ex.getMessage());
+			return List.of("Paid charts failed: " + ex.getMessage());
 		}
 	}
 

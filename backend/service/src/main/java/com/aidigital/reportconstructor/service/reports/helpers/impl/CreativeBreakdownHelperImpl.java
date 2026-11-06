@@ -9,6 +9,7 @@ import com.aidigital.reportconstructor.service.reports.dto.CreativeTakeawayInput
 import com.aidigital.reportconstructor.service.reports.helpers.BreakdownSelectionResolver;
 import com.aidigital.reportconstructor.service.reports.helpers.CreativeBreakdownHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportSheetHelper;
+import com.aidigital.reportconstructor.service.reports.ports.DeckMarkup;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -16,9 +17,11 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -51,6 +54,22 @@ public class CreativeBreakdownHelperImpl implements CreativeBreakdownHelper {
 	 * Treating that as unfilled is what keeps a raw token off the slide.
 	 */
 	private static final Pattern UNFILLED_HINT = Pattern.compile("^\\{\\{.*}}$");
+
+	/**
+	 * Where a takeaway's opening clause naturally ends, for a bullet Claude returned without its
+	 * {@code [[lead clause]]}: the first comma, em dash or colon.
+	 */
+	private static final Pattern LEAD_BREAK = Pattern.compile(", | — |: ");
+
+	/** Longest natural opening clause (in words) still short enough to read as a lead. */
+	private static final int MAX_LEAD_WORDS = 8;
+
+	/** Words taken as the lead when the bullet has no natural break early enough. */
+	private static final int FALLBACK_LEAD_WORDS = 4;
+
+	/** Words a fallback lead must not end on ("Raise HomeLoan and" reads cut off), so it takes one more. */
+	private static final Set<String> CONNECTORS =
+			Set.of("and", "or", "to", "of", "the", "a", "an", "at", "in", "on", "for", "with", "by");
 
 	private final ReportSheetHelper sheetHelper;
 	private final BreakdownSelectionResolver breakdownResolver;
@@ -174,10 +193,76 @@ public class CreativeBreakdownHelperImpl implements CreativeBreakdownHelper {
 			}
 			for (int i = 1; i <= TAKEAWAY_COUNT; i++) {
 				String bullet = i <= bullets.size() ? bullets.get(i - 1) : null;
-				values.put("{{cr_takeaway_tactic " + tacticNum + "_" + i + "}}", bullet == null ? "" : bullet);
+				values.put("{{cr_takeaway_tactic " + tacticNum + "_" + i + "}}",
+						bullet == null ? "" : withLead(bullet));
 			}
 		}
 		return warnings;
+	}
+
+	/**
+	 * Makes sure a KEY TAKEAWAYS bullet opens with a {@code [[lead clause]]}, so all four bullets get the slide's
+	 * bold brand-blue lead. Claude is asked for one on every string but sometimes leaves it off the fourth (the
+	 * optimisation), which then ships in the template's plain style next to three styled bullets. A missing lead
+	 * is taken from the bullet's own opening clause (up to the first comma, em dash or colon when that is at most
+	 * {@value #MAX_LEAD_WORDS} words), else its first {@value #FALLBACK_LEAD_WORDS} words.
+	 *
+	 * @param bullet the takeaway as Claude returned it
+	 * @return the bullet unchanged when it already has a lead (or is too short to split), else with one marked
+	 */
+	String withLead(String bullet) {
+		String text = bullet.trim();
+		if (text.isEmpty() || text.contains(DeckMarkup.LEAD_OPEN)) {
+			return bullet;
+		}
+		Matcher brk = LEAD_BREAK.matcher(text);
+		int end = brk.find() && wordCount(text.substring(0, brk.start())) <= MAX_LEAD_WORDS ? brk.start() : -1;
+		if (end < 0) {
+			int words = FALLBACK_LEAD_WORDS;
+			end = endOfWords(text, words);
+			while (end > 0 && words < MAX_LEAD_WORDS && endsOnConnector(text.substring(0, end))) {
+				end = endOfWords(text, ++words);
+			}
+		}
+		if (end <= 0 || end >= text.length()) {
+			return bullet;
+		}
+		return DeckMarkup.LEAD_OPEN + text.substring(0, end) + DeckMarkup.LEAD_CLOSE + text.substring(end);
+	}
+
+	/**
+	 * @param phrase a candidate lead
+	 * @return {@code true} when its last word is a connector such as "and" or "to"
+	 */
+	boolean endsOnConnector(String phrase) {
+		String last = phrase.substring(phrase.lastIndexOf(' ') + 1);
+		return CONNECTORS.contains(last.toLowerCase(Locale.ROOT));
+	}
+
+	/**
+	 * @param text a phrase
+	 * @return how many space-separated words it has
+	 */
+	int wordCount(String text) {
+		String t = text.trim();
+		return t.isEmpty() ? 0 : t.split("\\s+").length;
+	}
+
+	/**
+	 * @param text  a sentence
+	 * @param words how many leading words to keep
+	 * @return the index just past the given number of words, or {@code -1} when the sentence has no more words
+	 */
+	int endOfWords(String text, int words) {
+		int at = 0;
+		for (int i = 0; i < words; i++) {
+			int space = text.indexOf(' ', at);
+			if (space < 0) {
+				return -1;
+			}
+			at = space + 1;
+		}
+		return at - 1;
 	}
 
 	/**

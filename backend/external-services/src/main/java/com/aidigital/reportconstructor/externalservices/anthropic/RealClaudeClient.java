@@ -10,6 +10,8 @@ import com.aidigital.reportconstructor.service.reports.dto.GeoInsightInput;
 import com.aidigital.reportconstructor.service.reports.dto.MpoFunnelStage;
 import com.aidigital.reportconstructor.service.reports.dto.MpoNarrative;
 import com.aidigital.reportconstructor.service.reports.dto.MpoNarrativeInput;
+import com.aidigital.reportconstructor.service.reports.dto.PaidCopyField;
+import com.aidigital.reportconstructor.service.reports.dto.PaidNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.dto.MpoProposalPoint;
 import com.aidigital.reportconstructor.service.reports.dto.PublisherObservationInput;
 import com.aidigital.reportconstructor.service.reports.dto.CampaignFrequencies;
@@ -44,6 +46,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -1848,6 +1851,93 @@ public class RealClaudeClient implements ClaudeClient {
 				funnelStages,
 				normalizer.normalizeC(c.get("headline"), MpoPromptSpec.MPO_HEADLINE_LIMIT),
 				resultsOverviews);
+	}
+
+	@Override
+	public Map<String, String> paidNarrative(PaidNarrativeInput input, String brief) {
+		var prompt = paidNarrativePrompt(input, brief);
+		if (prompt.isEmpty()) {
+			return null;
+		}
+		JsonNode parsed = callPaidNarrative(prompt.get());
+		if (parsed == null) {
+			// One retry: an unusable reply dashes every copy slot of the channel, and the next sample is usually
+			// clean. The prompt is cached, so the second call costs little.
+			log.warn("[claude:{}] reply unusable for {} - retrying once", PaidPromptSpec.PAID_NARRATIVE_LABEL,
+					input.channelName());
+			parsed = callPaidNarrative(prompt.get());
+		}
+		if (parsed == null) {
+			return null;
+		}
+		return paidNarrativeFrom(parsed, input.fields());
+	}
+
+	/**
+	 * @param prompt the paid narrative prompt
+	 * @return the reply's JSON object, or {@code null} when the call failed or the reply could not be parsed
+	 */
+	JsonNode callPaidNarrative(String prompt) {
+		return messagesClient.callJsonObject(prompt, PaidPromptSpec.PAID_NARRATIVE_MAX_TOKENS,
+				BREAKDOWN_TIMEOUT_SEC, PaidPromptSpec.PAID_NARRATIVE_LABEL, true);
+	}
+
+	/**
+	 * Builds one paid channel's narrative prompt: role, the fields to write with their limits, output rules, the
+	 * brief, then the channel's figures after the cache breakpoint.
+	 *
+	 * @param input the channel's figures and fields
+	 * @param brief free-text campaign brief
+	 * @return the prompt, or empty when there is nothing to write about or nothing to write
+	 */
+	Optional<String> paidNarrativePrompt(PaidNarrativeInput input, String brief) {
+		if (input == null || input.facts().isEmpty() || input.fields().isEmpty()) {
+			return Optional.empty();
+		}
+		StringBuilder fields = new StringBuilder("Write these fields:\n");
+		for (PaidCopyField field : input.fields()) {
+			fields.append('"').append(field.key()).append("\" (at most ")
+					.append(promptBuilder.bufferedLimit(field.limit())).append(" characters) — ")
+					.append(field.guidance()).append('\n');
+		}
+		return Optional.of(String.format(PaidPromptSpec.PAID_NARRATIVE_ROLE, input.channelName())
+				+ fields + "\n"
+				+ PaidPromptSpec.PAID_NARRATIVE_OUTPUT_RULES
+				+ "=== CAMPAIGN BRIEF ===\n" + (brief == null ? "" : brief) + "\n\n"
+				+ AnthropicMessagesClient.CACHE_BREAKPOINT
+				+ "=== " + input.channelName().toUpperCase(Locale.ROOT) + " FIGURES, "
+				+ (input.periodLabel() == null ? "" : input.periodLabel().toUpperCase(Locale.ROOT)) + " ===\n"
+				+ String.join("\n", input.facts()) + "\n");
+	}
+
+	/**
+	 * Turns a paid narrative reply into field key → text: compress each field that ran over budget, then
+	 * normalize to its limit. A reply with no usable field at all is rejected ({@code null}) so every slot is
+	 * dashed; fields the reply left out are simply absent.
+	 *
+	 * @param parsed the reply's JSON object
+	 * @param wanted the fields the prompt asked for
+	 * @return the copy, or {@code null} when the reply carried nothing usable
+	 */
+	Map<String, String> paidNarrativeFrom(JsonNode parsed, List<PaidCopyField> wanted) {
+		List<ClaudeCompressionField> fields = new ArrayList<>();
+		for (PaidCopyField field : wanted) {
+			addConclusionField(fields, field.key(), parsed.path(field.key()), field.limit());
+		}
+		if (fields.stream().allMatch(field -> field.text() == null || field.text().isBlank())) {
+			log.warn("[claude:{}] {}", PaidPromptSpec.PAID_NARRATIVE_LABEL, PaidPromptSpec.PAID_NARRATIVE_EMPTY_REASON);
+			failureLog.record(PaidPromptSpec.PAID_NARRATIVE_LABEL, PaidPromptSpec.PAID_NARRATIVE_EMPTY_REASON + ".");
+			return null;
+		}
+		Map<String, String> c = compressionService.compress(fields, PaidPromptSpec.PAID_NARRATIVE_LABEL);
+		Map<String, String> copy = new LinkedHashMap<>();
+		for (PaidCopyField field : wanted) {
+			String text = normalizer.normalizeC(c.get(field.key()), field.limit());
+			if (text != null) {
+				copy.put(field.key(), text);
+			}
+		}
+		return copy;
 	}
 
 	@Override

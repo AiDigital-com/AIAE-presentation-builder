@@ -359,12 +359,7 @@ public class AnthropicMessagesClient {
 				out.append(c);
 				continue;
 			}
-			int next = i + 1;
-			while (next < text.length() && Character.isWhitespace(text.charAt(next))) {
-				next++;
-			}
-			boolean closes = next >= text.length() || ",:}]".indexOf(text.charAt(next)) >= 0;
-			if (closes) {
+			if (closesString(text, i)) {
 				inString = false;
 				out.append(c);
 			} else {
@@ -372,6 +367,41 @@ public class AnthropicMessagesClient {
 			}
 		}
 		return out.toString();
+	}
+
+	/**
+	 * Tells whether the quote at {@code quote}, met inside a string, ends that string. It does when the text ends
+	 * after it or the next non-blank character is {@code :}, {@code \}} or {@code ]}. A comma is ambiguous: prose
+	 * often quotes a name right before one ({@code Scale "LAL", the top audience}), so a comma only ends the string
+	 * when what follows it can start the next entry: a quote, a closing bracket, or the end of the text.
+	 *
+	 * @param text  the candidate JSON text
+	 * @param quote index of a {@code "} met inside a string
+	 * @return {@code true} when the quote closes the string, {@code false} when it is a quotation mark in the prose
+	 */
+	boolean closesString(String text, int quote) {
+		int next = skipBlanks(text, quote + 1);
+		if (next >= text.length() || ":}]".indexOf(text.charAt(next)) >= 0) {
+			return true;
+		}
+		if (text.charAt(next) != ',') {
+			return false;
+		}
+		int afterComma = skipBlanks(text, next + 1);
+		return afterComma >= text.length() || "\"}]".indexOf(text.charAt(afterComma)) >= 0;
+	}
+
+	/**
+	 * @param text  any text
+	 * @param from  the index to start at
+	 * @return the index of the first non-blank character at or after {@code from}, or the text's length
+	 */
+	int skipBlanks(String text, int from) {
+		int i = from;
+		while (i < text.length() && Character.isWhitespace(text.charAt(i))) {
+			i++;
+		}
+		return i;
 	}
 
 	/**

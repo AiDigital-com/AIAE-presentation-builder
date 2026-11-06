@@ -2,6 +2,7 @@ package com.aidigital.reportconstructor.service.reports.ports;
 
 import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
 import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
+import com.aidigital.reportconstructor.service.reports.model.PaidSlidesFill;
 
 import java.util.List;
 import java.util.Map;
@@ -198,6 +199,20 @@ public interface SlidesProvider {
 	 *                              service account when blank
 	 */
 	void applyDeckMarkup(String presentationId, String userGoogleAccessToken);
+
+	/**
+	 * Finishes an MPO deck's Paid Search / Paid Social section once the token pass has run: writes every marker
+	 * table's cells (found by the table's alt-text title, written by row and column with each cell keeping its own
+	 * style), deletes the rows a table has no data for, and deletes every slide of a channel without an export (the
+	 * slides carrying that channel's tokens or table markers, and its divider, found by title). A table the deck does
+	 * not carry is skipped with a warning, so an older template degrades to its sample values.
+	 *
+	 * @param presentationId        the deck, after {@link #createDeck}
+	 * @param fill                  the tables to write and the channels to delete
+	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token; falls back to the
+	 *                              service account when blank
+	 */
+	void fillPaidSlides(String presentationId, PaidSlidesFill fill, String userGoogleAccessToken);
 
 	/**
 	 * Counts the slides a finished deck contains. Called once the surplus template slides have been

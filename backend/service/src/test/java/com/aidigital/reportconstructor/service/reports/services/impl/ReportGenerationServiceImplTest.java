@@ -1,5 +1,15 @@
 package com.aidigital.reportconstructor.service.reports.services.impl;
 
+import com.aidigital.reportconstructor.service.reports.dto.PaidNarrativeInput;
+import com.aidigital.reportconstructor.service.reports.helpers.impl.PaidNarrativeAssemblerImpl;
+import com.aidigital.reportconstructor.service.reports.helpers.impl.PaidSlideChartAssemblerImpl;
+import com.aidigital.reportconstructor.service.reports.helpers.impl.PaidSlideTableAssemblerImpl;
+import com.aidigital.reportconstructor.service.reports.engine.PaidValueFormatter;
+import com.aidigital.reportconstructor.service.reports.enums.PaidChannelKind;
+import com.aidigital.reportconstructor.service.reports.model.PaidChannelData;
+import com.aidigital.reportconstructor.service.reports.model.PaidMetrics;
+import com.aidigital.reportconstructor.service.reports.model.PaidSlideChart;
+import com.aidigital.reportconstructor.service.reports.model.PaidSlidesFill;
 import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
@@ -34,6 +44,7 @@ import com.aidigital.reportconstructor.service.reports.helpers.impl.BreakdownTho
 import com.aidigital.reportconstructor.service.reports.helpers.impl.DeckStyleTokenHelperImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.SheetRowHelperImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.ImpressionContributionHelperImpl;
+import com.aidigital.reportconstructor.service.reports.helpers.PaidTokenHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.MpoNarrativeAssemblerImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.PacingNarrativeAssemblerImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.ReportNumberParserImpl;
@@ -63,6 +74,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.HashMap;
@@ -79,6 +91,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.same;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -130,6 +143,8 @@ class ReportGenerationServiceImplTest {
 	DeviceBreakdownHelper deviceBreakdown;
 	@Mock
 	ReportResumeStateHelper resumeState;
+	@Mock
+	PaidTokenHelper paidTokens;
 
 	ReportGenerationServiceImpl service;
 
@@ -146,7 +161,10 @@ class ReportGenerationServiceImplTest {
 				new TacticConclusionAssemblerImpl(), sheetChartData, tacticExtraction,
 				new ImpressionContributionHelperImpl(new ReportNumberParserImpl(), new Fmt()), resumeState,
 				new SheetTacticCountHelperImpl(), new PacingNarrativeAssemblerImpl(), new MpoNarrativeAssemblerImpl(),
-				new DeckStyleTokenHelperImpl(new SheetRowHelperImpl()));
+				new DeckStyleTokenHelperImpl(new SheetRowHelperImpl()), paidTokens,
+				new PaidNarrativeAssemblerImpl(new PaidValueFormatter()),
+				new PaidSlideTableAssemblerImpl(new PaidValueFormatter()),
+				new PaidSlideChartAssemblerImpl(new PaidValueFormatter()));
 	}
 
 	@Test
@@ -497,6 +515,165 @@ class ReportGenerationServiceImplTest {
 		// Then: the call is never paid for and no MPO token is written
 		verify(claude, never()).mpoNarrative(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
 		assertThat(flat).containsOnlyKeys("{{client_name}}");
+	}
+
+	@Test
+	void shouldFillThePaidTokensOnAnMpoDeckTest() {
+		// Given: an MPO deck with a Paid Search export connected
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.MPO,
+				Map.of("FULL-FLIGHT PERFORMANCE", List.of(List.of("Date"))), Map.of());
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.MPO)).thenReturn(true);
+		Map<String, String> flat = new LinkedHashMap<>();
+
+		// When:
+		service.fillPaidTokens(flat, payload);
+
+		// Then: the helper gets the very map and request
+		verify(paidTokens).fillPaidTokens(same(flat), same(payload));
+	}
+
+	@Test
+	void shouldWriteThePaidCopyFromClaudeForEachConnectedChannelTest() {
+		// Given: a live EOC run with a parsed Paid Search export, and a reply that only wrote the verdict
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.MPO, Map.of(), Map.of());
+		PaidChannelData search = new PaidChannelData(PaidChannelKind.SEARCH, new PaidMetrics(1000, 100, 50, 5), null,
+				List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), List.of(), List.of());
+		PaidNarrativeInput expectedInput = new PaidNarrativeAssemblerImpl(new PaidValueFormatter())
+				.toInput(search, false, "the full flight");
+		when(claude.paidNarrative(eq(expectedInput), eq("brief")))
+				.thenReturn(Map.of("verdict", "Google Ads delivered 1.2K clicks."));
+		Map<String, String> flat = new LinkedHashMap<>(Map.of("{{ps_period_label}}", "the full flight"));
+
+		// When:
+		service.fillPaidNarrative(claude, flat, List.of(search), payload, true, "brief");
+
+		// Then: the reply's field is written and every field it left out is dashed, never left raw
+		assertThat(flat)
+				.containsEntry("{{ps_verdict}}", "Google Ads delivered 1.2K clicks.")
+				.containsEntry("{{ps_camp_takeaway_1}}", "—")
+				.containsEntry("{{ps_highlight_4_title}}", "—")
+				.containsEntry("{{ps_reco_4}}", "—")
+				.doesNotContainKey("{{ps_eom_worked}}");
+	}
+
+	@Test
+	void shouldDashThePaidCopyWithoutCallingClaudeOnADryRunTest() {
+		// Given: a dry EOC run with a parsed Paid Social export
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.MPO, Map.of(), Map.of());
+		PaidChannelData social = new PaidChannelData(PaidChannelKind.SOCIAL, new PaidMetrics(1000, 100, 50, 5), null,
+				List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), List.of(), List.of());
+		Map<String, String> flat = new LinkedHashMap<>();
+
+		// When:
+		service.fillPaidNarrative(claude, flat, List.of(social), payload, false, "brief");
+
+		// Then:
+		verify(claude, never()).paidNarrative(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+		assertThat(flat)
+				.containsEntry("{{pso_verdict}}", "—")
+				.containsEntry("{{pso_pl_take_4_title}}", "—")
+				.containsEntry("{{pso_reco_1}}", "—");
+	}
+
+	@Test
+	void shouldNotParseThePaidExportsOnAStandardDeckTest() {
+		// Given: a standard deck that still carries an export (connected before switching tabs)
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.STANDARD,
+				Map.of("FULL-FLIGHT PERFORMANCE", List.of(List.of("Date"))), Map.of());
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.STANDARD)).thenReturn(false);
+
+		// When:
+		service.fillPaidTokens(new LinkedHashMap<>(), payload);
+
+		// Then:
+		verifyNoInteractions(paidTokens);
+	}
+
+	@Test
+	void shouldDeleteBothPaidSectionsOfAnMpoDeckWithoutExportsTest() {
+		// Given: an MPO EOC deck generated without a paid export
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.MPO, Map.of(), Map.of());
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.MPO)).thenReturn(true);
+
+		// When:
+		service.finishPaidSlides("https://docs.google.com/presentation/d/deck1/edit", List.of(), payload, "tok");
+
+		// Then:
+		PaidSlidesFill expected = new PaidSlidesFill(List.of(),
+				EnumSet.of(PaidChannelKind.SEARCH, PaidChannelKind.SOCIAL));
+		verify(chartHelper).fillPaidSlides(
+				eq("https://docs.google.com/presentation/d/deck1/edit"), eq(expected), eq("tok"));
+	}
+
+	@Test
+	void shouldLeaveAStandardDeckWithoutAPaidSectionAloneTest() {
+		// Given:
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.STANDARD, Map.of(), Map.of());
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.STANDARD)).thenReturn(false);
+
+		// When:
+		service.finishPaidSlides("https://docs.google.com/presentation/d/deck1/edit", List.of(), payload, "tok");
+
+		// Then:
+		verifyNoInteractions(chartHelper);
+	}
+
+	@Test
+	void shouldLinkPaidChartsOfEveryChannelOnAnMpoDeckTest() {
+		// Given: an MPO EOC deck with a Search export
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.MPO, Map.of(), Map.of());
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.MPO)).thenReturn(true);
+		PaidChannelData search = new PaidChannelData(PaidChannelKind.SEARCH, new PaidMetrics(1000, 100, 50, 5), null,
+				List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), List.of(), List.of());
+		Map<String, String> flat = Map.of("{{campaign_name}}", "Acme");
+		List<PaidSlideChart> expected = new PaidSlideChartAssemblerImpl(new PaidValueFormatter())
+				.assemble(List.of(search));
+		when(chartHelper.buildPaidCharts("https://docs.google.com/presentation/d/deck1/edit", expected, flat, "tok"))
+				.thenReturn(List.of("chart warning"));
+
+		// When:
+		List<String> result = service.buildPaidCharts(
+				"https://docs.google.com/presentation/d/deck1/edit", List.of(search), payload, flat, "tok");
+
+		// Then:
+		assertThat(result).containsExactly("chart warning");
+	}
+
+	@Test
+	void shouldNotBuildPaidChartsOnAStandardDeckTest() {
+		// Given:
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.STANDARD, Map.of(), Map.of());
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.STANDARD)).thenReturn(false);
+		PaidChannelData search = new PaidChannelData(PaidChannelKind.SEARCH, new PaidMetrics(1000, 100, 50, 5), null,
+				List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), List.of(), List.of());
+
+		// When:
+		List<String> result = service.buildPaidCharts(
+				"https://docs.google.com/presentation/d/deck1/edit", List.of(search), payload, Map.of(), "tok");
+
+		// Then:
+		assertThat(result).isEmpty();
+		verifyNoInteractions(chartHelper);
 	}
 
 	@Test

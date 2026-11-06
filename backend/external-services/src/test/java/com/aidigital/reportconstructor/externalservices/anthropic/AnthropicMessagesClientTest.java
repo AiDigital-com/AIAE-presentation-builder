@@ -49,6 +49,25 @@ class AnthropicMessagesClientTest {
 	}
 
 	@Test
+	void shouldParseAReplyWhoseUnescapedQuotationIsFollowedByACommaTest() {
+		// Given: a paid narrative reply quoting an audience name right before a comma inside the prose
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class)), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+		String reply = "{\"aud_take_1\": \"Scale \"Noventra Meta - LAL\", the top converter at $93.80.\", "
+				+ "\"aud_take_2\": \"Retargeting held a $65.14 CPA.\"}";
+
+		// When:
+		JsonNode parsed = client.parseJsonObject(reply, true);
+
+		// Then: the quotation stays text and the next field still parses
+		assertThat(parsed.get("aud_take_1").asText())
+				.isEqualTo("Scale \"Noventra Meta - LAL\", the top converter at $93.80.");
+		assertThat(parsed.get("aud_take_2").asText()).isEqualTo("Retargeting held a $65.14 CPA.");
+	}
+
+	@Test
 	void shouldParseAReplyWithARawLineBreakInsideAStringTest() {
 		// Given: a thought the model wrapped with a literal newline instead of \n
 		AnthropicProperties props = new AnthropicProperties();

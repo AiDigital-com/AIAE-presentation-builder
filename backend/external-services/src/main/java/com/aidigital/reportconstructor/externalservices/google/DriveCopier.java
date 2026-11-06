@@ -15,6 +15,7 @@ import java.util.List;
 public class DriveCopier {
 
 	private static final String FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
+	private static final String SPREADSHEET_MIME_TYPE = "application/vnd.google-apps.spreadsheet";
 
 	private final GoogleProperties props;
 
@@ -57,5 +58,25 @@ public class DriveCopier {
 			copy.setParents(List.of(folderId));
 		}
 		return drive.files().copy(fileId, copy).setFields("id").setSupportsAllDrives(true).execute().getId();
+	}
+
+	/**
+	 * Creates an empty Google Sheets spreadsheet, inside the given folder when one is given (a service account has
+	 * no Drive quota of its own, so its files must live in a shared folder).
+	 *
+	 * @param drive    authenticated Google Drive API client used to issue the create call
+	 * @param name     display name for the new spreadsheet
+	 * @param folderId Drive folder id to set as its parent; when null or blank it keeps the default location
+	 * @return the Drive file id of the new spreadsheet
+	 * @throws IOException if the Drive create request fails
+	 */
+	public String createSpreadsheet(Drive drive, String name, String folderId) throws IOException {
+		com.google.api.services.drive.model.File sheet = new com.google.api.services.drive.model.File()
+				.setName(name)
+				.setMimeType(SPREADSHEET_MIME_TYPE);
+		if (folderId != null && !folderId.isBlank()) {
+			sheet.setParents(List.of(folderId));
+		}
+		return drive.files().create(sheet).setFields("id").setSupportsAllDrives(true).execute().getId();
 	}
 }

@@ -1233,19 +1233,19 @@ components:
         audienceRows: { $ref: "#/components/schemas/Rows2DV1" }
         estimatesRows: { $ref: "#/components/schemas/Rows2DV1" }
         geoRows: { $ref: "#/components/schemas/Rows2DV1" }
-        paidSearchRows:
+        paidSearchTabs:
           allOf:
-            - $ref: "#/components/schemas/Rows2DV1"
+            - $ref: "#/components/schemas/PaidExportTabsV1"
           description: |
-            Paid Search (Google Ads) export rows, connected on the MPO templates tab. Optional and
-            sent only for templateVariant=MPO. Accepted but not rendered yet: the MPO Paid Search
-            slides get their placeholders in a later phase.
-        paidSocialRows:
+            Paid Search (Google Ads) export, connected on the MPO templates tab: every export tab the
+            UI found ("FULL-FLIGHT PERFORMANCE" is always present), keyed by tab name. Optional and sent
+            only for templateVariant=MPO; absent means the deck has no Paid Search section.
+        paidSocialTabs:
           allOf:
-            - $ref: "#/components/schemas/Rows2DV1"
+            - $ref: "#/components/schemas/PaidExportTabsV1"
           description: |
-            Paid Social (Meta) export rows, connected on the MPO templates tab. Optional and sent only
-            for templateVariant=MPO. Accepted but not rendered yet, like paidSearchRows.
+            Paid Social (Meta) export, connected on the MPO templates tab, keyed by tab name like
+            paidSearchTabs. Optional and sent only for templateVariant=MPO.
         paidSearchUrl: { type: string, description: "Paid Search export sheet the user connected (provenance, like mediaPlanUrl)." }
         paidSocialUrl: { type: string, description: "Paid Social export sheet the user connected (provenance, like mediaPlanUrl)." }
         lineItemMapping:
@@ -1755,3 +1755,11 @@ components:
       items:
         type: array
         items: { type: string }
+
+    PaidExportTabsV1:
+      type: object
+      description: |
+        The tabs of one paid-media export workbook (Google Ads or Meta), keyed by the tab name as it
+        appears in the workbook (e.g. "FULL-FLIGHT PERFORMANCE", "KEYWORD BREAKDOWN"). Each value is the
+        tab's grid with trailing blank rows removed.
+      additionalProperties: { $ref: "#/components/schemas/Rows2DV1" }

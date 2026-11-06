@@ -8,6 +8,7 @@ import com.aidigital.reportconstructor.service.reports.dto.DeviceInsightInput;
 import com.aidigital.reportconstructor.service.reports.dto.GeoInsightInput;
 import com.aidigital.reportconstructor.service.reports.dto.MpoNarrative;
 import com.aidigital.reportconstructor.service.reports.dto.MpoNarrativeInput;
+import com.aidigital.reportconstructor.service.reports.dto.PaidNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.dto.PublisherObservationInput;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeNarrative;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeResults;
@@ -132,6 +133,12 @@ public class StubClaudeClient implements ClaudeClient {
 	@Override
 	public MpoNarrative mpoNarrative(MpoNarrativeInput input, String brief) {
 		// The stub writes no narrative: a dry run's MPO slots show the dash the assembler leaves behind.
+		return null;
+	}
+
+	@Override
+	public Map<String, String> paidNarrative(PaidNarrativeInput input, String brief) {
+		// The stub writes no narrative: a dry run's paid copy slots show the dash the assembler leaves behind.
 		return null;
 	}
 

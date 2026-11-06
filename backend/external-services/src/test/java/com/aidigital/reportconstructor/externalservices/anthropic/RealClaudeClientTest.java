@@ -1,5 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.anthropic;
 
+import com.aidigital.reportconstructor.service.reports.dto.PaidNarrativeInput;
+import com.aidigital.reportconstructor.service.reports.dto.PaidCopyField;
 import com.aidigital.reportconstructor.service.reports.diagnostics.ClaudeFailureScope;
 import com.aidigital.reportconstructor.service.reports.diagnostics.impl.ClaudeFailureLogImpl;
 import com.aidigital.reportconstructor.service.reports.dto.CampaignData;
@@ -2001,6 +2003,104 @@ class RealClaudeClientTest {
 		// When / Then: nothing usable, so the caller dashes every slot instead of writing blanks
 		assertThat(client.mpoNarrative(input, "brief")).isNull();
 		verifyNoInteractions(compressionService);
+	}
+
+	@Test
+	void shouldParseThePaidNarrativeReplyTest() throws Exception {
+		// Given: a Paid Search input with three fields, a reply that wrote two of them, and identity compression
+		ClaudeResponseNormalizer normalizer = new ClaudeResponseNormalizer();
+		ClaudeBatchPromptBuilder promptBuilder = new ClaudeBatchPromptBuilder(normalizer, new Fmt());
+		RealClaudeClient client = new RealClaudeClient(
+				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
+				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
+				new TacticThoughtsCompleteness(),
+				new AnthropicProperties());
+		PaidNarrativeInput input = new PaidNarrativeInput("Paid Search (Google Ads)", "the full flight",
+				List.of("TOTAL: impressions 104K, clicks 1.2K, conversions 100, CPA $10.00"),
+				List.of(new PaidCopyField("verdict", 115, "one-sentence verdict"),
+						new PaidCopyField("pmax_take_1_title", 24, "heading of entry 1"),
+						new PaidCopyField("pmax_take_1", 55, "text of entry 1")));
+		String prompt = client.paidNarrativePrompt(input, "brief").orElseThrow();
+		when(messagesClient.callJsonObject(eq(prompt), eq(3000), eq(90), eq("PaidNarrative"), eq(true)))
+				.thenReturn(json.readTree("""
+						{"verdict": "Google Ads delivered 1.2K clicks and 100 conversions at a $10.00 CPA.",
+						 "pmax_take_1_title": "Search Volume Leader", "pmax_take_1": ""}
+						"""));
+		when(compressionService.compress(org.mockito.ArgumentMatchers.anyList(), eq("PaidNarrative")))
+				.thenAnswer(invocation -> {
+					List<ClaudeCompressionField> fields = invocation.getArgument(0);
+					Map<String, String> out = new LinkedHashMap<>();
+					for (ClaudeCompressionField field : fields) {
+						out.put(field.key(), field.text());
+					}
+					return out;
+				});
+
+		// When:
+		Map<String, String> copy = client.paidNarrative(input, "brief");
+
+		// Then: the written fields come back by key, the blank one is left out for the caller to dash
+		assertThat(copy).containsOnly(
+				Map.entry("verdict", "Google Ads delivered 1.2K clicks and 100 conversions at a $10.00 CPA."),
+				Map.entry("pmax_take_1_title", "Search Volume Leader"));
+		// And: the prompt names every field with its limit and carries the figures after the cache breakpoint
+		assertThat(prompt)
+				.contains("\"pmax_take_1_title\" (at most")
+				.contains("=== PAID SEARCH (GOOGLE ADS) FIGURES, THE FULL FLIGHT ===")
+				.contains("TOTAL: impressions 104K");
+	}
+
+	@Test
+	void shouldRejectAPaidNarrativeReplyWithNoUsableFieldTest() throws Exception {
+		// Given: a well-formed reply with nothing in it
+		ClaudeResponseNormalizer normalizer = new ClaudeResponseNormalizer();
+		RealClaudeClient client = new RealClaudeClient(
+				messagesClient, new ClaudeBatchPromptBuilder(normalizer, new Fmt()), normalizer, compressionService,
+				new ReportClaudeDefaults(), new WorkbookGeoFilter(), new PromptTokenEstimator(),
+				new ClaudeFailureLogImpl(), new TacticThoughtsCompleteness(), new AnthropicProperties());
+		PaidNarrativeInput input = new PaidNarrativeInput("Paid Social (Meta)", "the full flight",
+				List.of("TOTAL: conversions 12"), List.of(new PaidCopyField("verdict", 115, "verdict")));
+		String prompt = client.paidNarrativePrompt(input, "brief").orElseThrow();
+		when(messagesClient.callJsonObject(eq(prompt), eq(3000), eq(90),
+				eq("PaidNarrative"), eq(true)))
+				.thenReturn(json.readTree("{\"verdict\": \"\"}"));
+
+		// When / Then: nothing usable, so the caller dashes every slot
+		assertThat(client.paidNarrative(input, "brief")).isNull();
+		verifyNoInteractions(compressionService);
+	}
+
+	@Test
+	void shouldRetryAPaidNarrativeCallOnceWhenTheReplyIsUnusableTest() throws Exception {
+		// Given: a first reply that could not be parsed (null) and a clean second one
+		ClaudeResponseNormalizer normalizer = new ClaudeResponseNormalizer();
+		RealClaudeClient client = new RealClaudeClient(
+				messagesClient, new ClaudeBatchPromptBuilder(normalizer, new Fmt()), normalizer, compressionService,
+				new ReportClaudeDefaults(), new WorkbookGeoFilter(), new PromptTokenEstimator(),
+				new ClaudeFailureLogImpl(), new TacticThoughtsCompleteness(), new AnthropicProperties());
+		PaidNarrativeInput input = new PaidNarrativeInput("Paid Social (Meta)", "the full flight",
+				List.of("TOTAL: conversions 90"), List.of(new PaidCopyField("verdict", 115, "verdict")));
+		String prompt = client.paidNarrativePrompt(input, "brief").orElseThrow();
+		when(messagesClient.callJsonObject(eq(prompt), eq(3000), eq(90), eq("PaidNarrative"), eq(true)))
+				.thenReturn(null)
+				.thenReturn(json.readTree("{\"verdict\": \"Meta Ads drove 90 conversions.\"}"));
+		when(compressionService.compress(org.mockito.ArgumentMatchers.anyList(), eq("PaidNarrative")))
+				.thenAnswer(invocation -> {
+					List<ClaudeCompressionField> fields = invocation.getArgument(0);
+					Map<String, String> out = new LinkedHashMap<>();
+					for (ClaudeCompressionField field : fields) {
+						out.put(field.key(), field.text());
+					}
+					return out;
+				});
+
+		// When:
+		Map<String, String> copy = client.paidNarrative(input, "brief");
+
+		// Then: the second reply is used, after exactly two calls
+		assertThat(copy).containsOnly(Map.entry("verdict", "Meta Ads drove 90 conversions."));
+		verify(messagesClient, times(2))
+				.callJsonObject(eq(prompt), eq(3000), eq(90), eq("PaidNarrative"), eq(true));
 	}
 
 	@Test

@@ -197,6 +197,40 @@ class CreativeBreakdownHelperImplTest {
 	}
 
 	@Test
+	void shouldGiveATakeawayWithoutALeadOneFromItsOpeningClauseTest() {
+		// Given: three bullets with leads and an optimisation Claude returned without one
+		Map<String, String> values = new LinkedHashMap<>();
+		Map<Integer, List<String>> takeaways = Map.of(1, List.of(
+				"[[Checking trailed at 0.13% CTR]] despite $2,672.70 spent.",
+				"Shift spend to HomeLoan, which led CTR at 0.20%.",
+				"[[AutoLoan matched the top CTR]] at 0.20%.",
+				"Recommend raising HomeLoan and AutoLoan spend up to 20% next flight and refreshing Checking's creative."));
+
+		// When:
+		helper.writeCreativeTakeaways(values, Set.of(1), Set.of(1), takeaways, Map.of("{{tactic 1}}", "CTV"));
+
+		// Then: a marked lead is kept; a missing one ends at the first comma, else after four words — never on "and"
+		assertThat(values)
+				.containsEntry("{{cr_takeaway_tactic 1_1}}", "[[Checking trailed at 0.13% CTR]] despite $2,672.70 spent.")
+				.containsEntry("{{cr_takeaway_tactic 1_2}}", "[[Shift spend to HomeLoan]], which led CTR at 0.20%.")
+				.containsEntry("{{cr_takeaway_tactic 1_4}}", "[[Recommend raising HomeLoan and AutoLoan]] spend up to 20% "
+						+ "next flight and refreshing Checking's creative.");
+	}
+
+	@Test
+	void shouldLeaveAShortTakeawayUnsplitTest() {
+		// Given: a bullet too short to carry a lead and the rest of a sentence
+		Map<String, String> values = new LinkedHashMap<>();
+
+		// When:
+		helper.writeCreativeTakeaways(values, Set.of(1), Set.of(1),
+				Map.of(1, List.of("Refresh Checking creative.")), Map.of("{{tactic 1}}", "CTV"));
+
+		// Then:
+		assertThat(values).containsEntry("{{cr_takeaway_tactic 1_1}}", "Refresh Checking creative.");
+	}
+
+	@Test
 	void shouldSkipEverythingWhenNoTacticEnabledCreativeAnalysisTest() {
 		// Given: the only selection is a different breakdown
 		List<BreakdownSelection> selections = List.of(new BreakdownSelection(1, List.of("tp")));

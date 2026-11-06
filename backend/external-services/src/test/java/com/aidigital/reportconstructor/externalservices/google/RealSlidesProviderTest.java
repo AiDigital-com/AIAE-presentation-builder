@@ -13,6 +13,7 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.slides.v1.Slides;
 import com.google.api.services.slides.v1.model.Page;
+import com.google.api.services.slides.v1.model.Group;
 import com.google.api.services.slides.v1.model.PageElement;
 import com.google.api.services.slides.v1.model.Presentation;
 import com.google.api.services.slides.v1.model.Request;
@@ -31,6 +32,7 @@ import org.mockito.Mockito;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.function.Function;
 import java.util.Map;
 import java.util.Set;
 
@@ -73,7 +75,7 @@ class RealSlidesProviderTest {
 				new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
 	}
 
 	private RealSlidesProvider newMasterTacticProvider(String tacticMasterId, String thoughtsMasterId) {
@@ -100,7 +102,7 @@ class RealSlidesProviderTest {
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
 	}
 
 	private RealSlidesProvider newTitleProvider(List<String> eomDropSlideTitles) {
@@ -129,7 +131,7 @@ class RealSlidesProviderTest {
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
 	}
 
 	private Page slide(String objectId) {
@@ -236,7 +238,7 @@ class RealSlidesProviderTest {
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
 
 		List<TableRow> rows = new java.util.ArrayList<>();
 		rows.add(tableRow("Platforms"));
@@ -793,7 +795,7 @@ class RealSlidesProviderTest {
 				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()), locator, new TacticSlideRelayout(locator),
-				new DeviceTableCompactor(locator), new CreativeTableCompactor());
+				new DeviceTableCompactor(locator), new CreativeTableCompactor(), new PaidSlidesWriter());
 
 		// When:
 		List<Request> requests = provider.buildBlockDeleteRequests(List.of(kept, dropped), Set.of("gone"));
@@ -837,13 +839,13 @@ class RealSlidesProviderTest {
 				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()), new SlideBlockLocator(), relayout,
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
 		RealSlidesProvider noAnchorProvider = new RealSlidesProvider(
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
 				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(noAnchorProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()), new SlideBlockLocator(), relayout,
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
 
 		// When:
 		List<Request> requests = provider.buildRelayoutRequests(List.of(kept, dropped), Set.of("gone"));
@@ -1090,7 +1092,7 @@ class RealSlidesProviderTest {
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
 	}
 
 	private Page eomSlide(String objectId, String... texts) {
@@ -1179,6 +1181,27 @@ class RealSlidesProviderTest {
 	}
 
 	@Test
+	void shouldCollectTheUnresolvedTokensOfGroupedShapesTest() {
+		// Given: the EOM cover, whose headline figures sit in shapes nested inside groups
+		RealSlidesProvider provider = newEomProvider();
+		Function<String, PageElement> shape = text -> new PageElement().setShape(new Shape().setText(
+				new TextContent().setTextElements(List.of(new TextElement().setTextRun(new TextRun()
+						.setContent(text))))));
+		Page cover = new Page().setObjectId("cover").setPageElements(List.of(
+				shape.apply("Acme\n"),
+				new PageElement().setElementGroup(new Group().setChildren(List.of(
+						shape.apply("Planned To Date\n"), shape.apply("{{planned total impressions short}}\n"),
+						new PageElement().setElementGroup(new Group().setChildren(List.of(
+								shape.apply("{{total imps pace}}\n")))))))));
+
+		// When:
+		List<String> tokens = provider.unresolvedTokens(List.of(cover));
+
+		// Then:
+		assertThat(tokens).containsExactly("{{planned total impressions short}}", "{{total imps pace}}");
+	}
+
+	@Test
 	void unresolvedTokens_isEmptyForAFullyFilledDeckTest() {
 		RealSlidesProvider provider = newEomProvider();
 		List<Page> deck = List.of(eomSlide("cover", "Acme — August 2026"), eomSlide("tct_1", "1.2M", "$48K"));
@@ -1216,7 +1239,7 @@ class RealSlidesProviderTest {
 				new MpoDeckPolicy(mpoDeckProps), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor());
+				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
 
 		// When-Then: only the MPO EOM deck takes the EOM model; a standard EOM deck and any EOC deck do not
 		assertThat(provider.eomDeck("EOM", TemplateVariant.MPO)).isTrue();

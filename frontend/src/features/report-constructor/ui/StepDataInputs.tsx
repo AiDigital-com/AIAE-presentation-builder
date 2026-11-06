@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { isGoogleSheetUrl, PAID_SEARCH_TAB, PAID_SOCIAL_TAB, readSheetTab } from "@/shared/api/sheets";
+import { isGoogleSheetUrl, PAID_SEARCH_EXPORT_TABS, PAID_SOCIAL_EXPORT_TABS } from "@/shared/api/sheets";
 import { useWizard, type PaidChannel } from "@/shared/wizard/WizardContext";
 import { pacingReadyCount } from "../lib/pacing";
+import { readPaidExport } from "../lib/paidExport";
 import { IconArrowLeft, IconArrowRight, IconCheck, IconSpinner } from "./icons";
 import { useToast } from "./ToastContext";
 
@@ -148,49 +149,36 @@ interface PaidChannelSpec {
     id: PaidChannel;
     name: string;
     label: string;
-    defaultTab: string;
+    tabs: readonly string[];
 }
 
 const PAID_CHANNELS: PaidChannelSpec[] = [
-    { id: "search", name: "Paid Search", label: "Paid Search (Google Ads) export — Google Sheet link", defaultTab: PAID_SEARCH_TAB },
-    { id: "social", name: "Paid Social", label: "Paid Social (Meta) export — Google Sheet link", defaultTab: PAID_SOCIAL_TAB },
+    { id: "search", name: "Paid Search", label: "Paid Search (Google Ads) export — Google Sheet link", tabs: PAID_SEARCH_EXPORT_TABS },
+    { id: "social", name: "Paid Social", label: "Paid Social (Meta) export — Google Sheet link", tabs: PAID_SOCIAL_EXPORT_TABS },
 ];
 
+/** "Acme Search · 70 daily rows · 7 tabs" — what a connected export row shows. */
+function paidExportSummary(connected: { title: string; dataRows: number; tabs: Record<string, unknown> }): string {
+    const tabs = Object.keys(connected.tabs).length;
+    return `${connected.title} · ${connected.dataRows} daily rows · ${tabs} ${tabs === 1 ? "tab" : "tabs"}`;
+}
+
 /**
- * Optional MPO-only exports for the Paid Search and Paid Social sections. Each export is read from a
- * tab named after its channel; a workbook without that tab gets the same picker the media plan uses.
+ * Optional MPO-only exports for the Paid Search and Paid Social sections. An export is a whole workbook:
+ * its FULL-FLIGHT PERFORMANCE tab is required, and each breakdown tab the deck uses is read when present —
+ * a missing one is named under the row, because only the slide that needs it stays blank.
  */
 function PaidChannelInputs() {
     const w = useWizard();
     const { showToast } = useToast();
     const [pulling, setPulling] = useState<PaidChannel | null>(null);
-    const [picker, setPicker] = useState<{ channel: PaidChannel; url: string; tabs: string[] } | null>(null);
 
-    async function read(spec: PaidChannelSpec, url: string, tab: string) {
+    async function read(spec: PaidChannelSpec, url: string) {
         setPulling(spec.id);
         try {
-            const r = await readSheetTab(url, tab);
-            if (!r.ok) {
-                if (r.error === "tab_not_found" && r.tabs.length > 0) {
-                    setPicker({ channel: spec.id, url, tabs: r.tabs });
-                    return;
-                }
-                showToast(r.error || "Could not read sheet", true);
-                return;
-            }
-            setPicker(null);
-            w.connectPaidChannel(spec.id, {
-                title: r.title ?? "",
-                tab: r.tab,
-                sheetId: r.sheetId ?? "",
-                rows: r.rows,
-                cols: r.cols,
-                tabsCount: r.tabs.length,
-                headers: r.headers,
-                preview: r.preview,
-                rawRows: r.rawRows,
-            });
-            showToast(`${spec.name}: ${r.title} — ${r.rows} rows loaded`);
+            const exp = await readPaidExport(url, spec.tabs);
+            w.connectPaidChannel(spec.id, exp);
+            showToast(`${spec.name}: ${exp.title} — ${exp.dataRows} daily rows loaded`);
         } catch (e) {
             showToast(e instanceof Error ? e.message : "Could not read sheet", true);
         } finally {
@@ -215,27 +203,16 @@ function PaidChannelInputs() {
                         <ConnectRow
                             label={spec.label}
                             placeholder="https://docs.google.com/spreadsheets/…"
-                            connected={connected ? `${connected.title} · ${connected.tab} · ${connected.rows} rows` : null}
+                            connected={connected ? paidExportSummary(connected) : null}
                             pulling={pulling === spec.id}
-                            onConnect={(url) => {
-                                setPicker(null);
-                                void read(spec, url, spec.defaultTab);
-                            }}
+                            onConnect={(url) => void read(spec, url)}
                             onDisconnect={() => w.disconnectPaidChannel(spec.id)}
                         />
-                        {picker?.channel === spec.id && (
-                            <MediaTabPicker
-                                picker={picker}
-                                pulling={pulling === spec.id}
-                                onPick={(url, tab) => void read(spec, url, tab)}
-                                onDismiss={() => setPicker(null)}
-                                message={
-                                    <>
-                                        No <strong>{spec.defaultTab}</strong> tab in that workbook. Pick the tab that
-                                        holds the {spec.name} export.
-                                    </>
-                                }
-                            />
+                        {connected && connected.missingTabs.length > 0 && (
+                            <p className="rc-paid__missing" role="note">
+                                Not in this export: {connected.missingTabs.join(", ")}. The slides built from{" "}
+                                {connected.missingTabs.length === 1 ? "it" : "them"} will be left empty.
+                            </p>
                         )}
                     </div>
                 );

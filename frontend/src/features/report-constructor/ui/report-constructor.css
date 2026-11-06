@@ -300,6 +300,11 @@
   padding: 2px 8px; border-radius: 999px;
 }
 .rc-paid__sub { margin: 4px 0 14px; color: var(--rc-mute); font-size: 13px; line-height: 1.45; }
+/* Breakdown tabs a connected export lacks: a soft warning, not an error — the export still connects. */
+.rc-paid__missing {
+  margin: -6px 0 14px; padding: 8px 12px; border: 1px solid var(--rc-amber-border); border-radius: 10px;
+  background: var(--rc-amber-tint); color: var(--rc-amber); font-size: 12.5px; line-height: 1.45;
+}
 
 /* "I already have a filled sheet" — the way past this whole step, so it reads as a card of its
    own above the form rather than as one more field in it. */
