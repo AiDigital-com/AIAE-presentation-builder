@@ -3,6 +3,7 @@ package com.aidigital.reportconstructor.service.reports.helpers;
 import com.aidigital.reportconstructor.service.reports.dto.CampaignData;
 import com.aidigital.reportconstructor.service.reports.dto.GeneratePayload;
 import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
+import com.aidigital.reportconstructor.service.reports.model.PaidSlideChart;
 import com.aidigital.reportconstructor.service.reports.model.PaidSlidesFill;
 
 import java.util.List;
@@ -193,4 +194,18 @@ public interface ReportGenerationChartHelper {
 	 * @param userGoogleToken OAuth token for Google Slides API, or null when unavailable
 	 */
 	void fillPaidSlides(String slideUrl, PaidSlidesFill fill, String userGoogleToken);
+
+	/**
+	 * Replaces the MPO deck's Paid Search / Paid Social sample chart images with charts linked to the report's
+	 * data. Must run after {@link #fillPaidSlides}, which deletes the slides of a channel without an export.
+	 * Non-fatal: failures come back as warnings and the deck keeps the sample images they concern.
+	 *
+	 * @param slideUrl         URL of the generated Google Slides deck
+	 * @param charts           the charts of every channel with an export; empty is a no-op
+	 * @param flatReplacements resolved placeholder values, source of the campaign title used for file names
+	 * @param userGoogleToken  OAuth token for Google APIs, or null when unavailable
+	 * @return chart warnings collected while linking (empty when every chart drew cleanly)
+	 */
+	List<String> buildPaidCharts(
+			String slideUrl, List<PaidSlideChart> charts, Map<String, String> flatReplacements, String userGoogleToken);
 }

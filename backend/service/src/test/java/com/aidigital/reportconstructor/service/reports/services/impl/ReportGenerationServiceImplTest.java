@@ -2,11 +2,13 @@ package com.aidigital.reportconstructor.service.reports.services.impl;
 
 import com.aidigital.reportconstructor.service.reports.dto.PaidNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.PaidNarrativeAssemblerImpl;
+import com.aidigital.reportconstructor.service.reports.helpers.impl.PaidSlideChartAssemblerImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.PaidSlideTableAssemblerImpl;
 import com.aidigital.reportconstructor.service.reports.engine.PaidValueFormatter;
 import com.aidigital.reportconstructor.service.reports.enums.PaidChannelKind;
 import com.aidigital.reportconstructor.service.reports.model.PaidChannelData;
 import com.aidigital.reportconstructor.service.reports.model.PaidMetrics;
+import com.aidigital.reportconstructor.service.reports.model.PaidSlideChart;
 import com.aidigital.reportconstructor.service.reports.model.PaidSlidesFill;
 import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
 import com.aidigital.reportconstructor.service.common.error.AppException;
@@ -161,7 +163,8 @@ class ReportGenerationServiceImplTest {
 				new SheetTacticCountHelperImpl(), new PacingNarrativeAssemblerImpl(), new MpoNarrativeAssemblerImpl(),
 				new DeckStyleTokenHelperImpl(new SheetRowHelperImpl()), paidTokens,
 				new PaidNarrativeAssemblerImpl(new PaidValueFormatter()),
-				new PaidSlideTableAssemblerImpl(new PaidValueFormatter()));
+				new PaidSlideTableAssemblerImpl(new PaidValueFormatter()),
+				new PaidSlideChartAssemblerImpl(new PaidValueFormatter()));
 	}
 
 	@Test
@@ -626,6 +629,50 @@ class ReportGenerationServiceImplTest {
 		service.finishPaidSlides("https://docs.google.com/presentation/d/deck1/edit", List.of(), payload, "tok");
 
 		// Then:
+		verifyNoInteractions(chartHelper);
+	}
+
+	@Test
+	void shouldLinkPaidChartsOfEveryChannelOnAnMpoDeckTest() {
+		// Given: an MPO EOC deck with a Search export
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.MPO, Map.of(), Map.of());
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.MPO)).thenReturn(true);
+		PaidChannelData search = new PaidChannelData(PaidChannelKind.SEARCH, new PaidMetrics(1000, 100, 50, 5), null,
+				List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), List.of(), List.of());
+		Map<String, String> flat = Map.of("{{campaign_name}}", "Acme");
+		List<PaidSlideChart> expected = new PaidSlideChartAssemblerImpl(new PaidValueFormatter())
+				.assemble(List.of(search));
+		when(chartHelper.buildPaidCharts("https://docs.google.com/presentation/d/deck1/edit", expected, flat, "tok"))
+				.thenReturn(List.of("chart warning"));
+
+		// When:
+		List<String> result = service.buildPaidCharts(
+				"https://docs.google.com/presentation/d/deck1/edit", List.of(search), payload, flat, "tok");
+
+		// Then:
+		assertThat(result).containsExactly("chart warning");
+	}
+
+	@Test
+	void shouldNotBuildPaidChartsOnAStandardDeckTest() {
+		// Given:
+		GeneratePayload payload = new GeneratePayload(
+				"Campaign brief.", "EOC", "1000000", List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), null, "", null, null, null, null, TemplateVariant.STANDARD, Map.of(), Map.of());
+		when(slides.carriesMpoNarrative("EOC", TemplateVariant.STANDARD)).thenReturn(false);
+		PaidChannelData search = new PaidChannelData(PaidChannelKind.SEARCH, new PaidMetrics(1000, 100, 50, 5), null,
+				List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+				List.of(), List.of(), List.of());
+
+		// When:
+		List<String> result = service.buildPaidCharts(
+				"https://docs.google.com/presentation/d/deck1/edit", List.of(search), payload, Map.of(), "tok");
+
+		// Then:
+		assertThat(result).isEmpty();
 		verifyNoInteractions(chartHelper);
 	}
 

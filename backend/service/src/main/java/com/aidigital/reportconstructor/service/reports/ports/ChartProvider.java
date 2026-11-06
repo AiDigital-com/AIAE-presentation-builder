@@ -40,4 +40,15 @@ public interface ChartProvider {
 	 * @return human-readable error strings (empty when everything succeeded)
 	 */
 	List<String> buildBreakdownCharts(BreakdownChartRequest request);
+
+	/**
+	 * Replaces the MPO deck's Paid Search / Paid Social sample chart images with charts linked to the report's
+	 * data: each chart gets its own spreadsheet, styled like the sample, and is linked in the sample image's place.
+	 * A chart without data deletes its image; a chart whose image is not on the deck (the EOM deck has no overview
+	 * slides) is skipped. Per-chart failures are collected and returned without aborting the rest.
+	 *
+	 * @param request the paid chart inputs
+	 * @return human-readable error strings (empty when everything succeeded)
+	 */
+	List<String> buildPaidCharts(PaidChartRequest request);
 }

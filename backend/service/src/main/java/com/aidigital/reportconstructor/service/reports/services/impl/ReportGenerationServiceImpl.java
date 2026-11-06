@@ -49,6 +49,7 @@ import com.aidigital.reportconstructor.service.reports.helpers.GeoBreakdownHelpe
 import com.aidigital.reportconstructor.service.reports.helpers.ImpressionContributionHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.MpoNarrativeAssembler;
 import com.aidigital.reportconstructor.service.reports.helpers.PaidNarrativeAssembler;
+import com.aidigital.reportconstructor.service.reports.helpers.PaidSlideChartAssembler;
 import com.aidigital.reportconstructor.service.reports.helpers.PaidSlideTableAssembler;
 import com.aidigital.reportconstructor.service.reports.helpers.PaidTokenHelper;
 import com.aidigital.reportconstructor.service.reports.model.PaidChannelData;
@@ -199,6 +200,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	private final PaidNarrativeAssembler paidNarrative;
 	/** Turns the parsed paid channels into the paid section's table cells and the slides to delete. */
 	private final PaidSlideTableAssembler paidTables;
+	private final PaidSlideChartAssembler paidCharts;
 
 	/**
 	 * Validates the brief, then enqueues the job and launches the build through the
@@ -457,6 +459,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 
 		List<String> deckWarnings = new ArrayList<>(tacticSlideWarnings);
 		deckWarnings.addAll(chartWarnings);
+		deckWarnings.addAll(buildPaidCharts(slideUrl, paidChannels, payload, flatReplacements, userGoogleToken));
 		// Last pass over the finished deck: any token still standing had no value anywhere in the
 		// pipeline, and shipping its own name is worse than shipping a dash.
 		deckWarnings.addAll(chartHelper.dashUnresolvedTokens(
@@ -915,6 +918,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 
 		jobWarnings.addAll(breakdownChartWarnings);
 		jobWarnings.addAll(chartWarnings);
+		jobWarnings.addAll(buildPaidCharts(slideUrl, paidChannels, payload, flatReplacements, userGoogleToken));
 		// Last pass over the finished deck: any token still standing had no value anywhere in the pipeline,
 		// and shipping its own name is worse than shipping a dash.
 		jobWarnings.addAll(chartHelper.dashUnresolvedTokens(
@@ -1161,6 +1165,28 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		}
 		boolean eom = EOM_REPORT_TYPE.equalsIgnoreCase(payload.reportType());
 		chartHelper.fillPaidSlides(slideUrl, paidTables.assemble(channels, eom), userGoogleToken);
+	}
+
+	/**
+	 * Links the MPO deck's Paid Search / Paid Social charts in place of the template's sample chart images. Runs after
+	 * {@link #finishPaidSlides}, so the slides of a channel without an export are already gone. Asked of the slides
+	 * provider first, so a standard deck, which has no paid section, is left alone.
+	 *
+	 * @param slideUrl         the deck created from the template
+	 * @param channels         the parsed paid channels, as returned by {@link #fillMpoDeckTokens}
+	 * @param payload          the generation request
+	 * @param flatReplacements resolved placeholder values, source of the campaign title for the chart files
+	 * @param userGoogleToken  the caller's Google OAuth token, or null to use the service account
+	 * @return the chart warnings, empty when every chart drew cleanly or the deck has no paid section
+	 */
+	List<String> buildPaidCharts(
+			String slideUrl, List<PaidChannelData> channels, GeneratePayload payload,
+			Map<String, String> flatReplacements, String userGoogleToken) {
+		if (channels == null || channels.isEmpty()
+				|| !slides.carriesMpoNarrative(payload.reportType(), payload.templateVariant())) {
+			return List.of();
+		}
+		return chartHelper.buildPaidCharts(slideUrl, paidCharts.assemble(channels), flatReplacements, userGoogleToken);
 	}
 
 	/**

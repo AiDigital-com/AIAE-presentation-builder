@@ -3,6 +3,7 @@ package com.aidigital.reportconstructor.externalservices.google;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartRequest;
 import com.aidigital.reportconstructor.service.reports.ports.ChartProvider;
 import com.aidigital.reportconstructor.service.reports.ports.ChartRequest;
+import com.aidigital.reportconstructor.service.reports.ports.PaidChartRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -29,6 +30,11 @@ public class StubChartProvider implements ChartProvider {
 
 	@Override
 	public List<String> buildBreakdownCharts(BreakdownChartRequest request) {
+		return List.of();
+	}
+
+	@Override
+	public List<String> buildPaidCharts(PaidChartRequest request) {
 		return List.of();
 	}
 }

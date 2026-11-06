@@ -41,7 +41,7 @@ public class PaidTokenHelperImpl implements PaidTokenHelper {
 	/** Ad cards on the Search Top Performing Ads slide. */
 	private static final int SEARCH_AD_SLOTS = 3;
 	/** Legend slots of the Social audience-type donut. */
-	private static final int SOCIAL_DONUT_SLOTS = 2;
+	private static final int SOCIAL_DONUT_SLOTS = 3;
 	/** Legend slots of the Social placement conversion-mix donut. */
 	private static final int SOCIAL_PLACEMENT_MIX_SLOTS = 5;
 	/** The age bands of the Search audience slide, in slide order (export spelling, spaces removed). */

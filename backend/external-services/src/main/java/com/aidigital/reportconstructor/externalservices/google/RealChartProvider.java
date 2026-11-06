@@ -3,6 +3,7 @@ package com.aidigital.reportconstructor.externalservices.google;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartRequest;
 import com.aidigital.reportconstructor.service.reports.ports.ChartProvider;
 import com.aidigital.reportconstructor.service.reports.ports.ChartRequest;
+import com.aidigital.reportconstructor.service.reports.ports.PaidChartRequest;
 import com.google.api.client.http.HttpRequestInitializer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Primary;
@@ -23,13 +24,15 @@ public class RealChartProvider implements ChartProvider {
 	private final GoogleClientsFactory clients;
 	private final TacticChartBuilder chartBuilder;
 	private final BreakdownChartBuilder breakdownChartBuilder;
+	private final PaidChartBuilder paidChartBuilder;
 
 	public RealChartProvider(
 			GoogleClientsFactory clients, TacticChartBuilder chartBuilder,
-			BreakdownChartBuilder breakdownChartBuilder) {
+			BreakdownChartBuilder breakdownChartBuilder, PaidChartBuilder paidChartBuilder) {
 		this.clients = clients;
 		this.chartBuilder = chartBuilder;
 		this.breakdownChartBuilder = breakdownChartBuilder;
+		this.paidChartBuilder = paidChartBuilder;
 	}
 
 	@Override
@@ -45,6 +48,11 @@ public class RealChartProvider implements ChartProvider {
 	@Override
 	public List<String> buildBreakdownCharts(BreakdownChartRequest req) {
 		return breakdownChartBuilder.buildBreakdownCharts(chartClients(req.userGoogleAccessToken()), req);
+	}
+
+	@Override
+	public List<String> buildPaidCharts(PaidChartRequest req) {
+		return paidChartBuilder.buildPaidCharts(chartClients(req.userGoogleAccessToken()), req);
 	}
 
 	/**
