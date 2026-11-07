@@ -92,6 +92,8 @@ public class LineItemMatcherServiceImpl implements LineItemMatcherService {
 		m.put("any live sports package (up to 50% live sports inventory / up to 50% shoulder inventory)", List.of(
 				"CTV" +
 				" Live Sports"));
+		m.put("any live sports package (up to 80% live sports inventory / up to 20% shoulder inventory)", List.of(
+				"CTV Live Sports"));
 		m.put("any live sports package (up to 50% live sports inventory / up to 50% ancillary inventory)", List.of(
 				"CTV Live Sports"));
 		m.put("college football live sport package (up to 50% live sports inventory / up to 50% shoulder inventory)",
