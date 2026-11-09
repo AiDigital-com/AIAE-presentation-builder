@@ -38,6 +38,8 @@ public class TacticCatalog {
 		m.put("100% live sports package (100% live and in-game inventory)", "CTV Live Sports");
 		m.put("any live sports package (up to 50% live sports inventory / up to 50% shoulder inventory)",
 				"CTV Live Sports");
+		m.put("any live sports package (up to 80% live sports inventory / up to 20% shoulder inventory)",
+				"CTV Live Sports");
 		m.put("college football live sport package (up to 50% live sports inventory / up to 50% shoulder inventory)",
 				"CTV Live Sports");
 		m.put("amazon fire tv", "CTV");
@@ -118,6 +120,8 @@ public class TacticCatalog {
 		m.put("100% live sports package (100% live and in-game inventory)", "Live Sports");
 		m.put("any live sports package (up to 50% live sports inventory / up to 50% shoulder inventory)",
 				"Live Sports");
+		m.put("any live sports package (up to 80% live sports inventory / up to 20% shoulder inventory)",
+				"Live Sports");
 		m.put("any live sports package (up to 50% live sports inventory / up to 50% ancillary inventory)",
 				"Live Sports");
 		m.put("college football live sport package (up to 50% live sports inventory / up to 50% shoulder inventory)",
@@ -182,6 +186,8 @@ public class TacticCatalog {
 		m.put("geofencing display", "GeoFencing (Display)");
 		m.put("any live sports package (up to 50% live sports inventory / up to 50% ancillary inventory)",
 				"ANY Live Sports Package (Up to 50% Live Sports inventory / Up to 50% Ancillary inventory)");
+		m.put("any live sports package (up to 80% live sports inventory / up to 20% shoulder inventory)",
+				"ANY Live Sports Package (Up to 80% Live Sports inventory / Up to 20% Shoulder inventory)");
 		m.put("any live sports package",
 				"ANY Live Sports Package (Up to 50% Live Sports inventory / Up to 50% Ancillary inventory)");
 		m.put("live sports package",
@@ -276,6 +282,7 @@ public class TacticCatalog {
 				"amazon display", "amazon video", "amazon audio",
 				"amazon audio (amazon & publisher network)", "rich media html 5",
 				"any live sports package (up to 50% live sports inventory / up to 50% shoulder inventory)",
+				"any live sports package (up to 80% live sports inventory / up to 20% shoulder inventory)",
 				"college football live sport package (up to 50% live sports inventory / up to 50% shoulder inventory)"
 		};
 		for (String k : keys) {
@@ -294,6 +301,7 @@ public class TacticCatalog {
 				"network exclusive", "live news", "live tv", "local ctv", "zip code targeted ctv",
 				"100% live sports package (100% live and in-game inventory)",
 				"any live sports package (up to 50% live sports inventory / up to 50% shoulder inventory)",
+				"any live sports package (up to 80% live sports inventory / up to 20% shoulder inventory)",
 				"college football live sport package (up to 50% live sports inventory / up to 50% shoulder inventory)",
 				"amazon fire tv", "google tv", "netflix (up to 10 sec creative)", "netflix (up to 15 sec creative)",
 				"netflix (up to 30 sec creative)", "youtube skippable in-stream", "youtube skippable in-stream (cpm)",

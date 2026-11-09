@@ -116,6 +116,32 @@ class MediaPlanTacticExtractorTest {
 	}
 
 	@Test
+	void shouldExtractEightyPercentLiveSportsPackageTest() {
+		// Given: the iGaming Live Sports proposal layout — flight-group label rows with an empty Media
+		// cell, then the 80% / 20% shoulder Live Sports package rows
+		String tactic = "ANY Live Sports Package (Up to 80% Live Sports inventory / Up to 20% Shoulder inventory)";
+		TacticCatalog catalog = new TacticCatalog();
+		List<List<String>> plan = List.of(
+				List.of("", "Flight Start", "Flight End", "Geo", "Media", "Comments"),
+				List.of("", "OnlC_New Name Launch ", "", "", "", ""),
+				List.of("", "November 13, 2026", "December 31, 2026", "Michigan", tactic, "NCAA Football"),
+				List.of("", "OnlC_Always On", "", "", "", ""),
+				List.of("", "October 1, 2026", "December 31, 2026", "Michigan", tactic, "NFL"),
+				List.of("", "Totals:", "", "", "", "")
+		);
+
+		// When:
+		List<PlanTactic> rows = extractor.extract(plan);
+
+		// Then: both rows are recognised, and the catalog resolves channel, display name and KPI
+		assertThat(rows).extracting(PlanTactic::name).containsExactly(tactic, tactic);
+		assertThat(rows.get(1).context()).contains("OnlC_Always On");
+		assertThat(catalog.channelFor(tactic)).isEqualTo("CTV Live Sports");
+		assertThat(catalog.displayFor(tactic)).isEqualTo("Live Sports");
+		assertThat(catalog.exactKpiType(tactic)).isEqualTo("vcr");
+	}
+
+	@Test
 	void extract_capsAtTwentyEightTactics() {
 		// Given: a plan with thirty recognised tactic rows
 		List<List<String>> plan = new java.util.ArrayList<>();
