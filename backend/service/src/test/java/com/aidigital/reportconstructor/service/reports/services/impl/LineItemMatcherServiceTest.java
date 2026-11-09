@@ -84,6 +84,96 @@ class LineItemMatcherServiceTest {
 	}
 
 	@Test
+	void shouldAutoMatchByPlanLineIdWhenTheChannelHasSeveralLineItemsTest() {
+		// Given: two Display line items, told apart only by the plan line ID in the 3rd segment
+		List<List<String>> bq = List.of(
+				List.of("Level 1 Naming", "Channel", "Tactic"),
+				List.of("C_Client_7_Camp_Display_P_CPM_-_616641_Contextual", "Display", "Prospecting"),
+				List.of("C_Client_8_Camp_Display_P_CPM_-_616642_RTG", "Display", "Prospecting")
+		);
+		List<List<String>> plan = List.of(
+				List.of("Line ID", "Media"),
+				List.of("8", "Programmatic Display"),
+				List.of("7", "Programmatic Display")
+		);
+		var aiMatcher = new LineItemMatcherServiceImpl(new LineItemNamingHelperImpl(),
+				(tactics, options) -> Map.of(1, "616641", 2, "616642"), extractor, tracker());
+
+		// When
+		MatchResult result = aiMatcher.match(bq, plan, null);
+
+		// Then: the plan line ID wins over what the AI would have picked
+		assertThat(result.tactics().get(0).lineItemId()).isEqualTo("616642");
+		assertThat(result.tactics().get(0).confidence()).isEqualTo("auto");
+		assertThat(result.tactics().get(1).lineItemId()).isEqualTo("616641");
+		assertThat(result.tactics().get(1).confidence()).isEqualTo("auto");
+	}
+
+	@Test
+	void shouldNarrowASharedPlanLineIdByTheTacticsChannelTest() {
+		// Given: plan line ID 24 is reused by a Display and a Meta line item
+		List<List<String>> bq = List.of(
+				List.of("Level 1 Naming", "Channel", "Tactic"),
+				List.of("C_Client_24_Camp_Display_P_CPM_-_650115_Dinks", "Display", "Prospecting"),
+				List.of("C_Client_24_Camp_Meta_P_CPC_-_650120_Clicks", "Meta", "Prospecting")
+		);
+		List<List<String>> plan = List.of(
+				List.of("Line #", "Media"),
+				List.of("24", "Meta (CPC)")
+		);
+
+		// When
+		MatchResult result = matcher.match(bq, plan, null);
+
+		// Then
+		assertThat(result.tactics().getFirst().lineItemId()).isEqualTo("650120");
+		assertThat(result.tactics().getFirst().confidence()).isEqualTo("auto");
+	}
+
+	@Test
+	void shouldNotGuessWhenAPlanLineIdIsSharedWithinTheSameChannelTest() {
+		// Given: two Display line items both carry plan line ID 24, and the AI picks nothing
+		List<List<String>> bq = List.of(
+				List.of("Level 1 Naming", "Channel", "Tactic"),
+				List.of("C_Client_24_Camp_Display_P_CPM_-_650115_Dinks", "Display", "Prospecting"),
+				List.of("C_Client_24_Camp_Display_P_CPM_-_650122_Family", "Display", "Prospecting")
+		);
+		List<List<String>> plan = List.of(
+				List.of("Line ID", "Media"),
+				List.of("24", "Programmatic Display")
+		);
+
+		// When
+		MatchResult result = matcher.match(bq, plan, null);
+
+		// Then
+		assertThat(result.tactics().getFirst().lineItemId()).isEmpty();
+		assertThat(result.tactics().getFirst().confidence()).isEqualTo("none");
+	}
+
+	@Test
+	void shouldNotGiveAPlanLineIdMatchToASecondTacticByChannelTest() {
+		// Given: the only Display line item carries plan line ID 7; tactic 2 (no line ID) is also Display
+		List<List<String>> bq = List.of(
+				List.of("Level 1 Naming", "Channel", "Tactic"),
+				List.of("C_Client_7_Camp_Display_P_CPM_-_616641_Contextual", "Display", "Prospecting")
+		);
+		List<List<String>> plan = List.of(
+				List.of("Line ID", "Media"),
+				List.of("7", "Programmatic Display"),
+				List.of("", "Programmatic Display")
+		);
+
+		// When
+		MatchResult result = matcher.match(bq, plan, null);
+
+		// Then: tactic 1 keeps it, tactic 2 is left for manual matching
+		assertThat(result.tactics().get(0).lineItemId()).isEqualTo("616641");
+		assertThat(result.tactics().get(1).lineItemId()).isEmpty();
+		assertThat(result.tactics().get(1).confidence()).isEqualTo("none");
+	}
+
+	@Test
 	void match_rejectsAiAssignmentWithUnknownOrCrossChannelId() {
 		// Given: an ambiguous Display channel, but the assistant returns one bogus id and one valid id
 		List<List<String>> bq = List.of(

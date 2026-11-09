@@ -120,6 +120,29 @@ public class SheetRowHelperImpl implements SheetRowHelper {
 	}
 
 	/**
+	 * Finds the column of a header row whose normalised text is one of the given synonyms. Each cell is
+	 * normalised with {@link #normalizeHeader(String)} (so {@code "Line #"} becomes {@code "line"}) and the
+	 * leftmost match wins.
+	 *
+	 * @param headerRow the header row cells (may be {@code null})
+	 * @param synonyms  normalised header texts identifying the column (may be {@code null})
+	 * @return the zero-based column index, or {@code -1} when either argument is {@code null} or no cell matches
+	 */
+	@Override
+	public int findHeaderColumn(List<String> headerRow, Set<String> synonyms) {
+
+		if (headerRow == null || synonyms == null) {
+			return -1;
+		}
+		for (int j = 0; j < headerRow.size(); j++) {
+			if (synonyms.contains(normalizeHeader(cell(headerRow, j)))) {
+				return j;
+			}
+		}
+		return -1;
+	}
+
+	/**
 	 * Normalises a header cell for synonym matching: lowercased, every run of non-alphanumeric
 	 * characters collapsed to a single space, and trimmed.
 	 *

@@ -1,6 +1,7 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
 import com.aidigital.reportconstructor.service.reports.dto.PlanTactic;
+import com.aidigital.reportconstructor.service.reports.engine.MediaPlanColumn;
 import com.aidigital.reportconstructor.service.reports.engine.TacticCatalog;
 import com.aidigital.reportconstructor.service.reports.helpers.MediaPlanTacticExtractor;
 import com.aidigital.reportconstructor.service.reports.helpers.SheetRowHelper;
@@ -62,6 +63,7 @@ public class MediaPlanTacticExtractorImpl implements MediaPlanTacticExtractor {
 			return tactics;
 		}
 
+		int lineIdCol = sheetRows.findHeaderColumn(planRows.get(mediaRow), MediaPlanColumn.LINE_ID.getSynonyms());
 		String group = "";
 		for (int i = mediaRow + 1; i < planRows.size(); i++) {
 			List<String> row = planRows.get(i);
@@ -80,7 +82,8 @@ public class MediaPlanTacticExtractorImpl implements MediaPlanTacticExtractor {
 			if (!catalog.isKnownTactic(value)) {
 				continue;
 			}
-			tactics.add(new PlanTactic(value, buildContext(group, row, mediaCol)));
+			String planLineId = lineIdCol < 0 ? "" : sheetRows.cellAt(row, lineIdCol);
+			tactics.add(new PlanTactic(value, buildContext(group, row, mediaCol), planLineId));
 			if (tactics.size() >= MAX_TACTICS) {
 				break;
 			}

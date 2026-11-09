@@ -4,6 +4,7 @@ import { useWizard, type PaidChannel } from "@/shared/wizard/WizardContext";
 import { pacingReadyCount } from "../lib/pacing";
 import { readPaidExport } from "../lib/paidExport";
 import { IconArrowLeft, IconArrowRight, IconCheck, IconSpinner } from "./icons";
+import { SheetFormatHint } from "./SheetFormatHint";
 import { useToast } from "./ToastContext";
 
 export interface InputErrors {
@@ -46,9 +47,11 @@ interface ConnectRowProps {
     pulling: boolean;
     onConnect(url: string): void;
     onDisconnect(): void;
+    /** Shown under the link field, e.g. the expected sheet format. */
+    hint?: ReactNode;
 }
 
-function ConnectRow({ label, placeholder, connected, pulling, onConnect, onDisconnect }: ConnectRowProps) {
+function ConnectRow({ label, placeholder, connected, pulling, onConnect, onDisconnect, hint }: ConnectRowProps) {
     const [url, setUrl] = useState("");
     const canConnect = isGoogleSheetUrl(url) && !pulling;
     return (
@@ -90,6 +93,7 @@ function ConnectRow({ label, placeholder, connected, pulling, onConnect, onDisco
                     </button>
                 </div>
             )}
+            {hint}
         </div>
     );
 }
@@ -285,6 +289,7 @@ function AdoptSheetCard({ adopting, onAdopt }: AdoptSheetCardProps) {
                     {adopting ? "Reading…" : "Use this sheet"}
                 </button>
             </div>
+            <SheetFormatHint format="reportSheet" />
             <button type="button" className="rc-adopt__cancel" onClick={() => setOpen(false)}>
                 Cancel — I'll fill in the form
             </button>
@@ -449,6 +454,7 @@ export function StepDataInputs({
                         pulling={mediaPulling}
                         onConnect={onConnectMediaPlan}
                         onDisconnect={onDisconnectMediaPlan}
+                        hint={<SheetFormatHint format="mediaPlan" />}
                     />
                     {errors.sheet && <div className="rc-field__error rc-field__error--nudge">Media plan is required.</div>}
 
@@ -468,6 +474,7 @@ export function StepDataInputs({
                         pulling={elevatePulling}
                         onConnect={onConnectElevate}
                         onDisconnect={onDisconnectElevate}
+                        hint={<SheetFormatHint format="elevate" />}
                     />
                     {errors.adj && <div className="rc-field__error rc-field__error--nudge">Elevate data is required.</div>}
 

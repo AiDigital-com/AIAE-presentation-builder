@@ -50,7 +50,16 @@ public enum MediaPlanColumn {
 	 */
 	FLIGHT_RANGE(Set.of(
 			"flight", "flight dates", "flight date", "flight window", "dates", "date range",
-			"run dates", "timing"));
+			"run dates", "timing")),
+
+	/**
+	 * The per-line plan identifier, which the campaign name builder also writes into the 3rd segment of
+	 * every line item's Level 1 naming — so a plan line can be matched to its BigQuery line item directly.
+	 * {@code "Line #"} normalises to {@code "line"}.
+	 */
+	LINE_ID(Set.of(
+			"line id", "line item id", "plan line id", "line", "line no", "line number",
+			"placement id", "id"));
 
 	private final Set<String> synonyms;
 

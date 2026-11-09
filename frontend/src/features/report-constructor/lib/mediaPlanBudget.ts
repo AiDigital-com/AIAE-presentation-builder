@@ -19,11 +19,36 @@ export interface TacticBudget {
     flightStart: string | null;
     /** Flight End from the plan as ISO yyyy-MM-dd; null when absent or unparseable. */
     flightEnd: string | null;
+    /** The tactic's Geo cell from the plan ("" when the plan has no geo column or the cell is blank). */
+    geo: string;
+    /** The tactic's value in the plan's line-ID column ("" when the plan has no such column or it is blank). */
+    planLineId: string;
+    /** 1-based sheet row the tactic sits on, so a plan without line IDs can still be cross-checked. */
+    sheetRow: number;
 }
 
 function normName(value: string): string {
     return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
+
+/** Header normalisation shared with the backend's MediaPlanColumn: punctuation runs collapse to a space. */
+function normHeader(value: string): string {
+    return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+// Mirrors MediaPlanColumn.GEO on the backend, so the modal reads the same column the report does.
+const GEO_HEADERS = new Set([
+    "geo", "geos", "geo targeting", "geography", "geographies",
+    "geo location", "geo locations", "location", "locations",
+    "target location", "target locations", "targeted location", "targeted locations",
+    "market", "markets", "dma", "dmas", "region", "regions",
+]);
+
+// Header spellings for a per-line identifier in the plan ("Line #" normalises to "line").
+const LINE_ID_HEADERS = new Set([
+    "line id", "line item id", "plan line id", "line", "line no", "line number",
+    "placement id", "id",
+]);
 
 /** Parses a numeric cell, tolerating "$", thousands separators and stray spaces. */
 export function parseNumber(cell: string | undefined): number {
@@ -124,6 +149,8 @@ export function extractTacticBudgets(rows: Rows2D | null, tacticNames: string[])
     const priceCol = headerIndex(header, (h) => PRICE_HEADERS.has(h) || h.startsWith("unit price"));
     const startCol = headerIndex(header, (h) => h.startsWith("flight start") || h === "start date" || h === "start");
     const endCol = headerIndex(header, (h) => h.startsWith("flight end") || h === "end date" || h === "end");
+    const geoCol = header.findIndex((h) => GEO_HEADERS.has(normHeader(h ?? "")));
+    const lineIdCol = header.findIndex((h) => LINE_ID_HEADERS.has(normHeader(h ?? "")));
 
     // Collect candidate tactic rows (non-empty Media cell) in document order. Flight dates carry
     // down: plans often write them once and leave the cells below blank for the same flight.
@@ -150,6 +177,9 @@ export function extractTacticBudgets(rows: Rows2D | null, tacticNames: string[])
                 amount: deriveAmount(units, unitPrice, rateType),
                 flightStart: start ?? lastStart,
                 flightEnd: end ?? lastEnd,
+                geo: geoCol >= 0 ? (row[geoCol] ?? "").trim() : "",
+                planLineId: lineIdCol >= 0 ? (row[lineIdCol] ?? "").trim() : "",
+                sheetRow: i + 1,
             },
         });
     }
