@@ -98,6 +98,15 @@ public interface SheetRowHelper {
 	String cellAt(List<String> row, int idx);
 
 	/**
+	 * Finds the column of a header row whose normalised text is one of the given synonyms.
+	 *
+	 * @param headerRow the header row cells (may be {@code null})
+	 * @param synonyms  normalised header texts identifying the column (lowercase, punctuation collapsed)
+	 * @return the zero-based column index, or {@code -1} when no header cell matches
+	 */
+	int findHeaderColumn(List<String> headerRow, Set<String> synonyms);
+
+	/**
 	 * Joins the first {@code n} cells lowercased for stop-word row scanning.
 	 *
 	 * @param row sheet row cells

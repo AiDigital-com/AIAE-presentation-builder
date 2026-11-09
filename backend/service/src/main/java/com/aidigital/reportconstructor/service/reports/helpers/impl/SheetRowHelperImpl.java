@@ -119,6 +119,20 @@ public class SheetRowHelperImpl implements SheetRowHelper {
 		return values;
 	}
 
+	@Override
+	public int findHeaderColumn(List<String> headerRow, Set<String> synonyms) {
+
+		if (headerRow == null || synonyms == null) {
+			return -1;
+		}
+		for (int j = 0; j < headerRow.size(); j++) {
+			if (synonyms.contains(normalizeHeader(cell(headerRow, j)))) {
+				return j;
+			}
+		}
+		return -1;
+	}
+
 	/**
 	 * Normalises a header cell for synonym matching: lowercased, every run of non-alphanumeric
 	 * characters collapsed to a single space, and trimmed.

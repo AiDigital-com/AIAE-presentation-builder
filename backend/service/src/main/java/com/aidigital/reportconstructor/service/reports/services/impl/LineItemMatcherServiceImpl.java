@@ -33,6 +33,9 @@ import java.util.Set;
  * "unique ID" rule: a tactic auto-matches only when its expected BQ Channel has
  * exactly one line item ID).
  *
+ * <p>Before that rule, a tactic whose plan row carries a line ID is matched to the line item whose
+ * naming bears the same ID in its 3rd segment (narrowed by channel when the ID is shared).
+ *
  * <p>Tactic extraction is delegated to {@link MediaPlanTacticExtractor} so the tactic numbering
  * always matches the collector's; tactics are emitted in Media-column order and the response index
  * (tactic number) lines up with the collector's tactic numbering.
@@ -242,16 +245,25 @@ public class LineItemMatcherServiceImpl implements LineItemMatcherService {
 		List<String> matchedIds = new ArrayList<>(Collections.nCopies(size, ""));
 		List<String> confidences = new ArrayList<>(Collections.nCopies(size, "none"));
 
+		// Pass 0 — plan line ID: the name builder writes the plan's line ID into every line item's
+		// naming, so a tactic whose plan row carries one matches the line item(s) bearing it.
+		applyPlanLineIdMatches(tactics, matchedIds, confidences, byId);
+		Set<String> claimedByPlanLineId = new HashSet<>(matchedIds);
+		claimedByPlanLineId.remove("");
+
 		// Pass 1 — deterministic unique-ID rule: a tactic auto-matches when its expected
 		// channel holds exactly one line item ID.
 		for (int i = 0; i < size; i++) {
+			if (!matchedIds.get(i).isEmpty()) {
+				continue;
+			}
 			List<String> channels = tacticChannels(tactics.get(i).name());
 			if (channels == null) {
 				continue;
 			}
 			for (String ch : channels) {
 				List<String> ids = channelToIds.getOrDefault(ch, List.of());
-				if (ids.size() == 1) {
+				if (ids.size() == 1 && !claimedByPlanLineId.contains(ids.get(0))) {
 					matchedIds.set(i, ids.get(0));
 					confidences.set(i, "auto");
 					break;
@@ -268,6 +280,63 @@ public class LineItemMatcherServiceImpl implements LineItemMatcherService {
 			suggestions.add(new TacticSuggestion(tactics.get(i).name(), matchedIds.get(i), confidences.get(i)));
 		}
 		return new MatchResult(suggestions, lineItems, uniqueIds);
+	}
+
+	/**
+	 * Matches tactics to line items by the media plan's line ID, which the campaign name builder writes into
+	 * the 3rd segment of every Level 1 naming. A tactic takes the one unassigned line item whose naming
+	 * carries its plan line ID; when several do (the same ID reused across channels), only those in the
+	 * tactic's expected channel are kept, and it matches only if exactly one remains. Tactics without a plan
+	 * line ID, or still ambiguous, are left for the later passes. Mutates {@code matchedIds} and
+	 * {@code confidences} in place.
+	 *
+	 * @param tactics     the extracted tactics (parallel to the id/confidence lists)
+	 * @param matchedIds  per-tactic matched line item ID ("" when unmatched), mutated in place
+	 * @param confidences per-tactic confidence ("none"/"auto"), mutated in place
+	 * @param byId        line item ID &rarr; its metadata, in first-seen order
+	 */
+	void applyPlanLineIdMatches(
+			List<PlanTactic> tactics,
+			List<String> matchedIds,
+			List<String> confidences,
+			Map<String, LineItemMeta> byId) {
+
+		Map<String, List<String>> planLineToIds = new LinkedHashMap<>();
+		for (LineItemMeta meta : byId.values()) {
+			String planLineId = lineItemNaming.extractPlanLineId(meta.naming());
+			if (planLineId != null) {
+				planLineToIds.computeIfAbsent(planLineId.toLowerCase(Locale.ROOT), k -> new ArrayList<>())
+						.add(meta.id());
+			}
+		}
+		if (planLineToIds.isEmpty()) {
+			return;
+		}
+
+		Set<String> assigned = new HashSet<>(matchedIds);
+		assigned.remove("");
+		for (int i = 0; i < tactics.size(); i++) {
+			PlanTactic tactic = tactics.get(i);
+			String planLineId = tactic.planLineId() == null ? "" : tactic.planLineId().trim();
+			if (planLineId.isEmpty() || !matchedIds.get(i).isEmpty()) {
+				continue;
+			}
+			List<String> candidates = planLineToIds.getOrDefault(planLineId.toLowerCase(Locale.ROOT), List.of())
+					.stream()
+					.filter(id -> !assigned.contains(id))
+					.toList();
+			if (candidates.size() > 1) {
+				List<String> channels = tacticChannels(tactic.name());
+				candidates = channels == null ? List.of() : candidates.stream()
+						.filter(id -> channels.contains(byId.get(id).channel()))
+						.toList();
+			}
+			if (candidates.size() == 1) {
+				matchedIds.set(i, candidates.get(0));
+				confidences.set(i, "auto");
+				assigned.add(candidates.get(0));
+			}
+		}
 	}
 
 	/**

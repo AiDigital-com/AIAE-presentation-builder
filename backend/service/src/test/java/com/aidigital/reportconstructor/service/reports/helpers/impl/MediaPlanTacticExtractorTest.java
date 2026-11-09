@@ -32,6 +32,37 @@ class MediaPlanTacticExtractorTest {
 	}
 
 	@Test
+	void shouldReadEachTacticsPlanLineIdFromTheLineIdColumnTest() {
+		// Given: a "Line #" column beside Media; the second tactic's cell is blank
+		List<List<String>> plan = List.of(
+				List.of("Line #", "Media", "Comments"),
+				List.of("24", "Programmatic Display", "w/retargeting"),
+				List.of("", "Meta (CPM)", "")
+		);
+
+		// When
+		List<PlanTactic> tactics = extractor.extract(plan);
+
+		// Then
+		assertThat(tactics).extracting(PlanTactic::planLineId).containsExactly("24", "");
+	}
+
+	@Test
+	void shouldLeavePlanLineIdBlankWhenThePlanHasNoLineIdColumnTest() {
+		// Given
+		List<List<String>> plan = List.of(
+				List.of("Media", "Comments"),
+				List.of("Programmatic Display", "note")
+		);
+
+		// When
+		List<PlanTactic> tactics = extractor.extract(plan);
+
+		// Then
+		assertThat(tactics).extracting(PlanTactic::planLineId).containsExactly("");
+	}
+
+	@Test
 	void extract_capturesGroupLabelAndRowContext() {
 		// Given: a plan with a section label above the tactic and targeting on the tactic row.
 		// The label sits OUTSIDE the Media column, which is what makes it a label: a section row is
