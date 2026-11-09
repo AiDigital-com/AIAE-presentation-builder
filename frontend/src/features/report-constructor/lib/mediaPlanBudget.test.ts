@@ -96,6 +96,43 @@ describe("extractTacticBudgets", () => {
         expect(budgets[0]?.flightEnd).toBeNull();
     });
 
+    it("should read each tactic's geo and plan line id from their columns test", () => {
+        // Given: a plan with a "Line #" id column and a "Geo" column, header on sheet row 2
+        const rows = [
+            [],
+            ["Line #", "Geo", "Media", "Rate Type", "Units", "Unit Price"],
+            ["L-101", "Grapevine (TX)", "CTV Precision Reach", "CPM", "178572", "28"],
+            ["L-102", "DFW DMA", "DOOH", "CPM", "150000", "20"],
+        ];
+
+        // When
+        const budgets = extractTacticBudgets(rows, ["CTV Precision Reach", "DOOH"]);
+
+        // Then
+        expect(budgets[0]?.geo).toBe("Grapevine (TX)");
+        expect(budgets[0]?.planLineId).toBe("L-101");
+        expect(budgets[0]?.sheetRow).toBe(3);
+        expect(budgets[1]?.geo).toBe("DFW DMA");
+        expect(budgets[1]?.planLineId).toBe("L-102");
+        expect(budgets[1]?.sheetRow).toBe(4);
+    });
+
+    it("should leave geo and line id blank but keep the sheet row when the plan has no such columns test", () => {
+        // Given
+        const rows = [
+            ["Media", "Rate Type", "Units (Imps/ Clicks)", "Unit Price"],
+            ["Google SEM", "CPC", "3429", "3.5"],
+        ];
+
+        // When
+        const budgets = extractTacticBudgets(rows, ["Google SEM"]);
+
+        // Then
+        expect(budgets[0]?.geo).toBe("");
+        expect(budgets[0]?.planLineId).toBe("");
+        expect(budgets[0]?.sheetRow).toBe(2);
+    });
+
     it("should return nulls when no Media header exists test", () => {
         // Given: a grid with no "Media" column
         // When

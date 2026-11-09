@@ -636,6 +636,30 @@
 }
 .match-drag-hint { font-size: 11px; color: var(--text-muted); text-align: center; padding: 10px; font-style: italic; }
 
+/* Plan line ID / sheet row and Geo under each tactic name */
+.match-tactic-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.match-tactic-tags__item {
+  max-width: 100%; padding: 1px 6px; border: 1px solid var(--border); border-radius: 999px;
+  font-family: var(--rc-mono); font-size: 10px; line-height: 1.5; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Search box above each matching list */
+.match-search { position: relative; margin-bottom: 8px; }
+.match-search__input {
+  width: 100%; box-sizing: border-box; height: 32px; padding: 0 28px 0 10px;
+  border: 1px solid var(--border); border-radius: 7px; background: var(--white);
+  font-family: var(--rc-font); font-size: 12px; color: inherit;
+}
+.match-search__input:focus { outline: none; border-color: var(--blue-border); box-shadow: 0 0 0 3px var(--blue-light); }
+.match-search__input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.match-search__clear {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  padding: 2px 4px; border: 0; background: none; cursor: pointer;
+  font-size: 14px; line-height: 1; color: var(--text-muted);
+}
+.match-search__clear:hover { color: var(--blue); }
+
 .btn-match-run {
   padding: 9px 15px; background: var(--blue); color: var(--white); border: none;
   border-radius: 7px; font-family: var(--rc-font); font-size: 13px;
