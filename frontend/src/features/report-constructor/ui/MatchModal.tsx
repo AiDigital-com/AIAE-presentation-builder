@@ -142,6 +142,7 @@ export function MatchModal({ open, matchData, running, onClose, onRun, onConfirm
                                         {excludedCount > 0 && ` · ${excludedCount} excluded`}
                                     </span>
                                 </div>
+                                <div className="match-tactics-list">
                                 {rows.length === 0 && (
                                     <div className="match-empty">No tactics found under the "Media" cell</div>
                                 )}
@@ -237,6 +238,7 @@ export function MatchModal({ open, matchData, running, onClose, onRun, onConfirm
                                         </div>
                                     );
                                 })}
+                                </div>
                             </div>
 
                             <div className="match-ids-panel">

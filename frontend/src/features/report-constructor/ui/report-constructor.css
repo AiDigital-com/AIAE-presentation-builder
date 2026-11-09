@@ -550,7 +550,14 @@
 .match-warning.visible { display: flex; }
 .match-warning svg { flex-shrink: 0; color: var(--orange); }
 
-.match-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+/* Each column scrolls on its own: the layout fills the body's remaining height
+   and the tactic list / ID pool are the scroll containers, not the modal body. */
+.match-layout {
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr);
+  gap: 16px; flex: 1; min-height: 0;
+}
+.match-tactics-panel, .match-ids-panel { display: flex; flex-direction: column; min-height: 0; }
+.match-tactics-list { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
 .match-panel-label {
   font-family: var(--rc-mono); font-size: 10px; letter-spacing: 1.2px;
   text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
@@ -608,8 +615,8 @@
 .match-restore-btn:hover { border-color: var(--blue-border); color: var(--blue); background: var(--blue-light); }
 
 .match-ids-pool {
-  border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
-  max-height: 380px; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: 8px;
+  flex: 1; min-height: 0; overflow-y: auto;
 }
 .match-ids-pool-inner { padding: 8px; display: flex; flex-direction: column; gap: 4px; }
 .match-id-card {
