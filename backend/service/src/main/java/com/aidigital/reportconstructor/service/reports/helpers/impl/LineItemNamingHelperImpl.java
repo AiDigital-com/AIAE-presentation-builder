@@ -36,6 +36,14 @@ public class LineItemNamingHelperImpl implements LineItemNamingHelper {
 		return id == null ? "" : id;
 	}
 
+	/**
+	 * Reads the media plan's line ID from the 3rd underscore-delimited segment of a Level 1 naming. Unlike
+	 * the line item ID it is not required to be numeric, because plans use IDs such as {@code "24"} or
+	 * {@code "A3"}.
+	 *
+	 * @param naming Level 1 Naming cell value (may be {@code null})
+	 * @return the trimmed plan line ID, or {@code null} when the naming is malformed or the segment is blank/"-"
+	 */
 	@Override
 	public String extractPlanLineId(String naming) {
 		return segment(naming, PLAN_LINE_ID_SEGMENT);
