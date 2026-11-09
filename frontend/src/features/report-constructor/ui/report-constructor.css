@@ -322,6 +322,17 @@
 }
 .rc-adopt__cancel:hover { color: var(--rc-slate); }
 
+/* Collapsible "expected format" note under a sheet-link field, with a link to an example workbook. */
+.rc-format { margin-top: 10px; font-size: 13px; color: var(--rc-mute); line-height: 1.45; }
+.rc-format__summary { cursor: pointer; font-weight: 600; color: var(--rc-slate); width: fit-content; }
+.rc-format__summary:hover { color: var(--rc-ink); }
+.rc-format__rules { margin: 8px 0 0; padding-left: 18px; }
+.rc-format__rule + .rc-format__rule { margin-top: 4px; }
+.rc-format__example {
+  display: inline-block; margin-top: 8px; font-weight: 600; color: var(--rc-blue); text-decoration: none;
+}
+.rc-format__example:hover { text-decoration: underline; }
+
 /* Brief asked for on the review step when an adopted workbook carried none. */
 .rc-banner__field { margin-top: 10px; width: 100%; }
 
