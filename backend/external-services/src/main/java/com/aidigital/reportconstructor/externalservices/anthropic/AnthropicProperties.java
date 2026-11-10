@@ -85,6 +85,31 @@ public class AnthropicProperties {
 	 */
 	private int replySnippetLimit = 400;
 
+	/**
+	 * Whether narrative replies are checked for figures that do not appear in (and cannot be derived from) the
+	 * data the prompt carried. A reply citing such figures is retried once with them named, and any that survive
+	 * are flagged on the report card. On by default; switched off only if the check misfires on a deployment.
+	 */
+	private boolean figureCheck = true;
+
+	/**
+	 * Returns whether the narrative figure check runs.
+	 *
+	 * @return {@code true} when replies are checked for unsupported figures
+	 */
+	public boolean isFigureCheck() {
+		return figureCheck;
+	}
+
+	/**
+	 * Switches the narrative figure check on or off.
+	 *
+	 * @param figureCheck {@code true} to check replies for unsupported figures
+	 */
+	public void setFigureCheck(boolean figureCheck) {
+		this.figureCheck = figureCheck;
+	}
+
 	public String getApiKey() {
 		return apiKey;
 	}

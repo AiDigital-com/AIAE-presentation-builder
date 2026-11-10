@@ -123,7 +123,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     const [reportType, setReportTypeState] = useState<ReportType>("EOC");
     const [templateVariant, setTemplateVariantState] = useState<TemplateVariant>("STANDARD");
     const [marketVolume, setMarketVolumeState] = useState("");
-    const [estimateDaypartGender, setEstimateDaypartGenderState] = useState(true);
+    // Off by default: these are AI predictions, not measured data, yet the deck prints them as figures.
+    const [estimateDaypartGender, setEstimateDaypartGenderState] = useState(false);
     const [mediaPlan, setMediaPlan] = useState<MediaPlanState | null>(null);
     const [elevate, setElevate] = useState<ElevateState | null>(null);
     const [paidChannels, setPaidChannels] = useState<Record<PaidChannel, PaidChannelState | null>>({

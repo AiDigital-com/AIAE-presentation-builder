@@ -647,6 +647,10 @@ external:
     # attempt is shipped as it stands. Default 1 means one retry, two sends in total — a third send costs a
     # third of the section budget and, on the failures seen so far, repeats the same shortfall.
     section-retries: ${CLAUDE_SECTION_RETRIES:1}
+    # Check narrative replies for figures the prompt's data does not contain (nor yields as a simple
+    # difference, ratio or share). A reply citing one is retried once with the figures named; any that survive
+    # are flagged on the report card. Set false only if the check misfires.
+    figure-check: ${CLAUDE_FIGURE_CHECK:true}
     # Extra attempts ANY Claude HTTP call makes after a transient upstream failure (429/5xx/522/529, dropped
     # connection). 1 means one retry, two sends in total, matching section-retries: a run fans out many calls,
     # so a third send mostly lengthens an already-slow run rather than rescuing a still-failing upstream.

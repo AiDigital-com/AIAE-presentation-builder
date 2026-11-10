@@ -441,9 +441,9 @@ export function StepDataInputs({
                         </div>
                         <div className="rc-field__hint">
                             Dayparting (weekday / weekend peaks) and gender distribution aren't always tracked
-                            reliably on the DSP side, so we estimate them — it's a prediction, not a measured
-                            figure. Leave this on for an AI estimate. Turn it off to leave those cells blank
-                            (—) and fill them by hand from the DSP when the client needs exact numbers.
+                            reliably on the DSP side. Off by default: those cells stay blank (—) for you to fill
+                            from the DSP or Campaign Manager. Turning this on fills them with an AI prediction,
+                            not a measured figure — similar across tactics and printed on the slides as data.
                         </div>
                     </div>
 

@@ -34,6 +34,7 @@ public class EomClaudeClientConfig {
 	 * @param tokenEstimator     shared prompt-size estimator
 	 * @param failureLog         shared run-scoped sink for rejected replies
 	 * @param thoughtsCompleteness decides whether a thoughts reply is complete enough to keep
+	 * @param grounding            shared narrative grounding rules and figure check
 	 * @param anthropicProperties shared chunking/retry configuration
 	 * @return the client end-of-month runs send their prompts through
 	 */
@@ -48,9 +49,10 @@ public class EomClaudeClientConfig {
 			PromptTokenEstimator tokenEstimator,
 			ClaudeFailureLog failureLog,
 			TacticThoughtsCompleteness thoughtsCompleteness,
+			NarrativeGrounding grounding,
 			AnthropicProperties anthropicProperties) {
 		return new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, claudeDefaults,
-				geoFilter, tokenEstimator, failureLog, thoughtsCompleteness, anthropicProperties);
+				geoFilter, tokenEstimator, failureLog, thoughtsCompleteness, grounding, anthropicProperties);
 	}
 }

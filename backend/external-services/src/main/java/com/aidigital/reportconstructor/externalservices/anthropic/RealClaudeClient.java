@@ -271,6 +271,11 @@ public class RealClaudeClient implements ClaudeClient {
 	/** Short tag identifying the Step-3 per-tactic thoughts call in logs and on the report's failure card. */
 	private static final String THOUGHTS_LABEL = "BatchTacticThoughts";
 
+	/** Report-card warning when the campaign-results call produced nothing usable on both attempts. */
+	static final String CAMPAIGN_RESULTS_EMPTY_WARNING = "the campaign results call came back empty twice, so the "
+			+ "results overview, campaign thoughts, frequency story and recommendations slides are blank; "
+			+ "regenerate, and check the brief is real campaign text.";
+
 	/** Log/warning label of the channel-slide pacing narrative call. */
 	private static final String PACING_LABEL = "TacticPacingNarrative";
 
@@ -421,6 +426,8 @@ public class RealClaudeClient implements ClaudeClient {
 	/** Run-scoped sink the reasons rejected replies were thrown away go to, for the report's own card. */
 	private final ClaudeFailureLog failureLog;
 	private final TacticThoughtsCompleteness thoughtsCompleteness;
+	/** Shared grounding rules for narrative prompts, and the check that replies cite only supported figures. */
+	private final NarrativeGrounding grounding;
 	/** Tactics per Step-2 conclusions call; bound from config, clamped to at least 1. */
 	private final int breakdownChunkSize;
 	/** Extra attempts a per-section call makes on a contract failure; bound from config, clamped to ≥ 0. */
@@ -438,6 +445,7 @@ public class RealClaudeClient implements ClaudeClient {
 			PromptTokenEstimator tokenEstimator,
 			ClaudeFailureLog failureLog,
 			TacticThoughtsCompleteness thoughtsCompleteness,
+			NarrativeGrounding grounding,
 			AnthropicProperties anthropicProperties) {
 		this.messagesClient = messagesClient;
 		this.promptBuilder = promptBuilder;
@@ -448,6 +456,7 @@ public class RealClaudeClient implements ClaudeClient {
 		this.tokenEstimator = tokenEstimator;
 		this.failureLog = failureLog;
 		this.thoughtsCompleteness = thoughtsCompleteness;
+		this.grounding = grounding;
 		this.breakdownChunkSize = Math.max(1, anthropicProperties.getBreakdownChunkSize());
 		this.sectionRetries = Math.max(0, anthropicProperties.getSectionRetries());
 		this.anthropicProperties = anthropicProperties;
@@ -468,7 +477,7 @@ public class RealClaudeClient implements ClaudeClient {
 		ClaudeResponseNormalizer limited = normalizer.withCopyLimits(limits);
 		return new RealClaudeClient(messagesClient, promptBuilder.withNormalizer(limited), limited,
 				compressionService, claudeDefaults, geoFilter, tokenEstimator, failureLog, thoughtsCompleteness,
-				anthropicProperties);
+				grounding, anthropicProperties);
 	}
 
 	/**
@@ -658,6 +667,45 @@ public class RealClaudeClient implements ClaudeClient {
 	}
 
 	/**
+	 * Sends a narrative prompt with the shared grounding rules added, and checks the reply's figures against
+	 * the prompt's data. A reply citing figures the data neither contains nor yields as a simple derivation is
+	 * sent back once with those figures named; whichever reply cites fewer unsupported figures is kept. Any
+	 * that survive are put on the report card, so the person sending the deck knows exactly what to check
+	 * rather than discovering a wrong number in front of the client.
+	 *
+	 * @param prompt       the built narrative prompt
+	 * @param maxTokens    cap on tokens the model may generate
+	 * @param timeoutSec   per-request HTTP timeout in seconds
+	 * @param label        short tag identifying the call in logs and on the report card
+	 * @param allowPartial whether a {@code max_tokens}-truncated reply may be repaired and used
+	 * @return the parsed reply, or {@code null} when the call failed
+	 */
+	JsonNode callGrounded(String prompt, int maxTokens, int timeoutSec, String label, boolean allowPartial) {
+		String grounded = grounding.withRules(prompt);
+		JsonNode reply = messagesClient.callJsonObject(grounded, maxTokens, timeoutSec, label, allowPartial);
+		if (reply == null || !grounding.isCheckEnabled()) {
+			return reply;
+		}
+		List<String> unsupported = grounding.unsupportedFigures(prompt, reply);
+		if (unsupported.isEmpty()) {
+			return reply;
+		}
+		log.warn("[claude:{}] reply cited {} unsupported figure(s) {} — retrying once", label, unsupported.size(),
+				unsupported);
+		JsonNode retry = messagesClient.callJsonObject(
+				grounded + grounding.retryNote(unsupported), maxTokens, timeoutSec, label, allowPartial);
+		List<String> retryUnsupported = retry == null ? unsupported : grounding.unsupportedFigures(prompt, retry);
+		boolean keepRetry = retry != null && retryUnsupported.size() <= unsupported.size();
+		List<String> remaining = keepRetry ? retryUnsupported : unsupported;
+		if (!remaining.isEmpty()) {
+			log.warn("[claude:{}] {} unsupported figure(s) remain after the retry: {}", label, remaining.size(),
+					remaining);
+			failureLog.record(label, grounding.warning(remaining));
+		}
+		return keepRetry ? retry : reply;
+	}
+
+	/**
 	 * Builds the note appended to a section prompt on a retry: what the previous reply got wrong, plus the
 	 * output contract restated.
 	 *
@@ -700,7 +748,7 @@ public class RealClaudeClient implements ClaudeClient {
 		// allowPartial lets the transport repair a reply the model never closed — the same salvage the tactic
 		// overviews and campaign results already get, and the reason a reply cut off in its last field still
 		// yields the fields before it.
-		JsonNode obj = messagesClient.callJsonObject(
+		JsonNode obj = callGrounded(
 				prompt, SECTION_MAX_TOKENS, BREAKDOWN_TIMEOUT_SEC, label, true);
 		if (obj == null) {
 			// The call itself failed; the transport already logged the cause, so this line only ties that cause
@@ -787,7 +835,7 @@ public class RealClaudeClient implements ClaudeClient {
 		if (prompt.isEmpty()) {
 			return claudeDefaults.emptyStrategic();
 		}
-		JsonNode parsed = messagesClient.callJsonObject(prompt.get(), 2000, 60, "BatchA", false);
+		JsonNode parsed = callGrounded(prompt.get(), 2000, 60, "BatchA", false);
 		if (parsed == null) {
 			return claudeDefaults.emptyStrategic();
 		}
@@ -838,7 +886,7 @@ public class RealClaudeClient implements ClaudeClient {
 		// fields plus up to four 140-character pacing takeaways, four more performance takeaways and the
 		// 250-character updated projection, so the budget is the EOC one plus room for those without
 		// truncating the last field the model writes.
-		JsonNode parsed = messagesClient.callJsonObject(prompt.get(), 3500, 60, "BatchAStrategic", false);
+		JsonNode parsed = callGrounded(prompt.get(), 3500, 60, "BatchAStrategic", false);
 		if (parsed == null) {
 			return claudeDefaults.emptyStrategic();
 		}
@@ -1310,7 +1358,7 @@ public class RealClaudeClient implements ClaudeClient {
 	JsonNode callAlignWithRetry(String prompt, int maxTokens) {
 		for (int attempt = 1; attempt <= ALIGN_ATTEMPTS; attempt++) {
 			String attemptPrompt = attempt == 1 ? prompt : prompt + ALIGN_RETRY_SUFFIX;
-			JsonNode parsed = messagesClient.callJsonObject(
+			JsonNode parsed = callGrounded(
 					attemptPrompt, maxTokens, ALIGN_TIMEOUT_SEC, "AlignNarrative", true);
 			if (parsed != null) {
 				return parsed;
@@ -1495,7 +1543,7 @@ public class RealClaudeClient implements ClaudeClient {
 		int maxTokens = conclusionsMaxTokens(chunk);
 		// allowPartial: a reply that ran past the budget still carries whole conclusions for the tactics it
 		// finished, and salvaging those beats blanking the chunk over its unfinished tail.
-		JsonNode parsed = messagesClient.callJsonObject(
+		JsonNode parsed = callGrounded(
 				prompt.get(), maxTokens, BREAKDOWN_TIMEOUT_SEC, "BatchConclusions", true);
 		if (parsed == null) {
 			return out;
@@ -1650,7 +1698,7 @@ public class RealClaudeClient implements ClaudeClient {
 		if (prompt.isEmpty()) {
 			return null;
 		}
-		JsonNode parsed = messagesClient.callJsonObject(
+		JsonNode parsed = callGrounded(
 				prompt.get(), TACTIC_THOUGHTS_MAX_TOKENS, BREAKDOWN_TIMEOUT_SEC, THOUGHTS_LABEL, true);
 		if (parsed == null) {
 			return null;
@@ -1703,7 +1751,7 @@ public class RealClaudeClient implements ClaudeClient {
 		if (prompt.isEmpty()) {
 			return null;
 		}
-		JsonNode parsed = messagesClient.callJsonObject(
+		JsonNode parsed = callGrounded(
 				prompt.get(), TACTIC_PACING_MAX_TOKENS, BREAKDOWN_TIMEOUT_SEC, PACING_LABEL, true);
 		if (parsed == null) {
 			return null;
@@ -1774,7 +1822,7 @@ public class RealClaudeClient implements ClaudeClient {
 		if (prompt.isEmpty()) {
 			return null;
 		}
-		JsonNode parsed = messagesClient.callJsonObject(
+		JsonNode parsed = callGrounded(
 				prompt.get(), MPO_NARRATIVE_MAX_TOKENS, BREAKDOWN_TIMEOUT_SEC, MPO_NARRATIVE_LABEL, true);
 		if (parsed == null) {
 			return null;
@@ -1878,7 +1926,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @return the reply's JSON object, or {@code null} when the call failed or the reply could not be parsed
 	 */
 	JsonNode callPaidNarrative(String prompt) {
-		return messagesClient.callJsonObject(prompt, PaidPromptSpec.PAID_NARRATIVE_MAX_TOKENS,
+		return callGrounded(prompt, PaidPromptSpec.PAID_NARRATIVE_MAX_TOKENS,
 				BREAKDOWN_TIMEOUT_SEC, PaidPromptSpec.PAID_NARRATIVE_LABEL, true);
 	}
 
@@ -1959,7 +2007,14 @@ public class RealClaudeClient implements ClaudeClient {
 		log.warn("[claude:BatchCampaign] campaign results came back empty — retrying once with {} max tokens",
 				CAMPAIGN_RESULTS_MAX_TOKENS_CAP);
 		results = campaignResultsOne(prompt.get(), CAMPAIGN_RESULTS_MAX_TOKENS_CAP, CAMPAIGN_RESULTS_TIMEOUT_SEC);
-		return results == null ? claudeDefaults.emptyResults() : results;
+		if (results != null) {
+			return results;
+		}
+		// Both attempts failed: say so on the report card, because these four slides are otherwise blank with no
+		// explanation anywhere the person who ran the report can see.
+		log.warn("[claude:BatchCampaign] campaign results empty after 2 attempts; their slides ship blank");
+		failureLog.record("BatchCampaign", CAMPAIGN_RESULTS_EMPTY_WARNING);
+		return claudeDefaults.emptyResults();
 	}
 
 	/**
@@ -1974,7 +2029,7 @@ public class RealClaudeClient implements ClaudeClient {
 	 * @return the campaign-level copy, or {@code null} when the call produced nothing usable
 	 */
 	ClaudeResults campaignResultsOne(String prompt, int maxTokens, int timeoutSec) {
-		JsonNode parsed = messagesClient.callJsonObject(prompt, maxTokens, timeoutSec, "BatchCampaign", true);
+		JsonNode parsed = callGrounded(prompt, maxTokens, timeoutSec, "BatchCampaign", true);
 		if (parsed == null) {
 			return null;
 		}
@@ -2215,6 +2270,16 @@ public class RealClaudeClient implements ClaudeClient {
 		if (text == null || text.isBlank()) {
 			return null;
 		}
+		if (grounding.isRefusal(text)) {
+			// A brief that is only a label or a path draws "Please provide the full campaign brief…" instead of a
+			// digest. Saved, that request became the workbook RFP and the "brief" of every later call; the raw
+			// brief, however thin, is the honest fallback.
+			log.warn("[claude:BriefDigest] digest asked for more input instead of summarising; the raw brief is "
+					+ "used instead");
+			failureLog.record("BriefDigest", "the campaign brief was too thin to summarise, so the RFP field shows "
+					+ "the brief as entered; add the real campaign brief for better AI copy.");
+			return null;
+		}
 		return normalizer.normalizeC(text.trim(), BRIEF_DIGEST_LIMIT);
 	}
 
@@ -2232,6 +2297,11 @@ public class RealClaudeClient implements ClaudeClient {
 		}
 		String text = normalizer.extractText(resp);
 		if (text == null || text.isBlank()) {
+			return null;
+		}
+		if (grounding.isRefusal(text)) {
+			log.warn("[claude:ChangeLogDigest] digest asked for more input instead of summarising; the raw change "
+					+ "log is used instead");
 			return null;
 		}
 		String digest = normalizer.normalizeC(text.trim(), CHANGE_LOG_DIGEST_LIMIT);
