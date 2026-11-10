@@ -21,7 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class DeviceTableCompactorTest {
 
-	private final DeviceTableCompactor compactor = new DeviceTableCompactor(new SlideBlockLocator());
+	private final DeviceTableCompactor compactor = new DeviceTableCompactor(
+			new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator()));
 
 	@Test
 	void shouldDropTheAllDashConnectedTvRowAndItsNoteAndPullLaterRowsUpTest() {
@@ -123,6 +124,40 @@ class DeviceTableCompactorTest {
 
 		// Then:
 		assertThat(requests).isEmpty();
+	}
+
+	@Test
+	void shouldRemoveTheWholeVcrColumnWhenNoDeviceHasAVcrTest() {
+		// Given: a display tactic on all four devices: every row has a CTR, no row has a VCR
+		List<PageElement> elements = deviceSlide("1", "2", "3", "4");
+		elements.add(element("ctr_pill", "ROUND_RECTANGLE", null, 0.0953, 0.0381, 6_943_539.75, 1_920_200.25));
+		elements.add(element("ctr_header", "TEXT_BOX", "CTR\n", 0.0953, 0.0308, 6_943_539.75, 1_920_200.25));
+		elements.add(element("vcr_header", "TEXT_BOX", "VCR\n", 0.2524, 0.0308, 7_257_856.5, 1_925_772));
+		elements.add(element("spend_header", "TEXT_BOX", "SPEND\n", 0.2524, 0.0308, 8_043_647.25, 1_925_772));
+		for (PageElement element : elements) {
+			String id = element.getObjectId();
+			if (id.endsWith("_ctr") || id.endsWith("_vcr")) {
+				element.getShape().getText().getTextElements().getFirst().getTextRun()
+						.setContent(id.endsWith("_ctr") ? "0.12%\n" : "—\n");
+			}
+		}
+
+		// When:
+		List<Request> requests = compactor.compactRequests(new Page().setPageElements(elements));
+
+		// Then: the VCR header and the four VCR cells go; the CTR column and its note stay
+		List<String> deleted = requests.stream().filter(r -> r.getDeleteObject() != null)
+				.map(r -> r.getDeleteObject().getObjectId()).toList();
+		assertThat(deleted).containsExactlyInAnyOrder(
+				"vcr_header", "mobile_vcr", "ctv_vcr", "desktop_vcr", "tablet_vcr");
+
+		// Then: SPEND, header and cells, moves left into the VCR slot
+		Map<String, Double> shifts = requests.stream().filter(r -> r.getUpdatePageElementTransform() != null)
+				.collect(Collectors.toMap(r -> r.getUpdatePageElementTransform().getObjectId(),
+						r -> r.getUpdatePageElementTransform().getTransform().getTranslateX()));
+		assertThat(shifts).containsOnlyKeys(
+				"spend_header", "mobile_spend", "ctv_spend", "desktop_spend", "tablet_spend");
+		assertThat(shifts.get("spend_header")).isEqualTo(-(8_043_647.25 - 7_257_856.5));
 	}
 
 	/**
