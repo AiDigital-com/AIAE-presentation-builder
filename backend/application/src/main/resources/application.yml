@@ -194,9 +194,7 @@ external:
     # AI Digital Slides template + object ids (same as the working POC). Cloning
     # an empty template id is what caused C000 "deck creation failed". Override
     # per-environment via env vars; the defaults keep generation working.
-    # Copy of the previous template (1lUroPj1…) whose "Awareness & Market Penetration" slide shows the
-    # addressable audience as a blue square bleeding off the slide with unique reach as a green square inside.
-    slides-template-id: ${SLIDES_TEMPLATE_ID:1PQduHj8ee4UfCTRtEtFldTvhLRftB8IT7JEozuTrx2k}
+    slides-template-id: ${SLIDES_TEMPLATE_ID:1lUroPj1S9acWUYJwB_isqYGcVtAcwN4QjzgkmkZaWRY}
     slides-target-folder-id: ${SLIDES_TARGET_FOLDER_ID:}
     # Every generated file (deck AND EOC sheet) is auto-shared as a writer with
     # these emails, so an owner/admin keeps access even when a report is created
