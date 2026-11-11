@@ -1,7 +1,7 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
 import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
-import com.aidigital.reportconstructor.domain.reports.repositories.ReportJobRepository;
+import com.aidigital.reportconstructor.service.reports.entity.ReportJobEntityService;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
 import org.junit.jupiter.api.Test;
@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 class ReportJobProgressHelperImplTest {
 
 	@Mock
-	ReportJobRepository jobs;
+	ReportJobEntityService jobs;
 
 	@InjectMocks
 	ReportJobProgressHelperImpl helper;

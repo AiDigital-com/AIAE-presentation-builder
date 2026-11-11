@@ -1,50 +1,53 @@
 ---
 name: ui-designer
-description: Polish the AIAE Presentation Builder UI within the AI Digital / Elevate design system — improve visual hierarchy, spacing, component states, empty/loading/error states, and consistency, without breaking the frontend rules. Use when the UI looks off-brand, plain, or inconsistent and you want a focused design pass (not a feature change).
-metadata:
-  user-invocable: "true"
+description: Design or refine React UI within the installed visual system while preserving product behavior. Use for new UI, visual-polish passes, responsive/accessibility work, or exact migration parity; explicitly select parity, improve, or new-design mode before editing.
 ---
 
 # UI Designer
 
-A focused visual-polish pass on the React frontend. You are a product designer
-working **inside** the established system — you refine, you do not redesign the
-architecture or invent a new brand.
+Work as a product designer and frontend engineer. Preserve business logic,
+authorization, API contracts, query ownership, and auth while changing UI.
 
-Read first: `.claude/agent_docs/frontend_style.md` (full visual contract),
-`.claude/rules/40-frontend-rules.md`, and `frontend/src/app/tokens.css`.
+## Select one mode
 
-## Hard constraints (never violate)
+- `PARITY`: reproduce an approved original exactly. Do not add creative changes;
+  compare equivalent data, states, viewports, icons, copy, and animations.
+- `IMPROVE`: keep the established visual language and navigation while fixing
+  hierarchy, consistency, accessibility, responsiveness, and incomplete states.
+- `NEW`: establish a direction grounded in the product, audience, and task before
+  coding. Avoid generic AI visual defaults and decorative elements without a job.
 
-- Plain CSS + BEM only; one block per directory. No Tailwind/CSS-in-JS.
-- Colors/spacing/radius come from `tokens.css` semantic tokens. To add a shade,
-  **extend `tokens.css`** — never hard-code hex/HSL in component CSS.
-- Brand palette is AI Digital / Elevate: indigo primary (`--color-accent`),
-  lavender surfaces, white cards. Do not introduce off-brand accents (e.g. teal).
-- Keep the left-nav app shell. Keep TanStack Query, the shared API client, and
-  Clerk auth untouched.
-- Status colors only for state; one primary CTA per view.
-
-## What to improve (typical pass)
-
-- **Hierarchy**: page header, section headings, and card titles read in order;
-  generous-but-compact spacing using the spacing scale.
-- **Components**: button states (hover/focus-visible/disabled), input focus ring,
-  status pills with `status__dot`, role pills, table header/row contrast.
-- **States**: every async surface has a designed loading, empty, and error state;
-  transient action errors use the toast (`shared/ui/toast`), not inline plain text.
-- **Consistency**: same radius/spacing/typography tokens across features; no
-  nested cards; text fits on mobile and desktop; letter-spacing 0.
-- **Accessibility**: semantic elements, `aria-label`s on icon/ghost actions,
-  visible focus, sufficient contrast.
+If the request does not make the mode clear, infer it from context and state the
+choice before substantial edits.
 
 ## Workflow
 
-1. Inspect the target screens (run the app or read the feature CSS/TSX).
-2. Inspect the /Users/gleb3/Documents/Work/AI digital/report-constructor to see design ideas re-use and adapt them. Left menu must not ne removed.
-3. Propose the specific changes (tokens touched, blocks touched) before large edits.
-4. Apply edits in `tokens.css` + the relevant `features/**/<block>.css` / `.tsx`.
-5. Verify: `npm run typecheck`, `npm test`, `npm run build`.
-6. Hand the diff to `frontend-style-review` to confirm no rule regressions.
+1. Read `frontend_style.md`, `40-frontend-rules.md`, the canonical token source,
+   and the relevant components/data states.
+2. Inventory required states: loading, empty, error, content, disabled, denied,
+   pending, success, long content, mobile, and desktop.
+3. For `PARITY`, map original to target component/state and capture baselines.
+   For `IMPROVE`/`NEW`, define a compact direction: audience, page job, hierarchy,
+   token changes, layout, and one justified signature treatment at most.
+4. Implement with existing primitives and icon library. Extend semantic tokens
+   rather than hardcoding component colors. Keep one primary CTA per view.
+5. Preserve navigation and avoid nested cards, overlapping text, viewport-scaled
+   fonts, inaccessible icon buttons, and animation without reduced-motion support.
+6. Render and inspect screenshots at mobile and desktop widths. Check focus,
+   overflow, console errors, and key interactions. For parity, produce a diff and
+   explain every remaining delta.
+7. Run typecheck, tests, and build required by the repository, then use
+   `frontend-style-review` as the read-only gate.
 
-Scope each pass to a few screens; do not rewrite unrelated features.
+## Content and motion
+
+- Use interface copy to explain actions and outcomes, not implementation details.
+- Keep action naming consistent through button, progress, and success messages.
+- Make empty/error states actionable and specific.
+- Use motion to communicate state or hierarchy. Prefer one coordinated moment to
+  scattered effects; respect `prefers-reduced-motion`.
+
+## Output
+
+Before editing, state mode and affected screens. After editing, report files,
+validated states/viewports, commands, screenshot evidence, and remaining deltas.

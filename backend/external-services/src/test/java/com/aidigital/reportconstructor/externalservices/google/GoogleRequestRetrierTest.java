@@ -1,10 +1,12 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
+import com.aidigital.reportconstructor.observability.external.ExternalCallTimer;
 import com.google.api.client.googleapis.json.GoogleJsonError;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.googleapis.services.AbstractGoogleClientRequest;
 import com.google.api.client.http.HttpHeaders;
 import com.google.api.client.http.HttpResponseException;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -24,7 +26,7 @@ class GoogleRequestRetrierTest {
 	@Test
 	void shouldTreatNotFoundConflictRateLimitAndServerErrorsAsRetryableTest() {
 		// Given: a retrier
-		GoogleRequestRetrier retrier = new GoogleRequestRetrier();
+		GoogleRequestRetrier retrier = new GoogleRequestRetrier(new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
 
 		// When-Then: 404 (post-copy propagation) plus 409/429/500/503 are retryable
 		assertThat(retrier.isRetryable(404)).isTrue();
@@ -39,7 +41,7 @@ class GoogleRequestRetrierTest {
 	@Test
 	void shouldRetryTransientErrorThenReturnTest() throws IOException {
 		// Given: a request that fails once with 500, then succeeds
-		GoogleRequestRetrier retrier = spy(new GoogleRequestRetrier());
+		GoogleRequestRetrier retrier = spy(new GoogleRequestRetrier(new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry()))));
 		doNothing().when(retrier).sleepBeforeRetry(anyLong());
 		@SuppressWarnings("unchecked")
 		AbstractGoogleClientRequest<String> request = mock(AbstractGoogleClientRequest.class);
@@ -57,7 +59,7 @@ class GoogleRequestRetrierTest {
 	@Test
 	void shouldPropagateNonRetryableErrorWithoutRetryTest() throws IOException {
 		// Given: a request that fails with a non-retryable 403
-		GoogleRequestRetrier retrier = spy(new GoogleRequestRetrier());
+		GoogleRequestRetrier retrier = spy(new GoogleRequestRetrier(new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry()))));
 		@SuppressWarnings("unchecked")
 		AbstractGoogleClientRequest<String> request = mock(AbstractGoogleClientRequest.class);
 		GoogleJsonResponseException forbidden = googleError(403);
@@ -72,7 +74,7 @@ class GoogleRequestRetrierTest {
 	@Test
 	void shouldStopAfterMaxAttemptsAndRethrowTest() throws IOException {
 		// Given: a request that always fails with 500
-		GoogleRequestRetrier retrier = spy(new GoogleRequestRetrier());
+		GoogleRequestRetrier retrier = spy(new GoogleRequestRetrier(new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry()))));
 		doNothing().when(retrier).sleepBeforeRetry(anyLong());
 		@SuppressWarnings("unchecked")
 		AbstractGoogleClientRequest<String> request = mock(AbstractGoogleClientRequest.class);

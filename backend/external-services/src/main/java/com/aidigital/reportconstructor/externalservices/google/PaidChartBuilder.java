@@ -44,6 +44,9 @@ public class PaidChartBuilder {
 	private final PaidChartSheetRequests sheetRequests;
 	private final PaidChartSlideRequests slideRequests;
 
+	/** Times every direct Sheets/Slides call on the shared external-call timer. */
+	private final GoogleCallTimer googleCalls;
+
 	/**
 	 * @param clients authenticated Drive, Sheets and Slides clients
 	 * @param req     the deck and its paid charts
@@ -57,8 +60,8 @@ public class PaidChartBuilder {
 		Set<String> markers = req.charts().stream().map(c -> c.marker().marker()).collect(Collectors.toSet());
 		Map<String, PaidChartSlot> slots;
 		try {
-			Presentation deck = clients.slides().presentations().get(req.presentationId())
-					.setFields(SLOT_FIELDS).execute();
+			Presentation deck = googleCalls.execute(clients.slides().presentations().get(req.presentationId())
+					.setFields(SLOT_FIELDS));
 			slots = slideRequests.slots(deck.getSlides(), markers);
 		} catch (IOException ex) {
 			errors.add("Paid charts: could not read presentation layout — " + ex.getMessage());
@@ -107,9 +110,9 @@ public class PaidChartBuilder {
 				chart.marker().marker() + " — " + req.campaignTitle(), folderId);
 		chartFileSharer.shareLooseCopy(clients.drive(), folderId, spreadsheetId);
 		double[] box = slideRequests.box(slot, style);
-		BatchUpdateSpreadsheetResponse reply = clients.sheets().spreadsheets().batchUpdate(spreadsheetId,
-				new BatchUpdateSpreadsheetRequest().setRequests(sheetRequests.requests(chart, style,
-						slideRequests.pixels(box[2]), slideRequests.pixels(box[3])))).execute();
+		BatchUpdateSpreadsheetResponse reply = googleCalls.execute(clients.sheets().spreadsheets().batchUpdate(
+				spreadsheetId, new BatchUpdateSpreadsheetRequest().setRequests(sheetRequests.requests(chart, style,
+						slideRequests.pixels(box[2]), slideRequests.pixels(box[3])))));
 		Integer chartId = chartId(reply);
 		if (chartId == null) {
 			throw new IllegalStateException("the chart spreadsheet " + spreadsheetId + " returned no chart id");
@@ -117,8 +120,8 @@ public class PaidChartBuilder {
 		String newObjectId = CHART_ID_PREFIX
 				+ UUID.randomUUID().toString().replace("-", "").substring(0, CHART_ID_RANDOM_LENGTH);
 		List<Request> swap = slideRequests.swap(slot, style, spreadsheetId, chartId, newObjectId, chart.centerValue());
-		clients.slides().presentations().batchUpdate(req.presentationId(),
-				new BatchUpdatePresentationRequest().setRequests(swap)).execute();
+		googleCalls.execute(clients.slides().presentations().batchUpdate(req.presentationId(),
+				new BatchUpdatePresentationRequest().setRequests(swap)));
 	}
 
 	/**
@@ -160,8 +163,8 @@ public class PaidChartBuilder {
 	 * @throws IOException if the Slides call fails
 	 */
 	void deleteImage(ChartClients clients, String presentationId, PaidChartSlot slot) throws IOException {
-		clients.slides().presentations().batchUpdate(presentationId, new BatchUpdatePresentationRequest()
-				.setRequests(List.of(new Request().setDeleteObject(
-						new DeleteObjectRequest().setObjectId(slot.objectId()))))).execute();
+		googleCalls.execute(clients.slides().presentations().batchUpdate(presentationId,
+				new BatchUpdatePresentationRequest().setRequests(List.of(new Request().setDeleteObject(
+						new DeleteObjectRequest().setObjectId(slot.objectId()))))));
 	}
 }

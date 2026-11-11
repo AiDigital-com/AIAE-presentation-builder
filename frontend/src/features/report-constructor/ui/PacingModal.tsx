@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import type { MappingEntry } from "@/shared/api/types";
 import { useWizard } from "@/shared/wizard/WizardContext";
 import { evenPacedBudget, firstDeliveryDateByLineItem, type EvenPacing } from "../lib/evenPacing";
@@ -6,24 +7,8 @@ import { extractTacticBudgets, normalizeRateType, type TacticBudget } from "../l
 import { estimatedUnits, pacingComplete, pacingRowComplete } from "../lib/pacing";
 import { keepActive } from "../lib/tacticSelection";
 import { IconBolt, IconCheck } from "./icons";
-
-const RATE_TYPES = ["CPM", "CPC", "CPV"] as const;
-
-/** Unit the rate is charged per — shown under the rate field so the number is unambiguous. */
-const RATE_UNIT: Record<string, string> = {
-    CPM: "per 1,000 impressions",
-    CPC: "per click",
-    CPV: "per view",
-};
-
-interface Props {
-    open: boolean;
-    onClose(): void;
-    onConfirm(): void;
-}
-
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-const grouped = new Intl.NumberFormat("en-US");
+import type { Props } from "../model/pacingModal";
+import { RATE_TYPES, RATE_UNIT, usd, grouped, money } from "../constants/pacingModal";
 
 function compactUnits(n: number): string {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}M`;
@@ -42,8 +27,6 @@ function planLine(b: TacticBudget | null | undefined): string {
     if (b.units > 0) seg.push(`${compactUnits(b.units)} units`);
     return seg.length > 0 ? `plan: ${seg.join(" · ")}` : "";
 }
-
-const money = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** How an evenly-paced row got its number, e.g. "120d × $83.33 → 30d in month". */
 function evenLine(even: EvenPacing): string {

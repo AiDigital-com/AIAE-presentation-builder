@@ -47,7 +47,21 @@ public class BreakdownChartBuilder {
 	private final BreakdownChartCatalog catalog;
 	private final BreakdownSlideNaming naming;
 	private final ChartFileSharer chartFileSharer;
+	private final GoogleCallTimer googleCalls;
 
+	/**
+	 * Creates the builder over its Drive, Sheets and Slides collaborators.
+	 *
+	 * @param driveCopier       copies chart-template workbooks
+	 * @param chartSheetWriter  writes breakdown values into the copied workbooks
+	 * @param chartSpecBuilder  reads and restyles the workbook chart specs
+	 * @param slideChartSwapper swaps placeholder charts for linked Sheets charts
+	 * @param chartErrors       turns API failures into readable per-chart errors
+	 * @param catalog           breakdown chart template catalog
+	 * @param naming            reads tactic numbers from duplicated slide ids
+	 * @param chartFileSharer   shares loose chart workbooks
+	 * @param googleCalls       times every direct Sheets/Slides call on the shared external-call timer
+	 */
 	public BreakdownChartBuilder(
 			DriveCopier driveCopier,
 			ChartSheetWriter chartSheetWriter,
@@ -56,7 +70,9 @@ public class BreakdownChartBuilder {
 			ChartErrorTranslator chartErrors,
 			BreakdownChartCatalog catalog,
 			BreakdownSlideNaming naming,
-			ChartFileSharer chartFileSharer) {
+			ChartFileSharer chartFileSharer,
+			GoogleCallTimer googleCalls) {
+		this.googleCalls = googleCalls;
 		this.driveCopier = driveCopier;
 		this.chartSheetWriter = chartSheetWriter;
 		this.chartSpecBuilder = chartSpecBuilder;
@@ -193,10 +209,9 @@ public class BreakdownChartBuilder {
 	 */
 	Integer copyChartId(Sheets sheets, String copyId, String dataTab,
 			int configured) throws IOException {
-		Spreadsheet copy = sheets.spreadsheets().get(copyId)
+		Spreadsheet copy = googleCalls.execute(sheets.spreadsheets().get(copyId)
 				.setIncludeGridData(false)
-				.setFields("sheets(properties(title),charts(chartId))")
-				.execute();
+				.setFields("sheets(properties(title),charts(chartId))"));
 		return pickChartId(copy.getSheets(), dataTab, configured);
 	}
 
@@ -314,10 +329,9 @@ public class BreakdownChartBuilder {
 			Slides slides, String presentationId, List<String> errors) {
 		Map<String, Map<String, ChartElementRef>> out = new LinkedHashMap<>();
 		try {
-			Presentation pres = slides.presentations().get(presentationId)
+			Presentation pres = googleCalls.execute(slides.presentations().get(presentationId)
 					.setFields("slides.objectId,"
-							+ "slides.pageElements(objectId,size,transform,sheetsChart)")
-					.execute();
+							+ "slides.pageElements(objectId,size,transform,sheetsChart)"));
 			if (pres.getSlides() == null) {
 				return out;
 			}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { MappingEntry } from "@/shared/api/types";
 import { keepActive, toPayloadMapping } from "./tacticSelection";
 

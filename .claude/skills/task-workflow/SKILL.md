@@ -1,10 +1,11 @@
 ---
 name: task-workflow
 description: Multi-role iterative enterprise development workflow with context-isolated task artifacts
-argument-hint: "<task ID or short description> [| <context prompt for the analytic role>]"
 ---
 
 Run a structured multi-role enterprise development workflow for: **$ARGUMENTS**
+
+Arguments: `<task ID or short description> [| <context prompt for the analytic role>]`.
 
 Each role works through files in `.claude/tasks/<task>/`. The orchestrator should stay lightweight and use those files as the task state.
 
@@ -32,7 +33,7 @@ Each item starts with `[ ]` and is testable.
 Numbered steps. Each step names the exact file paths to modify or create and explains why.
 
 ### 4. Test Coverage Plan
-For this repository, consider only the test layers that actually exist.
+Discover and use only the test layers that actually exist in the current repository.
 
 Backend layers:
 - service unit tests
@@ -44,7 +45,7 @@ Frontend layers:
 - API/client unit tests
 - config/helper unit tests
 
-If no dedicated `*IT` integration-test layer exists for this task, explicitly write:
+If no dedicated integration-test layer exists for this task, explicitly write:
 `No dedicated integration-test layer in this repository.`
 
 ### 5. Verification Approach
@@ -59,7 +60,7 @@ Read `.claude/tasks/<task>/plan.md` in full before editing code.
 
 Backend implementation rules:
 - Java 21 + Spring Boot 3.x + Maven multi-module
-- production code stays under `com.aidigital.operationalhub.*`
+- discover and preserve the repository's single production package root
 - controllers implement generated OpenAPI interfaces
 - use `@ConfigurationProperties`, not `@Value`
 - follow `1 entity = 1 repository = 1 service to work with that entity`
@@ -70,13 +71,16 @@ Backend implementation rules:
 Frontend implementation rules:
 - React + TypeScript + Vite
 - use TanStack Query for backend server state
+- give each server resource one canonical query-key owner; reuse valid cached data instead of issuing equivalent requests
+- fetch inactive/dependent UI conditionally; update authoritative mutation results in cache or invalidate only affected queries
+- clear user-scoped cache on sign-out/account switch and verify request counts when query behavior changes
 - use Clerk through shared auth code for authentication
 - use `openapi-fetch` through `frontend/src/shared/api/client.ts`
 - do not use raw `fetch`, `axios`, `XMLHttpRequest`, or hardcoded backend URLs under `frontend/src`
 - do not edit generated types under `frontend/src/shared/api/generated/schema.d.ts`
 - use plain CSS with BEM class names and semantic CSS tokens
 - do not introduce CSS Modules, Tailwind, styled-components, Emotion, or CSS-in-JS
-- navigation is top/header-first; do not add a permanent left menu/sidebar/left rail unless explicitly requested
+- preserve the project's established navigation model; for a new project use the installed design guidance
 - frontend code must not access backend secrets, database credentials, service-account keys, or private API keys
 
 Test rules for this repository:
@@ -129,7 +133,7 @@ Then write `.claude/tasks/<task>/dev-summary.md` with:
 Read `.claude/tasks/<task>/dev-summary.md`, inspect the diff, and review the changed files against repository rules.
 
 Review at least these points:
-1. Backend package root stays under `com.aidigital.operationalhub.*`
+1. Backend code stays under the repository's discovered production package root
 2. Controllers and orchestration services do not inject repositories directly
 3. The backend `1 entity = 1 repository = 1 service` rule is preserved
 4. Backend controllers still implement generated OpenAPI interfaces
@@ -142,7 +146,9 @@ Review at least these points:
 11. Frontend API access uses the shared OpenAPI client, not raw `fetch`/`axios`
 12. Frontend styles use BEM/plain CSS/tokens and do not add forbidden styling frameworks
 13. Frontend auth uses Clerk/shared auth code and never exposes secrets
-14. Frontend navigation remains top/header-first unless the user explicitly requested another navigation model
+14. Frontend navigation preserves the product's established model unless the user explicitly requested a change
+15. Frontend queries have canonical ownership, avoid duplicate/inactive requests, and use narrow cache updates or invalidation
+16. User-scoped cached data is cleared on sign-out/account switch and affected request counts are verified
 
 Write `.claude/tasks/<task>/review-report.md` with:
 - `STATUS: APPROVED` or `STATUS: CHANGES_REQUESTED`

@@ -1,5 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
+import com.aidigital.reportconstructor.observability.external.ExternalCallTimer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.aidigital.reportconstructor.service.reports.engine.ChartPivot;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -13,7 +15,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SheetPacingTableWriterTest {
 
 	private final SheetPacingTableWriter writer = new SheetPacingTableWriter(
-			Mockito.mock(ChartPivot.class), new TacticLineItemGrouper(), new ChartSheetWriter());
+			Mockito.mock(ChartPivot.class), new TacticLineItemGrouper(), new ChartSheetWriter(new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry()))),
+			new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
 
 	@Test
 	void findNumberedAnchorsTest_locatesEachTacticsOwnAnchorCell() {

@@ -1,5 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
+import com.aidigital.reportconstructor.observability.external.ExternalCallTimer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartSlice;
 import com.google.api.services.sheets.v4.model.EmbeddedChart;
 import com.google.api.services.sheets.v4.model.Sheet;
@@ -23,8 +25,8 @@ class BreakdownChartBuilderTest {
 		// The pure methods under test use only the ChartSheetWriter (for label normalisation); the Google
 		// collaborators are not touched, so nulls are safe here.
 		return new BreakdownChartBuilder(
-				null, new ChartSheetWriter(), null, null, null, new BreakdownChartCatalog(),
-				new BreakdownSlideNaming(), null);
+				null, new ChartSheetWriter(new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry()))), null, null, null, new BreakdownChartCatalog(),
+				new BreakdownSlideNaming(), null, null);
 	}
 
 	@Test

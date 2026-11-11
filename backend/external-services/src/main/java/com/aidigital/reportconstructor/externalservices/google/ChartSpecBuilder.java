@@ -29,14 +29,17 @@ public class ChartSpecBuilder {
 	private static final String CHART_DATA_TAB = "Sheet1";
 
 	private final ChartTemplateCatalog templates;
+	private final GoogleCallTimer googleCalls;
 
 	/**
 	 * Creates the builder backed by the catalog of chart template ids and default styling.
 	 *
-	 * @param templates catalog supplying the in-sheet chart id and the pie default color matrix
+	 * @param templates   catalog supplying the in-sheet chart id and the pie default color matrix
+	 * @param googleCalls times every Sheets call on the shared external-call timer
 	 */
-	public ChartSpecBuilder(ChartTemplateCatalog templates) {
+	public ChartSpecBuilder(ChartTemplateCatalog templates, GoogleCallTimer googleCalls) {
 		this.templates = templates;
+		this.googleCalls = googleCalls;
 	}
 
 	/**
@@ -48,10 +51,9 @@ public class ChartSpecBuilder {
 	 * @throws IOException if the Sheets API request fails
 	 */
 	public ChartSpec readChartSpec(Sheets sheets, String spreadsheetId) throws IOException {
-		Spreadsheet ss = sheets.spreadsheets().get(spreadsheetId)
+		Spreadsheet ss = googleCalls.execute(sheets.spreadsheets().get(spreadsheetId)
 				.setIncludeGridData(false)
-				.setFields("sheets(properties(sheetId,title),charts(chartId,spec))")
-				.execute();
+				.setFields("sheets(properties(sheetId,title),charts(chartId,spec))"));
 		if (ss.getSheets() == null) {
 			return null;
 		}
@@ -79,10 +81,9 @@ public class ChartSpecBuilder {
 	 * @throws IOException if the Sheets API request fails
 	 */
 	public String findDataTab(Sheets sheets, String spreadsheetId) throws IOException {
-		Spreadsheet ss = sheets.spreadsheets().get(spreadsheetId)
+		Spreadsheet ss = googleCalls.execute(sheets.spreadsheets().get(spreadsheetId)
 				.setIncludeGridData(false)
-				.setFields("sheets.properties.title")
-				.execute();
+				.setFields("sheets.properties.title"));
 		String first = null;
 		if (ss.getSheets() != null) {
 			for (Sheet s : ss.getSheets()) {
@@ -163,8 +164,8 @@ public class ChartSpecBuilder {
 						new UpdateChartSpecRequest()
 								.setChartId(templates.getChartIdInSheet())
 								.setSpec(spec));
-		sheets.spreadsheets().batchUpdate(spreadsheetId,
-				new BatchUpdateSpreadsheetRequest().setRequests(List.of(req))).execute();
+		googleCalls.execute(sheets.spreadsheets().batchUpdate(spreadsheetId,
+				new BatchUpdateSpreadsheetRequest().setRequests(List.of(req))));
 	}
 
 	/**

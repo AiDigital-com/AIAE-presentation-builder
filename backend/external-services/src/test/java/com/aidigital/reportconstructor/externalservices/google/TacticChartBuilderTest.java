@@ -1,5 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
+import com.aidigital.reportconstructor.observability.external.ExternalCallTimer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.google.api.services.slides.v1.model.AffineTransform;
 import com.google.api.services.slides.v1.model.Size;
 import org.junit.jupiter.api.Test;
@@ -22,7 +24,7 @@ class TacticChartBuilderTest {
 				templates,
 				Mockito.mock(TacticLineItemGrouper.class),
 				Mockito.mock(ChartFileSharer.class),
-				new TacticChartLocator(new BreakdownSlideNaming()));
+				new TacticChartLocator(new BreakdownSlideNaming(), new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry()))));
 	}
 
 	@Test

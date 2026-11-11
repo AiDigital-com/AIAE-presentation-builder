@@ -22,7 +22,7 @@ suffix is just a readable label for the always-on file.
 | Prefix | Topic | Scope |
 |---|---|---|
 | `00-` | Always-on backend invariants | always on |
-| `10-39` | Backend topic rules | `backend/**` paths |
+| `10-39` | Backend and cross-layer topic rules | backend/frontend/deployment paths as declared |
 | `40-59` | Frontend topic rules | `frontend/**` paths |
 
 Current files:
@@ -30,6 +30,9 @@ Current files:
 - `00-backend-hard-rules.md` — always-on backend invariants
 - `10-architecture.md` — backend architecture / service boundaries
 - `12-database.md` — persistence, JPA, Liquibase, caching
+- `13-bigquery.md` — BigQuery query construction (dormant: no BigQuery code yet)
+- `14-performance.md` — request/query/load amplification, transactions,
+  frontend fetching, integrations, payloads, and measurement
 - `20-tests.md` — backend test style
 - `30-web-openapi.md` — controllers and OpenAPI contract
 - `40-frontend-rules.md` — frontend architecture, API, auth, styling

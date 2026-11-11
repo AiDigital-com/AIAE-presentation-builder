@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useState } from "react";
+
 import { EmptyState } from "@/shared/ui/EmptyState";
 import { ErrorAlert } from "@/shared/ui/ErrorAlert";
 import { LoadingBlock } from "@/shared/ui/LoadingBlock";
@@ -26,25 +27,9 @@ import { SavingsPanel } from "./SavingsPanel";
 import { SortHeader } from "./SortHeader";
 import { TrendTable } from "./TrendTable";
 import { VolumeChart } from "./VolumeChart";
+import type { Tab } from "../model/adminDashboardPage";
+import { dateFmt, updatedFmt, TAB_LABELS, REPORT_SORTS, REPORTS_PAGE_SIZE } from "../constants/adminDashboardPage";
 import "./admin-dashboard.css";
-
-const dateFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
-const updatedFmt = new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-});
-
-type Tab = "overview" | "tokens" | "reports" | "failures" | "admins";
-
-const TAB_LABELS: Record<Tab, string> = {
-    overview: "Overview",
-    tokens: "Token consumption",
-    reports: "All reports",
-    failures: "Failures",
-    admins: "Admins",
-};
 
 
 /** First-letter initials (max 2) from a display name. */
@@ -731,19 +716,6 @@ function FailuresTab({ query }: { query: ReturnType<typeof useAdminStats> }) {
         </div>
     );
 }
-
-/** Columns the report history offers, in the order they appear above the list. */
-const REPORT_SORTS: { key: ReportSortKey; label: string }[] = [
-    { key: "createdAt", label: "Date" },
-    { key: "tokens", label: "Tokens" },
-    { key: "slides", label: "Slides" },
-    { key: "owner", label: "Owner" },
-    { key: "type", label: "Type" },
-    { key: "status", label: "Status" },
-];
-
-/** How many rows one page of the history holds. */
-const REPORTS_PAGE_SIZE = 50;
 
 /** Team-wide report history — every user's reports, one page at a time. */
 function AllReportsTab() {

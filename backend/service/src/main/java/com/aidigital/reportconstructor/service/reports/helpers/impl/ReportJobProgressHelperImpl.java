@@ -2,10 +2,10 @@ package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
 import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
 import com.aidigital.reportconstructor.domain.reports.projections.JobOwner;
-import com.aidigital.reportconstructor.domain.reports.repositories.ReportJobRepository;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeUsage;
+import com.aidigital.reportconstructor.service.reports.entity.ReportJobEntityService;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportJobProgressHelper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -36,7 +36,7 @@ public class ReportJobProgressHelperImpl implements ReportJobProgressHelper {
 	/** Wire code of the intermediate sheet target, which is a step of a report rather than a report. */
 	private static final String SHEET_TARGET = "SHEET";
 
-	private final ReportJobRepository jobs;
+	private final ReportJobEntityService jobs;
 
 	@Transactional
 	@Override

@@ -17,4 +17,6 @@ paths:
 - Reset mocks between tests when module-level mocks are used.
 - Cover loading, error, empty, and success states for server-backed surfaces.
 - Cover critical user actions with success and validation/error cases.
+- When changing query ownership, caching, navigation, dialogs, tabs, or mutations, assert important request counts and verify that rerenders do not produce duplicate requests.
+- Cover cache invalidation boundaries for successful mutations and user/session changes when those behaviors are affected.
 - Do not use snapshot-only tests as meaningful coverage.

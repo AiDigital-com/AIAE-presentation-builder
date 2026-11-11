@@ -23,9 +23,17 @@ import java.util.UUID;
 public class SlideChartSwapper {
 
 	private final ChartTemplateCatalog templates;
+	private final GoogleCallTimer googleCalls;
 
-	public SlideChartSwapper(ChartTemplateCatalog templates) {
+	/**
+	 * Creates the swapper.
+	 *
+	 * @param templates   catalog supplying the chart template ids
+	 * @param googleCalls times every Slides call on the shared external-call timer
+	 */
+	public SlideChartSwapper(ChartTemplateCatalog templates, GoogleCallTimer googleCalls) {
 		this.templates = templates;
+		this.googleCalls = googleCalls;
 	}
 
 	/**
@@ -43,7 +51,7 @@ public class SlideChartSwapper {
 			Slides slides, String presentationId, List<String> errors, String tag) {
 		Map<String, ElementTransform> out = new LinkedHashMap<>();
 		try {
-			Presentation pres = slides.presentations().get(presentationId).execute();
+			Presentation pres = googleCalls.execute(slides.presentations().get(presentationId));
 			if (pres.getSlides() != null) {
 				for (Page slide : pres.getSlides()) {
 					String slideId = slide.getObjectId();
@@ -128,8 +136,8 @@ public class SlideChartSwapper {
 				new com.google.api.services.slides.v1.model.Request().setCreateSheetsChart(create)
 		);
 
-		slides.presentations().batchUpdate(presentationId,
-				new BatchUpdatePresentationRequest().setRequests(requests)).execute();
+		googleCalls.execute(slides.presentations().batchUpdate(presentationId,
+				new BatchUpdatePresentationRequest().setRequests(requests)));
 	}
 
 	/**
@@ -142,8 +150,8 @@ public class SlideChartSwapper {
 	 * @throws IOException if the batch update request to the Slides API fails
 	 */
 	void deleteChartFromSlide(Slides slides, String presentationId, String objectId) throws IOException {
-		slides.presentations().batchUpdate(presentationId, new BatchUpdatePresentationRequest().setRequests(
-				List.of(new com.google.api.services.slides.v1.model.Request()
-						.setDeleteObject(new DeleteObjectRequest().setObjectId(objectId))))).execute();
+		googleCalls.execute(slides.presentations().batchUpdate(presentationId, new BatchUpdatePresentationRequest()
+				.setRequests(List.of(new com.google.api.services.slides.v1.model.Request()
+						.setDeleteObject(new DeleteObjectRequest().setObjectId(objectId))))));
 	}
 }

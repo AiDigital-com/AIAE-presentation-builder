@@ -1,8 +1,5 @@
+import type { Props } from "./model/errorAlert";
 import "./ui-states.css";
-
-interface Props {
-    message: string;
-}
 
 /** Accessible error banner for failed queries or form submissions. */
 export function ErrorAlert({ message }: Props) {

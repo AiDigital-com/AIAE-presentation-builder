@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+
 import { apiClient } from "@/shared/api/client";
 import type { DateRange } from "../lib/dateRange";
 
@@ -14,8 +15,9 @@ import type { DateRange } from "../lib/dateRange";
 export function useAdminStats(range: DateRange) {
     return useQuery({
         queryKey: ["admin", "stats", range],
-        queryFn: async () => {
+        queryFn: async ({ signal }) => {
             const { data, error } = await apiClient.GET("/api/v1/admin/stats", {
+                signal,
                 params: { query: { from: range.from, to: range.to } },
             });
             if (error) throw error;

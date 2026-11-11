@@ -36,9 +36,17 @@ public class TacticChartLocator {
 			"slides.objectId,slides.pageElements(objectId,size,transform,sheetsChart)";
 
 	private final BreakdownSlideNaming naming;
+	private final GoogleCallTimer googleCalls;
 
-	public TacticChartLocator(BreakdownSlideNaming naming) {
+	/**
+	 * Creates the locator.
+	 *
+	 * @param naming      reads tactic numbers from duplicated slide ids
+	 * @param googleCalls times every Slides call on the shared external-call timer
+	 */
+	public TacticChartLocator(BreakdownSlideNaming naming, GoogleCallTimer googleCalls) {
 		this.naming = naming;
+		this.googleCalls = googleCalls;
 	}
 
 	/**
@@ -60,7 +68,8 @@ public class TacticChartLocator {
 			Slides slides, String presentationId, int tacticCount, List<String> errors) {
 		Map<Integer, Map<String, ChartElementRef>> byTactic = new LinkedHashMap<>();
 		try {
-			Presentation deck = slides.presentations().get(presentationId).setFields(CHART_FIELDS).execute();
+			Presentation deck = googleCalls.execute(
+					slides.presentations().get(presentationId).setFields(CHART_FIELDS));
 			if (deck.getSlides() == null) {
 				return byTactic;
 			}

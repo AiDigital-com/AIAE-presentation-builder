@@ -24,6 +24,12 @@
 			<groupId>org.liquibase</groupId>
 			<artifactId>liquibase-core</artifactId>
 		</dependency>
+		<!-- Declared in every backend module per the backend hard rules, so any custom-change Java class
+			 added here later follows the same Lombok conventions as the rest of the backend. -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>

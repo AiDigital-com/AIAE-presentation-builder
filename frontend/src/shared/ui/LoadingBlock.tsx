@@ -1,8 +1,5 @@
+import type { Props } from "./model/loadingBlock";
 import "./ui-states.css";
-
-interface Props {
-    label?: string;
-}
 
 /** Centered loading indicator for async/query states. */
 export function LoadingBlock({ label = "Loading…" }: Props) {

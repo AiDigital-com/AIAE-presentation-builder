@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+
 import { apiClient } from "@/shared/api/client";
 
 /**
@@ -9,8 +10,8 @@ import { apiClient } from "@/shared/api/client";
 export function useCurrentUser() {
     return useQuery({
         queryKey: ["auth", "me"],
-        queryFn: async () => {
-            const { data, error } = await apiClient.GET("/api/v1/auth/me");
+        queryFn: async ({ signal }) => {
+            const { data, error } = await apiClient.GET("/api/v1/auth/me", { signal });
             if (error) throw error;
             return data;
         },

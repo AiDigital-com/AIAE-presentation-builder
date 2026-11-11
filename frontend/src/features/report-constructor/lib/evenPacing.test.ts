@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { evenPacedBudget, firstDeliveryDateByLineItem, namingLineItemId } from "./evenPacing";
 
 describe("evenPacedBudget", () => {

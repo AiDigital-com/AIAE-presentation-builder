@@ -5,14 +5,14 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 22px;
-    padding: 40px 20px;
-    background: var(--white, #ffffff);
+    gap: 1.375rem;
+    padding: 2.5rem 1.25rem;
+    background: var(--white, var(--rc-legacy-white));
 }
 .login__title {
     font-family: "DM Serif Display", serif;
-    font-size: 30px;
+    font-size: 1.875rem;
     font-weight: 400;
-    letter-spacing: -0.4px;
-    color: var(--blue, #0006df);
+    letter-spacing: -0.025rem;
+    color: var(--blue, var(--rc-legacy-blue));
 }

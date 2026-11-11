@@ -40,9 +40,12 @@ Frontend unit tests follow the same discipline as backend tests:
 - Critical forms/actions cover successful outcome and at least one validation or error path.
 - API wrapper tests verify request method/path/body and important auth/error behavior.
 - Role-dependent UI must cover allowed and locked states.
+- Query/cache behavior tests verify important request counts when a change affects query ownership, rerenders, navigation, lazy surfaces, or mutation invalidation.
+- Session-scoped data tests verify reuse for the same user and eviction on sign-out or account switch when that lifecycle is affected.
 
 ## Test boundaries
 
 - Mock network at the feature API/client boundary, not by changing production code.
 - Do not call real Clerk, backend, database, or third-party services from frontend unit tests.
 - Do not mock away the behavior that the test claims to verify.
+- Prefer a real test `QueryClient` with retries disabled when verifying deduplication, freshness, cache updates, or invalidation. Assert calls at the feature API boundary.

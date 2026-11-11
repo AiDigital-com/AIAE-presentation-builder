@@ -1,5 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
+import com.aidigital.reportconstructor.observability.external.ExternalCallTimer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.google.api.services.slides.v1.model.AffineTransform;
 import com.google.api.services.slides.v1.model.Page;
 import com.google.api.services.slides.v1.model.PageElement;
@@ -18,7 +20,7 @@ class TacticChartLocatorTest {
 	@Test
 	void chartsBySource_shouldIndexEachLinkedChartByTheWorkbookItPointsAtTest() {
 		// Given: a duplicated tactic slide carrying the three linked placeholder charts plus a plain shape
-		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming());
+		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming(), new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
 		Page slide = new Page().setObjectId("tct_3").setPageElements(List.of(
 				chartElement("el_daily", "book_daily", 100.0),
 				chartElement("el_monthly", "book_monthly", 200.0),
@@ -39,7 +41,7 @@ class TacticChartLocatorTest {
 	@Test
 	void chartsBySource_shouldKeepTheFirstOfTwoChartsLinkedToTheSameWorkbookTest() {
 		// Given: a slide whose two charts point at the same workbook — an ambiguous master, not a crash
-		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming());
+		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming(), new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
 		Page slide = new Page().setObjectId("tct_1").setPageElements(List.of(
 				chartElement("el_first", "book_shared", 10.0),
 				chartElement("el_second", "book_shared", 20.0)));
@@ -51,7 +53,7 @@ class TacticChartLocatorTest {
 	@Test
 	void indexSlide_shouldMergeTheChartsOneEomTacticCarriesAcrossItsMasterCopiesTest() {
 		// Given: one EOM tactic's two copies — the first carries the pacing chart, the second the pie
-		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming());
+		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming(), new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
 		Map<Integer, Map<String, ChartElementRef>> byTactic = new LinkedHashMap<>();
 
 		// When:
@@ -68,7 +70,7 @@ class TacticChartLocatorTest {
 	@Test
 	void indexSlide_shouldKeepAnEntryForATacticCopyThatCarriesNoChartTest() {
 		// Given: a tactic copy drawn without any chart on it — the EOM channel slide
-		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming());
+		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming(), new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
 		Map<Integer, Map<String, ChartElementRef>> byTactic = new LinkedHashMap<>();
 
 		// When:
@@ -85,7 +87,7 @@ class TacticChartLocatorTest {
 	@Test
 	void tacticNumberOf_shouldRecognizeAnEomTacticCopyOfAnyMasterTest() {
 		// Given: an EOM deck, whose tactic copies are named per master ordinal rather than tct_<n>
-		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming());
+		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming(), new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
 
 		// When-Then: every master's copy resolves to its tactic, and the same range check applies — without
 		// this the scan finds nothing on an EOM deck and the chart step falls back to the EOC template's
@@ -99,7 +101,7 @@ class TacticChartLocatorTest {
 	@Test
 	void tacticNumberOf_shouldRecognizeOnlyActiveTacticSlideIdsTest() {
 		// Given: a locator and a deck naming convention of tct_<n>
-		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming());
+		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming(), new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
 
 		// When-Then: a copy within the active range resolves; a breakdown copy, a template slide, a
 		// tactic above the active count and a null id do not

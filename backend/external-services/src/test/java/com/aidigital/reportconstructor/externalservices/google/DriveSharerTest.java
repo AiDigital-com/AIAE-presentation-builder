@@ -1,5 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
+import com.aidigital.reportconstructor.observability.external.ExternalCallTimer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.Permission;
 import org.junit.jupiter.api.Test;
@@ -20,7 +22,7 @@ import static org.mockito.Mockito.when;
 
 class DriveSharerTest {
 
-	private final DriveSharer sharer = new DriveSharer();
+	private final DriveSharer sharer = new DriveSharer(new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
 
 	@Test
 	void shouldCreateOneWriterPermissionPerEmailTest() throws IOException {

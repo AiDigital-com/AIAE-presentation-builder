@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+
 import { apiClient } from "@/shared/api/client";
 
 /**
@@ -8,8 +9,8 @@ import { apiClient } from "@/shared/api/client";
 export function useVersionQuery() {
     return useQuery({
         queryKey: ["version"],
-        queryFn: async () => {
-            const { data, error } = await apiClient.GET("/api/v1/version");
+        queryFn: async ({ signal }) => {
+            const { data, error } = await apiClient.GET("/api/v1/version", { signal });
             if (error) throw error;
             return data;
         },

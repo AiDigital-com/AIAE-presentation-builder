@@ -1,5 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
+import com.aidigital.reportconstructor.observability.external.ExternalCallTimer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import org.junit.jupiter.api.Test;
@@ -21,7 +23,7 @@ class DriveCopierTest {
 		// Given:
 		GoogleProperties props = new GoogleProperties();
 		props.setSlidesTargetFolderId(" reports-folder ");
-		DriveCopier copier = new DriveCopier(props);
+		DriveCopier copier = new DriveCopier(props, new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
 		Drive drive = mock(Drive.class, RETURNS_DEEP_STUBS);
 		Drive.Files.Create create = mock(Drive.Files.Create.class, RETURNS_DEEP_STUBS);
 		ArgumentCaptor<File> folder = ArgumentCaptor.forClass(File.class);
@@ -43,7 +45,7 @@ class DriveCopierTest {
 		// Given:
 		GoogleProperties props = new GoogleProperties();
 		props.setSlidesTargetFolderId("");
-		DriveCopier copier = new DriveCopier(props);
+		DriveCopier copier = new DriveCopier(props, new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
 		Drive drive = mock(Drive.class, RETURNS_DEEP_STUBS);
 		Drive.Files.Create create = mock(Drive.Files.Create.class, RETURNS_DEEP_STUBS);
 		ArgumentCaptor<File> folder = ArgumentCaptor.forClass(File.class);

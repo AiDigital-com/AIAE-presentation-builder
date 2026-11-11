@@ -1,74 +1,71 @@
 ---
 name: rule-compliance-audit
-description: Audit the whole AIAE Presentation Builder repository against every rule in .claude/rules and .claude/agent_docs (backend + frontend), and produce a categorized findings report. Use for a periodic health check, before a handoff, or when asked whether the project satisfies its rules.
-metadata:
-  user-invocable: "true"
+description: Audit an entire repository or requested area against installed CLAUDE.md, .claude/rules, and agent docs. Use for periodic health checks, migration validation, pre-handoff compliance, or when asked whether a project follows the complete engineering contract.
 ---
 
 # Rule Compliance Audit
 
-Whole-repository audit against the local rule set. Read-only — produces a report,
-changes nothing. Load `.claude/rules/*.md` and `.claude/agent_docs/index.md`
-first so the audit reflects the current rules.
+Run a read-only, whole-contract audit. This is broader than code review: it
+checks architecture, generated boundaries, configuration, tests, frontend
+behavior, documentation, and rule distribution.
 
-Group findings by area; for each finding give `file:line — rule — fix`. End with
-counts and `STATUS: COMPLIANT` or `STATUS: VIOLATIONS_FOUND`.
+## Procedure
 
-## Backend scanners
+1. Read `CLAUDE.md`, `.claude/agent_docs/index.md`, `.claude/agent_docs/project_facts.md`, and every
+   applicable rule. Report items listed under "Known gaps" in `project_facts.md` as known, tracked gaps
+   rather than new findings, unless the gap has grown.
+2. Record the audit scope, current branch/diff state, discovered package root,
+   modules, build tools, and test layers. Never substitute template assumptions
+   for repository facts.
+3. Build a rule-to-evidence matrix before reporting findings:
+   - rule and source file;
+   - files/commands inspected;
+   - compliant, violation, accepted exception, or not verified.
+4. Run relevant scanners from the specialized backend/frontend review skills.
+   Inspect every hit before classifying it.
+5. Check cross-cutting risks scanners miss:
+   - business-flow and authorization gaps;
+   - generated contract drift;
+   - repositories bypassed by orchestration;
+   - silent failures and broad fallbacks;
+   - missing configuration or secrets committed to source;
+   - duplicate frontend requests and stale user-scoped cache;
+   - unbounded/detail-heavy APIs, N+1/repository-in-loop work, and in-memory
+     filtering/pagination;
+   - external I/O inside transactions and unsafe timeout/retry ordering;
+   - missing Lombok dependencies in any backend Maven submodule;
+   - reusable external metrics duplicated outside `backend/observability`, or a
+     third-party Spring HTTP client missing either
+     `ExternalClientMetricsInterceptor` or `LogbookClientHttpRequestInterceptor`;
+   - missing loading/error/empty/success UI states;
+   - build/test/CI commands that no longer match repository structure.
+6. Run the strongest practical verification commands. Never infer full
+   compliance from a partial build or scanner-only pass.
 
-```bash
-# No private methods on production beans/services
-grep -rnE "(^|[[:space:]])private[A-Za-z0-9_<>,.\[\] ]* [A-Za-z0-9_]+[[:space:]]*\(" backend/*/src/main/java \
-  | grep -vE "private (final|static final|volatile)" | grep -v /target/
+## Classification
 
-# No nested data types (allow nested @ConfigurationProperties groups — verify enclosing class)
-grep -rnE "^[[:space:]]+(public |protected )?(static )?(record|class|enum) [A-Z]" backend/*/src/main/java | grep -v /target/
+- `VIOLATION`: confirmed conflict with an applicable rule.
+- `ACCEPTED_EXCEPTION`: explicit, documented project decision with evidence.
+- `NOT_VERIFIED`: required runtime/tool/credential unavailable.
+- `COMPLIANT`: inspected evidence satisfies the rule.
 
-# @ConfigurationProperties, not @Value
-grep -rn "@Value" backend/*/src/main/java | grep -v /target/
-
-# No static methods on beans (constants are fine)
-grep -rnE "static [A-Za-z0-9_<>]+ [a-z][A-Za-z0-9_]*[[:space:]]*\(" backend/service backend/application/src/main/java | grep -v "static final" | grep -v /target/
-
-# Repository access only via paired entity service
-grep -rn "Repository " backend/application/src/main/java backend/service/src/main/java | grep -i inject -n; \
-grep -rnl "Repository" backend/application/src/main/java/**/controller* 2>/dev/null
-```
-
-Then read-audit: JavaDoc on every handwritten method; controllers implement
-generated `*Api` and stay thin; `1 entity = 1 repository = 1 service`; outbound
-calls only in `backend/external-services`; business codes are enums; no edits to
-`target/generated-sources`; structured JSON logging.
-
-## Frontend scanners
-
-```bash
-# No raw HTTP / hardcoded backend URLs outside the shared client
-grep -rnE "\b(fetch|axios|XMLHttpRequest)\b|http://localhost" frontend/src | grep -v "shared/api/client"
-
-# No forbidden styling frameworks
-grep -rnE "tailwind|styled-components|@emotion|\.module\.css" frontend/src frontend/package.json
-
-# Hardcoded colors in component CSS (should use tokens)
-grep -rnE "#[0-9a-fA-F]{3,6}|hsl\(|rgb\(" frontend/src/features frontend/src/shared | grep -v tokens.css
-
-# Generated API types not hand-edited
-git -C frontend diff --name-only -- src/shared/api/generated/schema.d.ts
-```
-
-Then read-audit: TanStack Query for server state; Clerk-only auth with Bearer
-JWT through the shared client; BEM + one-block-per-directory; every async surface
-covers loading/error/empty/success; the left-nav app shell is intact (this app
-keeps its left sidebar — see `frontend_style.md`).
+Report only high-confidence violations. Separate pre-existing debt from changes
+in the requested scope. Do not turn every recommendation into a compliance
+failure.
 
 ## Output
 
-```
-STATUS: COMPLIANT | VIOLATIONS_FOUND
-Backend: <n> findings
-Frontend: <n> findings
+```text
+STATUS: COMPLIANT | VIOLATIONS_FOUND | INCOMPLETE
+Scope: <whole repo or areas>
+Evidence: <commands/files>
+Counts: blocking=<n>, important=<n>, minor=<n>, not_verified=<n>
 Findings:
-- <area> — <file>:<line> — <rule> — <fix>
+- [severity, confidence] rule-source - file:line - violation - impact - fix
 Accepted exceptions:
-- <e.g. SecurityProperties.Cors — nested @ConfigurationProperties group>
+- <decision and evidence>
+Not verified:
+- <gap and what is required>
 ```
+
+`COMPLIANT` is allowed only when all applicable blocking rules have evidence.

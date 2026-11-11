@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { apiClient } from "@/shared/api/client";
 
 /**
@@ -9,8 +10,8 @@ import { apiClient } from "@/shared/api/client";
 export function useMyReports() {
     return useQuery({
         queryKey: ["reports", "mine"],
-        queryFn: async () => {
-            const { data, error } = await apiClient.GET("/api/v1/reports");
+        queryFn: async ({ signal }) => {
+            const { data, error } = await apiClient.GET("/api/v1/reports", { signal });
             if (error) throw error;
             return data;
         },

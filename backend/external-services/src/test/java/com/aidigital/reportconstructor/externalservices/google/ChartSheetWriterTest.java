@@ -1,5 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
+import com.aidigital.reportconstructor.observability.external.ExternalCallTimer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.aidigital.reportconstructor.service.reports.engine.Pivot;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import org.junit.jupiter.api.Test;
@@ -13,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ChartSheetWriterTest {
 
-	private final ChartSheetWriter writer = new ChartSheetWriter();
+	private final ChartSheetWriter writer = new ChartSheetWriter(new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
 
 	@Test
 	void dailyComboRateRatio_isDecimalNotPercentPoints() {

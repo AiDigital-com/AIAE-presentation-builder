@@ -44,9 +44,17 @@ public class RealGoogleSheetsProvider implements GoogleSheetsProvider {
 
 	private final GoogleCredentialsFactory creds;
 	private final Sheets client;
+	private final GoogleCallTimer googleCalls;
 
-	public RealGoogleSheetsProvider(GoogleCredentialsFactory creds) {
+	/**
+	 * Creates the provider with a service-account Sheets client.
+	 *
+	 * @param creds       shared Google transport, JSON factory and service-account credentials
+	 * @param googleCalls times every Sheets call on the shared external-call timer
+	 */
+	public RealGoogleSheetsProvider(GoogleCredentialsFactory creds, GoogleCallTimer googleCalls) {
 		this.creds = creds;
+		this.googleCalls = googleCalls;
 		this.client = new Sheets.Builder(creds.transport(), creds.jsonFactory(), creds.initializer())
 				.setApplicationName(APPLICATION_NAME)
 				.build();
@@ -71,9 +79,8 @@ public class RealGoogleSheetsProvider implements GoogleSheetsProvider {
 		}
 		String sheetId = m.group(1);
 		try {
-			Spreadsheet meta = sheetsClient.spreadsheets().get(sheetId)
-					.setFields("properties.title,sheets.properties.title,sheets.properties.hidden")
-					.execute();
+			Spreadsheet meta = googleCalls.execute(sheetsClient.spreadsheets().get(sheetId)
+					.setFields("properties.title,sheets.properties.title,sheets.properties.hidden"));
 			String title = meta.getProperties() == null ? "Untitled" : meta.getProperties().getTitle();
 			// Expose visible tabs only. Media plans routinely keep stale copies of
 			// "Proposal"/"Estimates" as hidden tabs (often duplicating the visible
@@ -107,7 +114,7 @@ public class RealGoogleSheetsProvider implements GoogleSheetsProvider {
 			}
 
 			String range = "'" + resolvedTab.replace("'", "''") + "'!A1:ZZ";
-			ValueRange vr = sheetsClient.spreadsheets().values().get(sheetId, range).execute();
+			ValueRange vr = googleCalls.execute(sheetsClient.spreadsheets().values().get(sheetId, range));
 			List<List<Object>> values = vr.getValues() == null ? List.of() : vr.getValues();
 			List<List<String>> rows = new ArrayList<>(values.size());
 			for (List<Object> r : values) {

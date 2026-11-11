@@ -7,7 +7,10 @@ These conventions apply to Java backend code under `backend/`.
 ## General
 
 - Use Java 21 language level.
-- Prefer Lombok for boilerplate and constructor injection.
+- Lombok is mandatory in every backend Maven submodule. Every child `pom.xml`,
+  including resource-only and optional modules, declares the managed
+  `org.projectlombok:lombok` dependency. Prefer Lombok for constructor
+  injection, accessors, builders, and other appropriate boilerplate.
 - Spring configuration must use `@ConfigurationProperties`; do not use `@Value`.
 - Keep Spring beans instance-based. Do not introduce static methods on services or other Spring beans.
 - Services must emit structured logs in JSON format when they log business or technical events.
@@ -26,6 +29,10 @@ These conventions apply to Java backend code under `backend/`.
 - Replace magic strings and numbers with constants or enums.
 - Business codes such as RBAC role/scope codes belong in enums with fields, not in static string bags.
 - Outbound HTTP/SDK logic belongs in `backend/external-services` and should be configured through properties classes.
+- Every Spring HTTP client used for a third-party call is created through the
+  shared pooled factory and registers both `ExternalClientMetricsInterceptor`
+  and `org.zalando.logbook.spring.LogbookClientHttpRequestInterceptor`. Do not
+  construct an uninstrumented `RestClient`/`RestTemplate` at a call site.
 
 ## Visibility and types (testability)
 

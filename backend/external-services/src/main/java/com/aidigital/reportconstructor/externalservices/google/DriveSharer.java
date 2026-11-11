@@ -2,6 +2,7 @@ package com.aidigital.reportconstructor.externalservices.google;
 
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.Permission;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -16,10 +17,14 @@ import java.util.List;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class DriveSharer {
 
 	private static final String ROLE_WRITER = "writer";
 	private static final String TYPE_USER = "user";
+
+	/** Times every Drive call on the shared external-call timer. */
+	private final GoogleCallTimer googleCalls;
 
 	/**
 	 * Best-effort shares the given Drive file with each supplied email as a
@@ -45,10 +50,9 @@ public class DriveSharer {
 						.setType(TYPE_USER)
 						.setRole(ROLE_WRITER)
 						.setEmailAddress(recipient);
-				drive.permissions().create(fileId, permission)
+				googleCalls.execute(drive.permissions().create(fileId, permission)
 						.setSendNotificationEmail(false)
-						.setSupportsAllDrives(true)
-						.execute();
+						.setSupportsAllDrives(true));
 			} catch (IOException ex) {
 				log.warn("[drive] failed to share file {} with {}: {}", fileId, recipient, ex.getMessage());
 			}

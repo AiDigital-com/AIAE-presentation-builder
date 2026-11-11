@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { apiClient } from "@/shared/api/client";
 
 const ADMINS_KEY = ["admin", "admins"];
@@ -7,8 +8,8 @@ const ADMINS_KEY = ["admin", "admins"];
 export function useAdmins(enabled = true) {
     return useQuery({
         queryKey: ADMINS_KEY,
-        queryFn: async () => {
-            const { data, error } = await apiClient.GET("/api/v1/admin/admins");
+        queryFn: async ({ signal }) => {
+            const { data, error } = await apiClient.GET("/api/v1/admin/admins", { signal });
             if (error) throw error;
             return data;
         },

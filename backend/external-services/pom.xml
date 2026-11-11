@@ -37,6 +37,25 @@
 			<artifactId>service</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>observability</artifactId>
+		</dependency>
+		<!-- Pooled HTTP foundation: RestClient over Apache HttpClient 5 (version from the Boot BOM) with
+			 Logbook's client interceptor. Only the Logbook interface is used here; the configured Logbook
+			 bean (masking, body-free strategy) comes from application. -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.httpcomponents.client5</groupId>
+			<artifactId>httpclient5</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.zalando</groupId>
+			<artifactId>logbook-spring</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter</artifactId>
 		</dependency>

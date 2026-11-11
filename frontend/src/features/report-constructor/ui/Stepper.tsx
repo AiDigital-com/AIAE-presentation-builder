@@ -1,21 +1,6 @@
 import { IconCheck } from "./icons";
-
-const LABELS = ["Report Type", "Data Inputs", "Breakdowns", "Review Sheet", "Generate"];
-
-interface Props {
-    /** 0-based index of the active step. */
-    active: number;
-    /** Highest step the user has reached — steps up to here are navigable. */
-    maxReached: number;
-    /**
-     * Lowest step still navigable. A resumed draft starts at the review step with no source grids
-     * in memory, so the earlier steps cannot be re-run and are not offered.
-     */
-    minReached?: number;
-    /** When true, navigation is disabled (e.g. a build/generate job is running). */
-    locked?: boolean;
-    onNavigate(index: number): void;
-}
+import type { Props } from "../model/stepper";
+import { LABELS } from "../constants/stepper";
 
 /** Full-width 5-step progress bar under the header. Completed steps are clickable. */
 export function Stepper({ active, maxReached, minReached = 0, locked = false, onNavigate }: Props) {

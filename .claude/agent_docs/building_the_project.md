@@ -1,6 +1,8 @@
 # Building The Project
 
-All commands below assume the repository root:
+All commands below assume the current repository root. Verify module names and
+available scripts before running them; use the repository's wrappers and local
+documentation when they differ.
 
 ## Common backend commands
 
@@ -34,7 +36,8 @@ Run `npm run generate:api` before frontend typecheck/build when the backend Open
 - Surefire runs JUnit 5 backend tests and enables parallel execution.
 - Do not assume a dedicated backend integration-test layer unless the repository actually contains one.
 - JaCoCo enforces backend line coverage during `test`.
-- Vite dev server owns port `5173`; backend runtime owns port `5000`.
+- Read frontend and backend ports from the repository configuration. Preserve
+  their existing ownership and avoid collisions; do not impose remembered ports.
 
 ## Fast local loop
 

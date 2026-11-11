@@ -33,8 +33,8 @@ Do not create unrelated parallel structures for the same concern.
 
 ## Vite rules
 
-- Vite dev and preview port stays `5173`.
-- Backend runtime owns `5000`; Vite owns `5173`.
+- Preserve the dev/preview and backend ports configured by the repository. Keep
+  them distinct and do not replace them with remembered defaults.
 - `vite.config.ts` must keep explicit `server.allowedHosts` and `preview.allowedHosts` for proxied preview hosts.
 - Runtime alias `@` must be configured in Vite, not only in `tsconfig.json`.
 - API proxy target is configurable through environment variables, not hardcoded per component.
@@ -56,18 +56,72 @@ Do not create unrelated parallel structures for the same concern.
 - Every server-backed UI surface must handle loading, empty, error, and success states.
 - Mutations must invalidate or update the relevant queries explicitly.
 
+### Request-efficiency model
+
+Treat network requests as observable application behavior, not as an incidental implementation detail.
+
+- Define canonical query keys next to the feature API/query options that own the resource. Consumers must reuse them rather than creating component-local aliases for the same data.
+- Let one query own each server resource. Derive filtered, grouped, or projected views with `select`, memoization, or cached parent data instead of fetching the same resource again.
+- Choose `staleTime` and `gcTime` from the resource lifecycle, not from a universal default. Session-stable identity, access, and user-context data may remain fresh for the authenticated session and must be cleared when the user signs out or switches account.
+- Use `enabled` for dependent queries and inactive UI. Closed dialogs, unselected tabs, unresolved identifiers, and permission-inaccessible branches must not request data by default.
+- When a mutation returns the complete authoritative resource, write it into the canonical cache with `setQueryData`. Invalidate only when the response cannot safely update all affected cached views.
+- Avoid invalidating broad key prefixes when the affected keys are known. Never refetch unrelated profile, access, reference, list, or detail data after a local mutation.
+- Reuse list data for previews when it satisfies the view. Fetch detail data only when the detail contract is actually required.
+- Poll only for a real server-side lifecycle that cannot push updates. Stop polling on terminal state, hidden/unmounted ownership, missing authorization, or error policy exhaustion.
+- Pass TanStack Query's `signal` through the typed `openapi-fetch` request
+  options. Searches and navigation-owned requests must be cancellable so
+  obsolete work and stale responses do not outlive their owner.
+- Debounce user-driven search, and prefer one bulk mutation plus one narrow
+  cache update/invalidation over sequential per-item requests.
+- Paginate or incrementally load growing collections; do not fetch complete
+  datasets only to filter or sort in the browser.
+- Prefetch only an evidenced next interaction. It must not turn every visible row, tab, or navigation item into an automatic request.
+- Do not add a second client-side cache around TanStack Query. Browser HTTP caching may complement it, but must not create a competing source of truth.
+
+For affected flows, validate request counts in browser tooling or automated tests. Check initial load, rerender, navigation away/back, opening and closing overlays, repeated actions, successful mutation, sign-out, and account switch. Equivalent data must not be requested again while its canonical cache entry is valid.
+
+## Bundle and route loading
+
+- Route/feature split heavy editors, charts, admin surfaces, and other code not
+  required for the first usable screen with React lazy loading and a deliberate
+  loading boundary.
+- Use the existing Vite production build as the baseline and compare emitted
+  asset/chunk sizes after the change. Do not add a bundle-analysis dependency
+  unless the repository already supports it or the user approves it.
+- Do not add blanket `memo`, `useMemo`, or `useCallback`; use profiler evidence
+  and identify the expensive work or unstable dependency first.
+
 ## Auth
 
 - Clerk is the frontend auth provider.
 - Protected backend calls send `Authorization: Bearer <jwt>` through the shared API client.
-- `/api/v1/auth/me` bootstraps the current application user.
+- Bootstrap the current application user through the typed auth endpoint defined
+  by the project's OpenAPI contract.
 - `401` routes the user back through the auth flow.
 - `403` renders an access-denied or locked-state UI, not a generic crash.
 - Frontend code never accesses service-account keys, database credentials, or backend secrets.
 
 ## Navigation and layout
 
-- Navigation is top/header-first.
-- Permanent left side menu, left rail, and sidebar navigation are forbidden unless the user explicitly asks for a new navigation model.
+- Preserve the product's established navigation model. For a new project with
+  no documented navigation decision, use a compact header-first layout.
+- Do not introduce or remove a permanent left side menu, rail, or sidebar as
+  part of unrelated work.
 - Prefer page tabs, filter bars, segmented controls, and contextual toolbars.
 - Operational screens should be dense, scannable, and work-focused rather than marketing-style landing pages.
+- Use flexbox for one-dimensional rows/stacks/toolbars. Use CSS grid for
+  two-dimensional/table-like layouts such as data rows and multi-column forms;
+  four-column forms use `repeat(4, minmax(0, 1fr))` and responsive collapse.
+- Runtime CSS uses semantic tokens and `rem`; raw `px` and hard-coded hex colors
+  are forbidden under `frontend/src/**/*.css`.
+- Shrinkable content containers set `min-width: 0` or `min-inline-size: 0`, text
+  uses `overflow-wrap: anywhere`, and buttons stay inline-flex centered so long
+  labels and user/API strings do not break mobile or desktop layout.
+
+## Forms
+
+- Generated forms mirror OpenAPI `required` and validation constraints before
+  submit.
+- Required controls expose `required` or `aria-required`; invalid controls use
+  `aria-invalid` and link to an announced error with `aria-describedby` and/or
+  `role="alert"`.

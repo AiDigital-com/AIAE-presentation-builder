@@ -12,17 +12,14 @@ Use this rule everywhere:
 1 entity = 1 repository = 1 service to work with that entity
 ```
 
-That means:
-
-- `HubUserRepository` is used through `HubUserService`.
-- `HubRoleRepository` is used through `HubRoleService`.
-- `HubRoleAssignmentRepository` is used through `HubRoleAssignmentService`.
-- `HubScopeTypeRepository` is used through `HubScopeTypeService`.
-- `HubTeamRepository` is used through `HubTeamService`.
+For example, `UserRepository` is used through `UserService`, and
+`RoleAssignmentRepository` is used through `RoleAssignmentService`. Apply the
+same ownership rule to every persisted entity using the project's actual names.
 
 ## What orchestrators may do
 
-Cross-entity services such as `RbacQueryServiceImpl`, `RbacAdministrationServiceImpl`, `CurrentUserServiceImpl`, or `AgencyClientServiceImpl` may coordinate:
+Cross-entity query, administration, current-user, and integration orchestration
+services may coordinate:
 
 - entity services
 - validators
@@ -36,17 +33,27 @@ They must not inject repositories directly.
 
 - Repository ownership stays obvious.
 - Locking and query semantics stay centralized per entity.
-- RBAC or other orchestration services stay at the business layer instead of becoming ad-hoc data-access hubs.
+- Authorization or other orchestration services stay at the business layer instead of becoming ad-hoc data-access hubs.
 - Unit tests stay cleaner because cross-entity behavior mocks service contracts, not repositories.
 
-## Specific example
+## Example
 
-`RbacQueryServiceImpl` must read user data through `HubUserService` and assignment data through `HubRoleAssignmentService`. It must not inject `HubUserRepository` or `HubRoleAssignmentRepository` directly.
+A permission query service reads user data through `UserService` and assignment
+data through `RoleAssignmentService`. It must not inject `UserRepository` or
+`RoleAssignmentRepository` directly.
 
 ## Additional backend service rules
 
 - Transactions belong in the service layer.
 - Outbound HTTP/SDK calls belong in `backend/external-services`, never in entity services or controllers.
+- A transaction must not span an outbound HTTP/SDK call, object-storage
+  operation, AI call, file transfer, poll/sleep, or other slow I/O. Split the
+  orchestration into short database phases around the external call and make
+  intermediate state/idempotency explicit.
+- Third-party Spring HTTP clients use the shared pooled factory with both
+  `ExternalClientMetricsInterceptor` and `LogbookClientHttpRequestInterceptor`,
+  plus explicit timeouts. SDK-managed calls use the reusable
+  `ExternalCallTimer`.
 - Production beans expose no `private` methods. Extract validators, policies, assemblers, or helpers (each unit-testable) instead of hiding logic in private methods, and keep collaborator methods package-private so they are spyable. Only `private static final` constants and `private final` fields stay private.
 - Data carried between collaborators (resolved rows, command results, view models) is a top-level type in the `model` package, never a nested record/class.
 - MapStruct mappers stay narrow: entity-to-model in `service`, model-to-contract in `application`.

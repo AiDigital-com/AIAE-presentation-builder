@@ -1,5 +1,5 @@
 ---
-description: Backend test style rules for AIAE Presentation Builder.
+description: Backend test style rules.
 paths:
   - "backend/application/src/test/**/*.java"
   - "backend/domain/src/test/**/*.java"

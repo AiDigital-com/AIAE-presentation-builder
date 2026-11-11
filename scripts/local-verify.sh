@@ -7,4 +7,5 @@ cd frontend
 if [ -f package-lock.json ]; then npm ci; else npm install; fi
 npm run generate:api
 npm run typecheck
+npm run lint
 npm run build

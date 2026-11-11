@@ -64,6 +64,7 @@ public class SheetPacingTableWriter {
 	private final ChartPivot chartPivot;
 	private final TacticLineItemGrouper lineItemGrouper;
 	private final ChartSheetWriter chartSheetWriter;
+	private final GoogleCallTimer googleCalls;
 
 	/**
 	 * Creates the writer over its pure-data and cell-utility collaborators.
@@ -71,12 +72,14 @@ public class SheetPacingTableWriter {
 	 * @param chartPivot        BQ header parsing and daily/monthly/multi-year pivot logic
 	 * @param lineItemGrouper   groups the flat tactic-to-line-item mapping by tactic number
 	 * @param chartSheetWriter  reused for its {@code readValues}/{@code colLetter}/{@code sheetIdForTab} utilities
+	 * @param googleCalls       times every Sheets call on the shared external-call timer
 	 */
-	public SheetPacingTableWriter(
-			ChartPivot chartPivot, TacticLineItemGrouper lineItemGrouper, ChartSheetWriter chartSheetWriter) {
+	public SheetPacingTableWriter(ChartPivot chartPivot, TacticLineItemGrouper lineItemGrouper,
+			ChartSheetWriter chartSheetWriter, GoogleCallTimer googleCalls) {
 		this.chartPivot = chartPivot;
 		this.lineItemGrouper = lineItemGrouper;
 		this.chartSheetWriter = chartSheetWriter;
+		this.googleCalls = googleCalls;
 	}
 
 	/**
@@ -129,8 +132,8 @@ public class SheetPacingTableWriter {
 		}
 
 		if (!data.isEmpty()) {
-			sheets.spreadsheets().values().batchUpdate(spreadsheetId,
-					new BatchUpdateValuesRequest().setValueInputOption("RAW").setData(data)).execute();
+			googleCalls.execute(sheets.spreadsheets().values().batchUpdate(spreadsheetId,
+					new BatchUpdateValuesRequest().setValueInputOption("RAW").setData(data)));
 		}
 		return errors;
 	}

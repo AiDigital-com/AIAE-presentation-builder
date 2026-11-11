@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+
 import { AppNav } from "@/shared/ui/AppNav";
 import "@/shared/ui/aidigital-tokens.css";
 import "./app-layout.css";

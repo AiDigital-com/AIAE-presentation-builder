@@ -1,8 +1,8 @@
 /*
  * AI Digital design-system tokens (blue-forward B2B handoff).
  * Shared across the app shell, My reports, and Admin dashboard so every area
- * speaks the same palette/typography. The Report Constructor feature keeps its
- * own identical copy for isolation; keep the two in sync if you change a value.
+ * speaks the same palette/typography. This is the single source of the --rc-* colors;
+ * report-constructor.css only aliases its legacy palette to the --rc-legacy-* tokens here.
  */
 :root {
     --rc-white: #fff;
@@ -53,7 +53,33 @@
     --rc-display: "Barlow Semi Condensed", "Inter", sans-serif;
     --rc-mono: ui-monospace, Menlo, Monaco, "DM Mono", monospace;
 
-    --rc-shadow-frame: 0 18px 50px rgba(0, 9, 220, 0.06);
-    --rc-shadow-card: 0 8px 24px rgba(0, 9, 220, 0.10);
-    --rc-shadow-menu: 0 18px 50px rgba(0, 9, 220, 0.14);
+    --rc-shadow-frame: 0 1.125rem 3.125rem rgba(0, 9, 220, 0.06);
+    --rc-shadow-card: 0 0.5rem 1.5rem rgba(0, 9, 220, 0.10);
+    --rc-shadow-menu: 0 1.125rem 3.125rem rgba(0, 9, 220, 0.14);
+
+    /* Legacy palette of the Line-Item match modal and the toast (aliased in report-constructor.css) */
+    --rc-legacy-blue: #0006df;
+    --rc-legacy-blue-hover: #0005c0;
+    --rc-legacy-lime: #aef33f;
+    --rc-legacy-black: #111111;
+    --rc-legacy-white: #ffffff;
+    --rc-legacy-gray-light: #f5f5f5;
+    --rc-legacy-gray-mid: #e8e8e8;
+    --rc-legacy-gray: #aaaaaa;
+    --rc-legacy-text-muted: #666666;
+    --rc-legacy-border: #e4e4e4;
+    --rc-legacy-red: #d93025;
+    --rc-legacy-orange: #f59e0b;
+
+    /* Report-constructor component colors */
+    --rc-match-border: #FFD9A8;
+    --rc-match-bg: #FFF7EC;
+    --rc-status-badge-border: #D8D8E0;
+    --rc-switch-off: #D7D7DF;
+    --rc-notice-bg: #fffdf5;
+    --rc-notice-border: #f5e2b0;
+    --rc-warning-text: #7a5c00;
+    --rc-warning-bg: #fff8e1;
+    --rc-warning-border: #ffd54f;
+    --rc-id-pill-text: #2d6000;
 }

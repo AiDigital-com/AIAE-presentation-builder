@@ -19,6 +19,9 @@ public class DriveCopier {
 
 	private final GoogleProperties props;
 
+	/** Times every Drive call on the shared external-call timer. */
+	private final GoogleCallTimer googleCalls;
+
 	/**
 	 * Creates a Google Drive folder (shared-drive aware) to hold the per-report chart spreadsheet copies.
 	 * The folder is placed inside {@code external.google.slides-target-folder-id} when that is set, so the
@@ -38,7 +41,7 @@ public class DriveCopier {
 		if (parentId != null && !parentId.isBlank()) {
 			folder.setParents(List.of(parentId.trim()));
 		}
-		return drive.files().create(folder).setFields("id").setSupportsAllDrives(true).execute().getId();
+		return googleCalls.execute(drive.files().create(folder).setFields("id").setSupportsAllDrives(true)).getId();
 	}
 
 	/**
@@ -57,7 +60,7 @@ public class DriveCopier {
 		if (folderId != null && !folderId.isEmpty()) {
 			copy.setParents(List.of(folderId));
 		}
-		return drive.files().copy(fileId, copy).setFields("id").setSupportsAllDrives(true).execute().getId();
+		return googleCalls.execute(drive.files().copy(fileId, copy).setFields("id").setSupportsAllDrives(true)).getId();
 	}
 
 	/**
@@ -77,6 +80,6 @@ public class DriveCopier {
 		if (folderId != null && !folderId.isBlank()) {
 			sheet.setParents(List.of(folderId));
 		}
-		return drive.files().create(sheet).setFields("id").setSupportsAllDrives(true).execute().getId();
+		return googleCalls.execute(drive.files().create(sheet).setFields("id").setSupportsAllDrives(true)).getId();
 	}
 }
