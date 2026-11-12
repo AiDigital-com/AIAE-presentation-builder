@@ -18,9 +18,21 @@ body {
     font-size: var(--text-base);
     color: var(--text-default);
     background: var(--surface-muted);
+    /* Long user/API strings (URLs, emails, tactic names) wrap instead of overflowing their box. */
+    overflow-wrap: anywhere;
 }
 
+/*
+ * Buttons are inline-flex and centred, and tolerate wrapped labels. A button whose content is
+ * stacked blocks (a card) or left-aligned text sets its own display / justify-content in its class.
+ */
 button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    max-inline-size: 100%;
+    min-inline-size: 0;
     font: inherit;
     color: inherit;
     background: none;

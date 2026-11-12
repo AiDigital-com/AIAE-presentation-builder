@@ -110,7 +110,10 @@ Frontend layout:
   `--border*`, `--radius-sm|md|lg|xl|full`, `--space-*`, `--status-*`,
   `--chart-*`, and the report-constructor palette `--rc-*`. Where the shared
   `frontend_style.md` token tables use other names, use these real names.
-- Frontend CSS is `rem`-only; hex literals appear only in the token files.
+- Frontend CSS is `rem`-only and has no hex literals: the token files define colours as
+  `rgb(r g b)`, components use the tokens. `shared/ui/base/reset.css` makes every `<button>`
+  centred `inline-flex`; a button with stacked or left-aligned content sets its own `display` /
+  `justify-content` in its class (e.g. `.rc-typecard`, `.ad-range__preset`).
 
 - Evidence: `backend/pom.xml`
 - Evidence: `frontend/src/app/AppShell.tsx`

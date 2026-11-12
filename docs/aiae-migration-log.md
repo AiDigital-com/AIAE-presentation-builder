@@ -2,6 +2,27 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Frontend UI rules (P12, branch `PDI_240`)
+
+- 63 hex colours in `aidigital-tokens.css` / `base/tokens.css` rewritten as the exact `rgb()`
+  equivalents (no rounding, colours unchanged); no hex remains in any CSS file.
+- `reset.css`: `body { overflow-wrap: anywhere }`; `button` is centred `inline-flex` with
+  `max-inline-size: 100%` / `min-inline-size: 0`. Audited all 54 button classes: 39 set no
+  `display`; the two whose layout the reset would change got explicit rules — `.rc-typecard`
+  (`display: block`, what it computes to today as a grid item) and `.ad-range__preset`
+  (`justify-content: flex-start`, keeps its label left-aligned).
+- Admin stat cards: `repeat(4, minmax(0, 1fr))` collapsing to 2 columns ≤ 56rem and 1 ≤ 30rem.
+- Forms: add-admin input is `required` with `aria-invalid` / `aria-describedby` tied to the
+  server error (`ErrorAlert` gained an optional `id`); the date-range form marks both dates
+  `required`, flags a date later than today with `aria-invalid` + a linked `role="alert"`
+  message, and disables Apply in that state (new behaviour). `DateRangePicker.test.tsx` covers
+  the error and the valid path.
+- **Not visually verified:** no browser session against the running app. Worth a quick look at
+  the report-type cards, the date-range presets, button-heavy rows and the admin tables
+  (`overflow-wrap: anywhere` lets auto-sized table columns shrink further than before).
+- `check-frontend-ui-rules`: FAIL (77) → PASS. **4 of 21 failing.**
+- Frontend: `typecheck`, `lint`, 138 tests (+2), `build` pass.
+
 ## 2026-11-12 — P10 API validation (branch `PDI_240`)
 
 - **Contract hygiene** (no runtime change): 46 component object schemas closed with

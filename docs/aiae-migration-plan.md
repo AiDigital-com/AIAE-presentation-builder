@@ -52,7 +52,7 @@ records what was actually measured.
 | **P9** Coverage phase | `mvp` coverage profile driven by `.template-phase` | Not started (JaCoCo gate exists at 0.80/0.70) |
 | **P10** API validation | OpenAPI: closed schemas, descriptions, `$ref` enums, input constraints; one 400 MVC test per constrained operation | Done 2026-11-12 |
 | **P11** Thin controllers and service shape | Controller logic → services/mappers; split `ReportGenerationServiceImpl`, `LineItemMatcherServiceImpl`, `AdminStatsServiceImpl`; `CurrentTime`; MapStruct for entity mapping; remove static factories | In progress — `CurrentTime`, static factories, MapStruct entity mapping, thin controllers and mapper package layout done 2026-11-12; service splits remain |
-| **P12** Frontend tooling | ESLint, import order, Husky; remaining `check-frontend-ui-rules` findings | Tooling in place; UI-rule findings not started |
+| **P12** Frontend tooling | ESLint, import order, Husky; remaining `check-frontend-ui-rules` findings | Done 2026-11-12 (tooling earlier; UI-rule findings fixed, visual check pending) |
 | **P15** Make it stick | Flip `gates-report.sh`, CI `static-checks` and the test-field Checkstyle profile to blocking | Not started |
 
 ## Open decisions (product/tech owner)

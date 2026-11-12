@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useState } from "react";
+import { FormEvent, useCallback, useId, useState } from "react";
 
 import { EmptyState } from "@/shared/ui/EmptyState";
 import { ErrorAlert } from "@/shared/ui/ErrorAlert";
@@ -853,6 +853,7 @@ function AdminsTab() {
     const addAdmin = useAddAdmin();
     const removeAdmin = useRemoveAdmin();
     const [email, setEmail] = useState("");
+    const addErrorId = useId();
 
     const admins = data?.admins ?? [];
     const addError = addAdmin.error instanceof Error ? addAdmin.error.message : null;
@@ -871,6 +872,10 @@ function AdminsTab() {
                     type="email"
                     className="ad-admins__input"
                     placeholder="name@aidigital.com"
+                    aria-label="Email to grant admin access to"
+                    required
+                    aria-invalid={addError ? true : undefined}
+                    aria-describedby={addError ? addErrorId : undefined}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                 />
@@ -878,7 +883,7 @@ function AdminsTab() {
                     {addAdmin.isPending ? "Adding…" : "Add admin"}
                 </button>
             </form>
-            {addError && <ErrorAlert message={addError} />}
+            {addError && <ErrorAlert id={addErrorId} message={addError} />}
 
             {isLoading && <LoadingBlock label="Loading admins…" />}
             {isError && <ErrorAlert message={error instanceof Error ? error.message : "Could not load admins"} />}

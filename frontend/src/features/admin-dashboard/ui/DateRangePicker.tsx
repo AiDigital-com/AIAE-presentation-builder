@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import {
     DateRange,
@@ -30,6 +30,11 @@ export function DateRangePicker({
     const wrapperRef = useRef<HTMLDivElement>(null);
     const activePreset = matchPreset(value);
     const today = toIsoDay(new Date());
+    const errorId = useId();
+    // Native date inputs cap picking at `max`, but a typed date can still run past today.
+    const fromInFuture = draft.from > today;
+    const toInFuture = draft.to > today;
+    const hasError = fromInFuture || toInFuture;
 
     // Reopening should show what is currently applied, not whatever was half-typed and abandoned
     // last time.
@@ -118,6 +123,9 @@ export function DateRangePicker({
                             <input
                                 type="date"
                                 className="ad-range__input"
+                                required
+                                aria-invalid={fromInFuture ? true : undefined}
+                                aria-describedby={fromInFuture ? errorId : undefined}
                                 value={draft.from}
                                 max={today}
                                 onChange={(event) =>
@@ -130,6 +138,9 @@ export function DateRangePicker({
                             <input
                                 type="date"
                                 className="ad-range__input"
+                                required
+                                aria-invalid={toInFuture ? true : undefined}
+                                aria-describedby={toInFuture ? errorId : undefined}
                                 value={draft.to}
                                 max={today}
                                 onChange={(event) =>
@@ -137,9 +148,18 @@ export function DateRangePicker({
                                 }
                             />
                         </label>
-                        <button type="submit" className="ad-range__apply" disabled={!draft.from || !draft.to}>
+                        <button
+                            type="submit"
+                            className="ad-range__apply"
+                            disabled={!draft.from || !draft.to || hasError}
+                        >
                             Apply
                         </button>
+                        {hasError && (
+                            <p id={errorId} className="ad-range__error" role="alert">
+                                Dates can't be later than today.
+                            </p>
+                        )}
                     </form>
                 </div>
             )}

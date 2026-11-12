@@ -83,6 +83,6 @@
     --shadow-soft: 0 0.125rem 0.5rem hsl(var(--foreground) / 6%);
 
     /* Loading / empty / error states (shared/ui/ui-states.css) */
-    --color-text-muted: #5c6370;
-    --color-danger: #c0392b;
+    --color-text-muted: rgb(92 99 112);
+    --color-danger: rgb(192 57 43);
 }

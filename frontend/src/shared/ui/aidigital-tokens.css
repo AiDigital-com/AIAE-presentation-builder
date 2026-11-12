@@ -5,49 +5,49 @@
  * report-constructor.css only aliases its legacy palette to the --rc-legacy-* tokens here.
  */
 :root {
-    --rc-white: #fff;
-    --rc-gray-wash: #F2F1F3;
-    --rc-blue: #0009DC;
-    --rc-blue-hover: #0007B4;
-    --rc-tint: #F5F5FE;
-    --rc-tint-2: #E5E6FB;
-    --rc-lime: #AEF33E;
-    --rc-ink: #0B0B0B;
-    --rc-slate: #33344A;
-    --rc-mute: #80808E;
-    --rc-disabled: #B5B7E0;
-    --rc-canvas: #EAEAEF;
-    --rc-sheet-head: #F7F7FA;
-    --rc-row-foot: #FAFAFC;
-    --rc-card-border: #E7E7EC;
-    --rc-input-border: #E1E1E8;
-    --rc-line: #F0F0F3;
-    --rc-line-2: #F2F2F5;
-    --rc-line-3: #F6F6F8;
-    --rc-connector: #EDEDF1;
-    --rc-todo: #E4E4EA;
-    --rc-orange: #FF642D;
-    --rc-orange-bg: #FFF1EB;
-    --rc-amber: #B45309;
-    --rc-amber-tint: #FEF6E7;
-    --rc-amber-border: #F6DDA8;
-    --rc-success-bg: #F3FBE8;
-    --rc-success-border: #DDEFC0;
-    --rc-btn-disabled: #B9BEE8;
+    --rc-white: rgb(255 255 255);
+    --rc-gray-wash: rgb(242 241 243);
+    --rc-blue: rgb(0 9 220);
+    --rc-blue-hover: rgb(0 7 180);
+    --rc-tint: rgb(245 245 254);
+    --rc-tint-2: rgb(229 230 251);
+    --rc-lime: rgb(174 243 62);
+    --rc-ink: rgb(11 11 11);
+    --rc-slate: rgb(51 52 74);
+    --rc-mute: rgb(128 128 142);
+    --rc-disabled: rgb(181 183 224);
+    --rc-canvas: rgb(234 234 239);
+    --rc-sheet-head: rgb(247 247 250);
+    --rc-row-foot: rgb(250 250 252);
+    --rc-card-border: rgb(231 231 236);
+    --rc-input-border: rgb(225 225 232);
+    --rc-line: rgb(240 240 243);
+    --rc-line-2: rgb(242 242 245);
+    --rc-line-3: rgb(246 246 248);
+    --rc-connector: rgb(237 237 241);
+    --rc-todo: rgb(228 228 234);
+    --rc-orange: rgb(255 100 45);
+    --rc-orange-bg: rgb(255 241 235);
+    --rc-amber: rgb(180 83 9);
+    --rc-amber-tint: rgb(254 246 231);
+    --rc-amber-border: rgb(246 221 168);
+    --rc-success-bg: rgb(243 251 232);
+    --rc-success-border: rgb(221 239 192);
+    --rc-btn-disabled: rgb(185 190 232);
 
     /* Report-type accent colors (badges, dots, bars). */
-    --rc-type-eom: #0009DC;
-    --rc-type-eoc: #F0348E;
-    --rc-type-excel: #1B8F5A;
-    --rc-type-agenda: #B07FFF;
+    --rc-type-eom: rgb(0 9 220);
+    --rc-type-eoc: rgb(240 52 142);
+    --rc-type-excel: rgb(27 143 90);
+    --rc-type-agenda: rgb(176 127 255);
 
     /* By-user avatar rotation palette. */
-    --rc-avatar-1: #0009DC;
-    --rc-avatar-2: #F0348E;
-    --rc-avatar-3: #1B8F5A;
-    --rc-avatar-4: #00B5FF;
-    --rc-avatar-5: #B07FFF;
-    --rc-avatar-6: #FF642D;
+    --rc-avatar-1: rgb(0 9 220);
+    --rc-avatar-2: rgb(240 52 142);
+    --rc-avatar-3: rgb(27 143 90);
+    --rc-avatar-4: rgb(0 181 255);
+    --rc-avatar-5: rgb(176 127 255);
+    --rc-avatar-6: rgb(255 100 45);
 
     --rc-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --rc-display: "Barlow Semi Condensed", "Inter", sans-serif;
@@ -58,28 +58,28 @@
     --rc-shadow-menu: 0 1.125rem 3.125rem rgba(0, 9, 220, 0.14);
 
     /* Legacy palette of the Line-Item match modal and the toast (aliased in report-constructor.css) */
-    --rc-legacy-blue: #0006df;
-    --rc-legacy-blue-hover: #0005c0;
-    --rc-legacy-lime: #aef33f;
-    --rc-legacy-black: #111111;
-    --rc-legacy-white: #ffffff;
-    --rc-legacy-gray-light: #f5f5f5;
-    --rc-legacy-gray-mid: #e8e8e8;
-    --rc-legacy-gray: #aaaaaa;
-    --rc-legacy-text-muted: #666666;
-    --rc-legacy-border: #e4e4e4;
-    --rc-legacy-red: #d93025;
-    --rc-legacy-orange: #f59e0b;
+    --rc-legacy-blue: rgb(0 6 223);
+    --rc-legacy-blue-hover: rgb(0 5 192);
+    --rc-legacy-lime: rgb(174 243 63);
+    --rc-legacy-black: rgb(17 17 17);
+    --rc-legacy-white: rgb(255 255 255);
+    --rc-legacy-gray-light: rgb(245 245 245);
+    --rc-legacy-gray-mid: rgb(232 232 232);
+    --rc-legacy-gray: rgb(170 170 170);
+    --rc-legacy-text-muted: rgb(102 102 102);
+    --rc-legacy-border: rgb(228 228 228);
+    --rc-legacy-red: rgb(217 48 37);
+    --rc-legacy-orange: rgb(245 158 11);
 
     /* Report-constructor component colors */
-    --rc-match-border: #FFD9A8;
-    --rc-match-bg: #FFF7EC;
-    --rc-status-badge-border: #D8D8E0;
-    --rc-switch-off: #D7D7DF;
-    --rc-notice-bg: #fffdf5;
-    --rc-notice-border: #f5e2b0;
-    --rc-warning-text: #7a5c00;
-    --rc-warning-bg: #fff8e1;
-    --rc-warning-border: #ffd54f;
-    --rc-id-pill-text: #2d6000;
+    --rc-match-border: rgb(255 217 168);
+    --rc-match-bg: rgb(255 247 236);
+    --rc-status-badge-border: rgb(216 216 224);
+    --rc-switch-off: rgb(215 215 223);
+    --rc-notice-bg: rgb(255 253 245);
+    --rc-notice-border: rgb(245 226 176);
+    --rc-warning-text: rgb(122 92 0);
+    --rc-warning-bg: rgb(255 248 225);
+    --rc-warning-border: rgb(255 213 79);
+    --rc-id-pill-text: rgb(45 96 0);
 }

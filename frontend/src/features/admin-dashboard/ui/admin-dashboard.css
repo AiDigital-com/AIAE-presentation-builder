@@ -59,9 +59,22 @@
 /* Stat cards */
 .ad__stats {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1rem;
     margin-bottom: 1rem;
+}
+
+/* Four stat cards collapse to two, then one, on narrow screens. */
+@media (max-width: 56rem) {
+    .ad__stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 30rem) {
+    .ad__stats {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 .ad-stat {
@@ -1447,6 +1460,7 @@
     color: var(--rc-ink);
     background: var(--rc-sheet-head);
     cursor: pointer;
+    justify-content: flex-start;
     text-align: left;
 }
 
@@ -1490,6 +1504,13 @@
     font-size: 0.8125rem;
     color: var(--rc-ink);
     background: var(--rc-white);
+}
+
+.ad-range__error {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--color-danger);
 }
 
 .ad-range__apply {
