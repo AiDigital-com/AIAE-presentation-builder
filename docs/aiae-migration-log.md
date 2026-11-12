@@ -2,6 +2,33 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Sheets read path converged (P8 / D6, branch `PDI_240`)
+
+- Scope: the read path only (`GoogleSheetsProvider` had one caller, `SheetQueryServiceImpl`). The
+  workbook/deck writers (`RealSheetDeckProvider` ~1,900 lines, `SheetPacingTableWriter`,
+  `ChartSheetWriter`) implement the deck/chart ports and move with the Slides/charts conversion.
+- `externalservices.google.sheets` (no `service` imports): `SheetsClient` (was `GoogleSheetsProvider`,
+  `git mv`), `SheetsExternalException` (HTTP status or `null` for transport + Google's message),
+  `SheetsTabNotFoundException` (requested tab + visible tabs), `model/SheetsTabValues`,
+  `impl/SheetsClientImpl` (was `RealGoogleSheetsProvider`), `impl/StubSheetsClient` (was
+  `StubGoogleSheetsProvider`). Bean selection unchanged (`@Primary` + `@ConditionalOnBean`).
+- `bridge/SheetQueryServiceImpl` (moved from `google`) now owns what was business logic in the
+  providers: URL validation (C002, previously duplicated in real + stub), `SheetData` shaping (headers,
+  5-row preview, counts — previously duplicated), and user-facing errors via new
+  `bridge/SheetsFailureTranslator` (C001 with the visible-tabs parameter; C000 with the 403/404 hint
+  for user vs service account, Google's message and status). Messages are byte-identical to before.
+- Two incidental differences: tab matching lower-cases with `Locale.ROOT` (was the JVM default); a
+  spreadsheet response with no `sheets` array now yields "tab not found" instead of a
+  `NullPointerException`.
+- Tests: there were none for this path. Added `SheetsClientImplTest` 4 (fake Google transport:
+  hidden/visible tab resolution, empty tab, missing tab makes no values call, 403 mapping),
+  `StubSheetsClientTest` 3, `SheetsFailureTranslatorTest` 5, `SheetQueryServiceImplTest` 7.
+- Observed while testing: a JSON `null` cell would render as Google's `Data.NULL` sentinel's
+  `toString()`. Pre-existing and not reachable from the real API (empty cells come back as `""` or are
+  omitted); left unchanged.
+- `service` import lines in `external-services` main outside `bridge`: 198 in 37 files → 185 in 33.
+  `mvn -Pmvp verify`: BUILD SUCCESS. Gates: **3 of 21 failing** (unchanged).
+
 ## 2026-11-12 — Drive helpers converged (P8 / D6, branch `PDI_240`)
 
 - `DriveCopier`, `DriveSharer`, `ChartFileSharer`, `DriveShareRecipients` and their tests moved to

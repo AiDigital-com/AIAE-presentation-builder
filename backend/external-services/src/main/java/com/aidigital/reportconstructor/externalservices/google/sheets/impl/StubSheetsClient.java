@@ -1,28 +1,25 @@
-package com.aidigital.reportconstructor.externalservices.google;
+package com.aidigital.reportconstructor.externalservices.google.sheets.impl;
 
-import com.aidigital.reportconstructor.service.common.error.AppException;
-import com.aidigital.reportconstructor.service.common.error.ErrorReason;
-import com.aidigital.reportconstructor.service.reports.dto.SheetData;
+import com.aidigital.reportconstructor.externalservices.google.sheets.SheetsClient;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.SheetsTabValues;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
- * Deterministic mock provider used when no {@code @Primary} real Google
- * Sheets bean is registered (i.e. when {@code GOOGLE_SERVICE_ACCOUNT_JSON}
- * is unset and {@link RealGoogleSheetsProvider} stays conditional-excluded).
+ * Deterministic stub used when no {@code @Primary} real Sheets client is registered (i.e. when
+ * {@code GOOGLE_SERVICE_ACCOUNT_JSON} is unset and {@link SheetsClientImpl} stays conditional-excluded).
  *
- * <p>Returns fixture rows tailored to the requested tab so the downstream
- * matcher and placeholder resolvers see realistic shapes.
+ * <p>Returns fixture rows tailored to the requested tab so the downstream matcher and placeholder
+ * resolvers see realistic shapes. Any tab name is accepted; unknown names get the proposal fixture.
  */
 @Component
-public class StubGoogleSheetsProvider implements GoogleSheetsProvider {
+public class StubSheetsClient implements SheetsClient {
 
-	private static final Pattern ID_PATTERN = Pattern.compile("/spreadsheets/d/([a-zA-Z0-9-_]+)");
+	private static final String STUB_TITLE = "Sample Media Plan — Stub";
+	private static final List<String> STUB_TABS =
+			List.of("Proposal", "Audience&Inventory", "Estimates", "Geo", "Basic", "Workspace");
 
 	@Override
 	public boolean isLive() {
@@ -30,31 +27,8 @@ public class StubGoogleSheetsProvider implements GoogleSheetsProvider {
 	}
 
 	@Override
-	public SheetData fetchTab(String spreadsheetUrl, String tab, String userGoogleAccessToken) {
-		if (!StringUtils.hasText(spreadsheetUrl)) {
-			throw new AppException(ErrorReason.C002, "Spreadsheet URL is required");
-		}
-		Matcher m = ID_PATTERN.matcher(spreadsheetUrl);
-		if (!m.find()) {
-			throw new AppException(ErrorReason.C002,
-					"Could not parse Google Sheets URL. Expected /spreadsheets/d/<id>/…");
-		}
-		String sheetId = m.group(1);
-		List<String> tabs = List.of("Proposal", "Audience&Inventory", "Estimates", "Geo", "Basic", "Workspace");
-		List<List<String>> rows = sampleRowsFor(tab);
-		List<String> headers = rows.isEmpty() ? List.of() : rows.get(0);
-		int cols = headers.size();
-		return new SheetData(
-				sheetId,
-				"Sample Media Plan — Stub",
-				tab,
-				tabs,
-				rows.size(),
-				cols,
-				headers,
-				rows.stream().limit(5).toList(),
-				rows
-		);
+	public SheetsTabValues readTab(String spreadsheetId, String tab, String userAccessToken) {
+		return new SheetsTabValues(spreadsheetId, STUB_TITLE, tab, STUB_TABS, sampleRowsFor(tab));
 	}
 
 	/**

@@ -116,7 +116,14 @@ provider is converted, the bridges move into `service` and the module edge flips
   interface, implemented by `bridge.AdminDriveShareAudience` over `AdminEmailDirectory`. These helpers
   still take the SDK's `Drive` client as a parameter because the Sheets/Slides/chart code builds it per
   request (user token or service account); hiding it goes with the Sheets/Slides conversion.
-- Not yet converted: `google` Sheets, Slides and charts; `anthropic`.
+- Converted: **Sheets reads** (`google.sheets`: `SheetsClient.readTab(spreadsheetId, tab, userToken)` →
+  `model.SheetsTabValues`; `SheetsExternalException` with status + Google message,
+  `SheetsTabNotFoundException` with the visible tabs; `impl.SheetsClientImpl` is `@Primary` when Google
+  credentials exist, `impl.StubSheetsClient` otherwise). `bridge.SheetQueryServiceImpl` implements the
+  `SheetQueryService` port: URL validation, `SheetData` shaping, and user-facing errors through
+  `bridge.SheetsFailureTranslator`.
+- Not yet converted: the workbook/deck writers (`RealSheetDeckProvider`, `SheetPacingTableWriter`,
+  `ChartSheetWriter`), Slides and charts; `anthropic`.
 
 Controllers implement generated OpenAPI interfaces and delegate to services.
 Repositories are accessed only through their paired entity services.
