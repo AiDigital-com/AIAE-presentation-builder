@@ -2,6 +2,40 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Coverage phase (P9, branch `PDI_240`)
+
+- Before: `service`, `external-services` and `application` overrode the parent's 0.80/0.70 in their
+  default `<properties>`, so even a bare `mvn verify` was relaxed. `event-logging-to-db-feature` lowered
+  branch coverage to 0.60. A `handoff` profile restated the defaults and changed nothing.
+  `check-coverage-integrity` therefore had no phase mechanism to verify.
+- After:
+  - The parent keeps strict defaults (0.80 line / 0.70 branch), and no module overrides them.
+  - The parent's `mvp` profile is the floor, 0.30 / 0.25.
+  - Each module has its own `mvp` profile ratcheted to its measured coverage, or to strict where the
+    module already meets it.
+  - CI and `scripts/local-verify.sh` choose the phase only through `scripts/lib/coverage-phase.sh`
+    from `.template-phase` (`mvp`).
+  - `local-verify.sh` now runs `verify` (it was `test`), so it enforces the gate locally too.
+- Measured coverage (JaCoCo CSV) and the `mvp` ratchet per module:
+
+  | Module | Line | Branch | `mvp` ratchet (line / branch) |
+  |---|---|---|---|
+  | `domain` | 0.8235 | 0.9167 | 0.80 / 0.70 (strict) |
+  | `observability` | 1.0 | 1.0 | 0.80 / 0.70 (strict) |
+  | `event-logging-to-db-feature` | 0.9013 | 0.7823 | 0.80 / 0.70 (strict) |
+  | `service` | 0.8236 | 0.6650 | 0.80 / 0.66 |
+  | `external-services` | 0.6338 | 0.5424 | 0.63 / 0.54 |
+  | `application` | 0.4667 | 0.3958 | 0.46 / 0.39 |
+- Verification:
+  - `mvn -o -Pmvp verify` passes.
+  - A bare `mvn -o verify` fails at `external-services`.
+  - Probing all modules with the halt switched off (local diagnosis only) reports violations in exactly
+    three modules: `external-services` (0.63 / 0.54), `service` (branch 0.66) and `application`
+    (0.46 / 0.41 by the check's bundle count). `domain`, `observability` and
+    `event-logging-to-db-feature` meet strict.
+  - `check-coverage-integrity`: `OK (phase=mvp, strict 0.80/0.70, mvp 0.30/0.25)`.
+  - Gates: still 2 of 21 failing (`verify-gates.sh` for D2/D3, and `check-liquibase-preconditions`).
+
 ## 2026-11-12 — Multi-node work (P7, branch `PDI_240`)
 
 - Inventory of node-local state and work: one `@Scheduled` job (`UsageRollupRefresher`), `@Async` report runs,

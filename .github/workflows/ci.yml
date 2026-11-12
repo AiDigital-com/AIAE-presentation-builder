@@ -53,8 +53,16 @@ jobs:
           java-version: "21"
           cache: maven
 
+      # The coverage phase is the committed .template-phase: `mvp` adds -Pmvp (the relaxed floor plus each
+      # module's ratchet), `engineering` runs the strict 0.80 / 0.70 gate. scripts/lib/coverage-phase.sh is
+      # the only selector, shared with scripts/local-verify.sh.
       - name: Build, test, and enforce coverage
-        run: mvn -f backend/pom.xml verify -B
+        run: |
+          . scripts/lib/coverage-phase.sh
+          phase="$(coverage_phase_read .)"
+          coverage_phase_announce "$phase"
+          read -ra coverage_args <<< "$(coverage_phase_maven_args "$phase")"
+          mvn -f backend/pom.xml -B ${coverage_args[@]+"${coverage_args[@]}"} verify
 
       - name: Publish JaCoCo summary
         if: always()

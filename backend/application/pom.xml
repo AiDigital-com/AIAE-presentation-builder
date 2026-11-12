@@ -24,19 +24,6 @@
 		<!-- Must match FQN of @SpringBootApplication class. Consumed by
 			 parent pluginManagement's <mainClass>${start-class}. -->
 		<start-class>${project.groupId}.Application</start-class>
-
-		<!-- Coverage floor for this module, below the parent's 0.80/0.70 target.
-			 Today this module sits at 0.4296 line / 0.3846 branch. The thinnest layer and
-			 the lowest number: controllers delegating to services that are themselves
-			 covered, plus Spring configuration. Measured with LiquibaseChangelogSmokeTest
-			 erroring for want of a local Docker daemon, so the real figure is this or
-			 higher.
-
-			 These numbers are a ratchet: they stop coverage sliding while work continues on
-			 debt they did not create. Raise them as coverage rises; delete them when the
-			 module meets the parent gate. -->
-		<jacoco.line.coverage>0.42</jacoco.line.coverage>
-		<jacoco.branch.coverage>0.38</jacoco.branch.coverage>
 	</properties>
 
 
@@ -386,4 +373,18 @@
 				 rebuild independently — see scripts/local-dev-*.sh. -->
 		</plugins>
 	</build>
+
+	<!-- Coverage phase `mvp` (.template-phase): ratchet at today's 0.4667 line / 0.3958 branch (2026-11-12): thin controllers
+		 over covered services, plus Spring configuration.
+		 A bare `mvn verify` holds this module to the parent's strict 0.80 / 0.70. -->
+	<profiles>
+		<profile>
+			<id>mvp</id>
+			<properties>
+				<jacoco.line.coverage>0.46</jacoco.line.coverage>
+				<jacoco.branch.coverage>0.39</jacoco.branch.coverage>
+			</properties>
+		</profile>
+	</profiles>
+
 </project>

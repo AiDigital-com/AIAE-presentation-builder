@@ -297,6 +297,15 @@ sequenceDiagram
   `application`. Policy and allowlist: `backend/DEPENDENCY-ANALYSIS.md`.
 - Backend tests: JUnit 5 + Mockito unit tests per module, MVC/controller tests
   in `application`. There is **no `*IT` integration-test layer**.
+- Coverage gate (JaCoCo `check` in every module): a bare `mvn verify` is the
+  strict 0.80 line / 0.70 branch gate. The committed `.template-phase` (`mvp`
+  today) selects the phase through `scripts/lib/coverage-phase.sh`, which
+  `scripts/local-verify.sh` and CI both use: `mvp` adds `-Pmvp`, which sets the
+  parent floor of 0.30 / 0.25, plus each module's own `mvp` ratchet at its
+  measured coverage, so coverage cannot slide. Today `service`,
+  `external-services` and `application` are below strict;
+  `finalize-coverage` closes that before handoff. Never lower the parent
+  defaults or pass `-Djacoco.*`; `check-coverage-integrity.sh` rejects both.
 - Frontend: Vitest + Testing Library (`npm test`), `npm run typecheck`,
   `npm run lint`, `npm run build`.
 - Lint: ESLint 9 flat config `frontend/eslint.config.js` (typescript-eslint,
@@ -306,7 +315,7 @@ sequenceDiagram
   `features/*/testing/*.ts`). Zero errors is the baseline; never disable rules.
 - Pre-commit: Husky 9 (`.husky/pre-commit` runs `npm --prefix frontend run lint`),
   installed by the frontend `prepare` script (`scripts/prepare-husky.mjs`).
-- Full local verification: `scripts/local-verify.sh` (backend `mvn test`,
+- Full local verification: `scripts/local-verify.sh` (backend `mvn verify` in the committed coverage phase,
   frontend `npm ci`, `generate:api`, `typecheck`, `lint`, `build`), followed by
   the report-only AIAE gate run `scripts/gates-report.sh`.
 

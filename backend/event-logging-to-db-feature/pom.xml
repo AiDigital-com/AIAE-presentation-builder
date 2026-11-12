@@ -16,10 +16,6 @@
 	<name>AIAE Presentation Builder - event-logging-to-db-feature</name>
 	<packaging>jar</packaging>
 
-	<properties>
-		<jacoco.branch.coverage>0.60</jacoco.branch.coverage>
-	</properties>
-
 	<!-- Self-contained, removable feature. Must NOT depend on any other internal
 		 module (domain/service/application). ID semantics live in this module. -->
 	<dependencies>
@@ -135,4 +131,18 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
+
+	<!-- Coverage phase `mvp` (.template-phase): this module already meets the strict gate (0.9013 line / 0.7823 branch,
+		 2026-11-12), so it stays strict in the MVP phase too.
+		 A bare `mvn verify` holds this module to the parent's strict 0.80 / 0.70. -->
+	<profiles>
+		<profile>
+			<id>mvp</id>
+			<properties>
+				<jacoco.line.coverage>0.80</jacoco.line.coverage>
+				<jacoco.branch.coverage>0.70</jacoco.branch.coverage>
+			</properties>
+		</profile>
+	</profiles>
+
 </project>

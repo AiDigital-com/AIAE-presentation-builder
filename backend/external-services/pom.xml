@@ -16,20 +16,6 @@
 	<packaging>jar</packaging>
 
 
-	<!-- Coverage floor for this module, below the parent's 0.80/0.70 target.
-		 Today this module sits at 0.6051 line / 0.5132 branch.
-		 The Claude and Google clients are mostly request assembly and response
-			 parsing against live APIs, and the stub providers exist to avoid calling
-			 them in tests — so a large share of this module is only reached by code
-			 paths the unit suite deliberately does not take.
-
-		 These numbers are a ratchet: they stop coverage sliding while work continues
-		 on debt they did not create. Raise them as coverage rises; delete this block
-		 when the module meets the parent gate. -->
-	<properties>
-		<jacoco.line.coverage>0.60</jacoco.line.coverage>
-		<jacoco.branch.coverage>0.51</jacoco.branch.coverage>
-	</properties>
 
 	<dependencies>
 		<!-- A leaf: provider clients only. The service depends on this module, never the other way round. -->
@@ -200,4 +186,19 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
+
+	<!-- Coverage phase `mvp` (.template-phase): ratchet at today's 0.6338 line / 0.5424 branch (2026-11-12). Mostly request
+		 assembly and response parsing against live Google/Anthropic/Clerk APIs, which the
+		 unit suite reaches through fakes only where it matters.
+		 A bare `mvn verify` holds this module to the parent's strict 0.80 / 0.70. -->
+	<profiles>
+		<profile>
+			<id>mvp</id>
+			<properties>
+				<jacoco.line.coverage>0.63</jacoco.line.coverage>
+				<jacoco.branch.coverage>0.54</jacoco.branch.coverage>
+			</properties>
+		</profile>
+	</profiles>
+
 </project>

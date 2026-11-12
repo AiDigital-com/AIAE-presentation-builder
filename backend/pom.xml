@@ -70,19 +70,11 @@
 		<jacoco.version>0.8.12</jacoco.version>
 		<checkstyle.version>10.21.0</checkstyle.version>
 		<maven-dependency-plugin.version>3.7.1</maven-dependency-plugin.version>
-		<!-- JaCoCo gate. This is the target every module is held to, and domain and
-			 event-logging-to-db-feature already meet it. Three modules do not, and each
-			 declares its own floor in its own pom with the number it actually sits at —
-			 a ratchet, so their coverage cannot slide, rather than a blanket relaxation
-			 that would also stop protecting the two modules that are fine.
-
-			 Those declarations are the debt list. Deleting one means that module now
-			 meets this gate; lowering one should be as visible as it was to add it.
-
-			 Until October 2026 this and the -Phandoff profile both read 0.80/0.70, which
-			 made the profile a no-op and meant `mvn verify` had never passed on this
-			 project. (testing-policy.md, named by the previous comment here, does not
-			 exist in this repository.) -->
+		<!-- JaCoCo gate — the strict engineering default; a bare `mvn verify` always applies it.
+			 While .template-phase reads `mvp`, the verify scripts pass -Pmvp (scripts/lib/coverage-phase.sh):
+			 the `mvp` profile below is the floor (0.30 / 0.25, checked by check-coverage-integrity.sh), and each
+			 module's own `mvp` profile ratchets it up to what that module already achieves, so coverage cannot
+			 slide during the MVP phase. finalize-coverage raises every module to this gate before handoff. -->
 		<jacoco.line.coverage>0.80</jacoco.line.coverage>
 		<jacoco.branch.coverage>0.70</jacoco.branch.coverage>
 
@@ -532,16 +524,14 @@
 		</plugins>
 	</build>
 
-	<!-- Kept for compatibility with the handoff checklist. It sets the same numbers
-		 <properties> above already carries, so it changes nothing today; a module that
-		 declares its own floor overrides both, which is why the floor lives in that
-		 module's pom where it is visible rather than here. -->
+	<!-- Coverage phase `mvp`: the relaxed floor, selected only by scripts/lib/coverage-phase.sh while
+		 .template-phase reads `mvp`. Modules ratchet it up in their own `mvp` profiles. -->
 	<profiles>
 		<profile>
-			<id>handoff</id>
+			<id>mvp</id>
 			<properties>
-				<jacoco.line.coverage>0.80</jacoco.line.coverage>
-				<jacoco.branch.coverage>0.70</jacoco.branch.coverage>
+				<jacoco.line.coverage>0.30</jacoco.line.coverage>
+				<jacoco.branch.coverage>0.25</jacoco.branch.coverage>
 			</properties>
 		</profile>
 	</profiles>
