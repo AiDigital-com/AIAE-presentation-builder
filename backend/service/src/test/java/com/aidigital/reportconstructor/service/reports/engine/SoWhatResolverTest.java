@@ -17,12 +17,12 @@ import static org.mockito.Mockito.when;
 class SoWhatResolverTest {
 
 	@Mock
-	CampaignResolvers campaignResolvers;
+	private CampaignResolvers campaignResolvers;
 	@Mock
-	TacticExtractionHelper tacticExtraction;
+	private TacticExtractionHelper tacticExtraction;
 
 	@InjectMocks
-	SoWhatResolver resolver;
+	private SoWhatResolver resolver;
 
 	@Test
 	void everyCataloguePhrase_shouldFitTheColumnAndReadAsAnAchievementTest() {

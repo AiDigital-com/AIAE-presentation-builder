@@ -1,9 +1,9 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartRequest;
-import com.aidigital.reportconstructor.service.reports.ports.ChartProvider;
-import com.aidigital.reportconstructor.service.reports.ports.ChartRequest;
-import com.aidigital.reportconstructor.service.reports.ports.PaidChartRequest;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.BreakdownChartsRequest;
+import com.aidigital.reportconstructor.externalservices.google.charts.SlidesChartClient;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.TacticChartsRequest;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.PaidChartsRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -16,7 +16,7 @@ import java.util.List;
  * empty chart placeholders.
  */
 @Component
-public class StubChartProvider implements ChartProvider {
+public class StubChartProvider implements SlidesChartClient {
 
 	@Override
 	public boolean isLive() {
@@ -24,17 +24,17 @@ public class StubChartProvider implements ChartProvider {
 	}
 
 	@Override
-	public List<String> buildCharts(ChartRequest request) {
+	public List<String> buildCharts(TacticChartsRequest request) {
 		return List.of();
 	}
 
 	@Override
-	public List<String> buildBreakdownCharts(BreakdownChartRequest request) {
+	public List<String> buildBreakdownCharts(BreakdownChartsRequest request) {
 		return List.of();
 	}
 
 	@Override
-	public List<String> buildPaidCharts(PaidChartRequest request) {
+	public List<String> buildPaidCharts(PaidChartsRequest request) {
 		return List.of();
 	}
 }

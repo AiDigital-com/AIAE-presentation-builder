@@ -1,49 +1,49 @@
-/* Screen 7 — Admin dashboard (team statistics). AI Digital handoff, 1200px card. */
+/* Screen 7 — Admin dashboard (team statistics). AI Digital handoff, 75rem card. */
 
 .ad {
-    padding: 48px 40px 96px;
+    padding: 3rem 2.5rem 6rem;
 }
 
 .ad__card {
-    width: 1200px;
+    width: 75rem;
     max-width: 100%;
     margin: 0 auto;
     background: var(--rc-white);
-    border: 1px solid var(--rc-card-border);
-    border-radius: 18px;
+    border: 0.0625rem solid var(--rc-card-border);
+    border-radius: 1.125rem;
     box-shadow: var(--rc-shadow-frame);
-    padding: 36px 40px 44px;
+    padding: 2.25rem 2.5rem 2.75rem;
 }
 
 .ad__head {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    gap: 24px;
-    margin-bottom: 26px;
+    gap: 1.5rem;
+    margin-bottom: 1.625rem;
 }
 
 .ad__eyebrow {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 7px;
+    gap: 0.625rem;
+    margin-bottom: 0.4375rem;
 }
 
 .ad__chip {
     font-family: var(--rc-display);
     font-weight: 800;
-    font-size: 12px;
+    font-size: 0.75rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--rc-blue);
     background: var(--rc-tint-2);
-    padding: 5px 11px;
-    border-radius: 999px;
+    padding: 0.3125rem 0.6875rem;
+    border-radius: 62.4375rem;
 }
 
 .ad__updated {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--rc-mute);
 }
 
@@ -51,7 +51,7 @@
     margin: 0;
     font-family: var(--rc-font);
     font-weight: 700;
-    font-size: 26px;
+    font-size: 1.625rem;
     letter-spacing: -0.02em;
     color: var(--rc-ink);
 }
@@ -59,14 +59,27 @@
 /* Stat cards */
 .ad__stats {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 16px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Four stat cards collapse to two, then one, on narrow screens. */
+@media (max-width: 56rem) {
+    .ad__stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 30rem) {
+    .ad__stats {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 .ad-stat {
-    border-radius: 14px;
-    padding: 26px 24px 22px;
+    border-radius: 0.875rem;
+    padding: 1.625rem 1.5rem 1.375rem;
     background: var(--rc-gray-wash);
 }
 
@@ -77,10 +90,10 @@
 .ad-stat__num {
     font-family: var(--rc-display);
     font-weight: 900;
-    font-size: 52px;
+    font-size: 3.25rem;
     line-height: 0.95;
     letter-spacing: -0.01em;
-    margin-bottom: 12px;
+    margin-bottom: 0.75rem;
     color: var(--rc-ink);
 }
 
@@ -89,7 +102,7 @@
 }
 
 .ad-stat__label {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--rc-slate);
@@ -100,8 +113,8 @@
 }
 
 .ad-stat__delta {
-    margin-top: 4px;
-    font-size: 13px;
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
     color: var(--rc-mute);
 }
 
@@ -114,7 +127,7 @@
     display: block;
     width: 100%;
     text-align: left;
-    border: 1px solid transparent;
+    border: 0.0625rem solid transparent;
     font-family: var(--rc-font);
     cursor: pointer;
     transition: border-color 0.15s ease, background 0.15s ease;
@@ -138,40 +151,40 @@
 
 /* Caveat panel — what the figures above deliberately leave out. */
 .ad-note {
-    border: 1px solid var(--rc-amber-border);
+    border: 0.0625rem solid var(--rc-amber-border);
     background: var(--rc-amber-tint);
-    border-radius: 14px;
-    padding: 16px 20px;
-    margin-bottom: 16px;
+    border-radius: 0.875rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
 }
 
 .ad-note__line {
     margin: 0;
-    font-size: 13px;
+    font-size: 0.8125rem;
     line-height: 1.6;
     color: var(--rc-amber);
 }
 
 .ad-note__line + .ad-note__line {
-    margin-top: 10px;
+    margin-top: 0.625rem;
 }
 
 /* Spend per pipeline stage */
 .ad-stages {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 0.625rem;
 }
 
 .ad-stages__row {
     display: grid;
-    grid-template-columns: 1fr 64px auto;
+    grid-template-columns: 1fr 4rem auto;
     align-items: center;
-    gap: 10px;
+    gap: 0.625rem;
 }
 
 .ad-stages__name {
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: var(--rc-ink);
     white-space: nowrap;
@@ -180,8 +193,8 @@
 }
 
 .ad-stages__bar {
-    height: 6px;
-    border-radius: 999px;
+    height: 0.375rem;
+    border-radius: 62.4375rem;
     background: var(--rc-gray-wash);
     overflow: hidden;
 }
@@ -189,15 +202,15 @@
 .ad-stages__fill {
     display: block;
     height: 100%;
-    border-radius: 999px;
+    border-radius: 62.4375rem;
     background: var(--rc-blue);
 }
 
 .ad-stages__val {
     display: inline-flex;
     align-items: baseline;
-    gap: 5px;
-    font-size: 13px;
+    gap: 0.3125rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: var(--rc-slate);
     font-variant-numeric: tabular-nums;
@@ -205,7 +218,7 @@
 }
 
 .ad-stages__lost {
-    font-size: 11px;
+    font-size: 0.6875rem;
     font-weight: 700;
     color: var(--rc-amber);
     cursor: help;
@@ -214,15 +227,15 @@
 /* Two-column body */
 .ad__body {
     display: grid;
-    grid-template-columns: 1fr 360px;
-    gap: 16px;
+    grid-template-columns: 1fr 22.5rem;
+    gap: 1rem;
     align-items: start;
 }
 
 /* By user */
 .ad-users {
-    border: 1px solid var(--rc-card-border);
-    border-radius: 14px;
+    border: 0.0625rem solid var(--rc-card-border);
+    border-radius: 0.875rem;
     overflow: hidden;
 }
 
@@ -230,19 +243,19 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 18px 22px;
-    border-bottom: 1px solid var(--rc-line);
+    padding: 1.125rem 1.375rem;
+    border-bottom: 0.0625rem solid var(--rc-line);
 }
 
 .ad-users__title {
     font-weight: 700;
-    font-size: 16px;
+    font-size: 1rem;
     color: var(--rc-ink);
     letter-spacing: -0.02em;
 }
 
 .ad-users__count {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--rc-mute);
 }
 
@@ -257,8 +270,8 @@
 }
 
 .ad-users__th {
-    padding: 12px 22px;
-    font-size: 12px;
+    padding: 0.75rem 1.375rem;
+    font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -277,24 +290,24 @@
 .ad-users__last {
     display: flex;
     align-items: center;
-    padding: 14px 22px;
-    border-top: 1px solid var(--rc-line-3);
+    padding: 0.875rem 1.375rem;
+    border-top: 0.0625rem solid var(--rc-line-3);
     min-width: 0;
 }
 
 .ad-users__user {
-    gap: 12px;
+    gap: 0.75rem;
 }
 
 .ad-users__avatar {
-    width: 34px;
-    height: 34px;
-    border-radius: 999px;
+    width: 2.125rem;
+    height: 2.125rem;
+    border-radius: 62.4375rem;
     flex: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 700;
     color: var(--rc-white);
 }
@@ -304,7 +317,7 @@
 }
 
 .ad-users__email {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--rc-ink);
     white-space: nowrap;
@@ -313,30 +326,30 @@
 }
 
 .ad-users__name {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--rc-mute);
-    margin-top: 1px;
+    margin-top: 0.0625rem;
 }
 
 .ad-users__total {
     font-family: var(--rc-display);
     font-weight: 700;
-    font-size: 22px;
+    font-size: 1.375rem;
     color: var(--rc-ink);
 }
 
 .ad-users__total--sm {
-    font-size: 17px;
+    font-size: 1.0625rem;
 }
 
 .ad-users__month {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--rc-slate);
     font-variant-numeric: tabular-nums;
 }
 
 .ad-users__last {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--rc-mute);
     white-space: nowrap;
 }
@@ -345,13 +358,13 @@
 .ad-rail {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 1rem;
 }
 
 .ad-rail__card {
-    border: 1px solid var(--rc-card-border);
-    border-radius: 14px;
-    padding: 22px;
+    border: 0.0625rem solid var(--rc-card-border);
+    border-radius: 0.875rem;
+    padding: 1.375rem;
 }
 
 .ad-rail__card--tint {
@@ -361,20 +374,20 @@
 
 .ad-rail__title {
     font-weight: 700;
-    font-size: 16px;
+    font-size: 1rem;
     color: var(--rc-ink);
     letter-spacing: -0.02em;
-    margin-bottom: 18px;
+    margin-bottom: 1.125rem;
 }
 
 .ad-rail__empty {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--rc-mute);
 }
 
 .ad-rail__note {
-    margin: 16px 0 0;
-    font-size: 12px;
+    margin: 1rem 0 0;
+    font-size: 0.75rem;
     line-height: 1.5;
     color: var(--rc-mute);
 }
@@ -382,57 +395,57 @@
 .ad-types {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 1rem;
 }
 
 .ad-types__row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 7px;
+    margin-bottom: 0.4375rem;
 }
 
 .ad-types__name {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 14px;
+    gap: 0.5rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--rc-ink);
 }
 
 .ad-types__dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 3px;
+    width: 0.5625rem;
+    height: 0.5625rem;
+    border-radius: 0.1875rem;
     display: inline-block;
 }
 
 .ad-types__count {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--rc-slate);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
 
 .ad-types__track {
-    height: 8px;
-    border-radius: 999px;
+    height: 0.5rem;
+    border-radius: 62.4375rem;
     background: var(--rc-gray-wash);
     overflow: hidden;
 }
 
 .ad-types__fill {
     height: 100%;
-    border-radius: 999px;
+    border-radius: 62.4375rem;
 }
 
 /* Weekly mini chart */
 .ad-week {
     display: flex;
     align-items: flex-end;
-    gap: 8px;
-    height: 96px;
+    gap: 0.5rem;
+    height: 6rem;
 }
 
 .ad-week__col {
@@ -440,19 +453,19 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
     justify-content: flex-end;
     height: 100%;
 }
 
 .ad-week__bar {
     width: 100%;
-    border-radius: 6px 6px 3px 3px;
+    border-radius: 0.375rem 0.375rem 0.1875rem 0.1875rem;
     background: var(--rc-blue);
 }
 
 .ad-week__label {
-    font-size: 11px;
+    font-size: 0.6875rem;
     color: var(--rc-mute);
     font-weight: 500;
 }
@@ -462,25 +475,25 @@
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 0.75rem;
 }
 
 .ad-tech__row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 0.75rem;
 }
 
 .ad-tech__row dt {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--rc-slate);
 }
 
 .ad-tech__row dd {
     margin: 0;
     font-family: var(--rc-mono);
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--rc-ink);
     font-variant-numeric: tabular-nums;
 }
@@ -488,21 +501,21 @@
 /* Tabs */
 .ad-tabs {
     display: flex;
-    gap: 4px;
+    gap: 0.25rem;
     background: var(--rc-gray-wash);
-    border-radius: 56px;
-    padding: 4px;
-    margin-bottom: 24px;
+    border-radius: 3.5rem;
+    padding: 0.25rem;
+    margin-bottom: 1.5rem;
     width: fit-content;
 }
 
 .ad-tabs__tab {
-    padding: 8px 18px;
+    padding: 0.5rem 1.125rem;
     border: 0;
-    border-radius: 56px;
+    border-radius: 3.5rem;
     background: transparent;
     font-family: var(--rc-font);
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: var(--rc-mute);
     cursor: pointer;
@@ -513,13 +526,13 @@
 .ad-tabs__tab--active {
     background: var(--rc-white);
     color: var(--rc-blue);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.08);
 }
 
 /* All reports list */
 .ad-reports {
-    border: 1px solid var(--rc-card-border);
-    border-radius: 14px;
+    border: 0.0625rem solid var(--rc-card-border);
+    border-radius: 0.875rem;
     overflow: hidden;
 }
 
@@ -527,43 +540,43 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 18px 22px;
-    border-bottom: 1px solid var(--rc-line);
+    padding: 1.125rem 1.375rem;
+    border-bottom: 0.0625rem solid var(--rc-line);
 }
 
 .ad-reports__title {
     font-weight: 700;
-    font-size: 16px;
+    font-size: 1rem;
     color: var(--rc-ink);
     letter-spacing: -0.02em;
 }
 
 .ad-reports__count {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--rc-mute);
 }
 
 .ad-reports__row {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 16px 22px;
+    gap: 1rem;
+    padding: 1rem 1.375rem;
     background: var(--rc-white);
 }
 
 .ad-reports__row + .ad-reports__row {
-    border-top: 1px solid var(--rc-line-2);
+    border-top: 0.0625rem solid var(--rc-line-2);
 }
 
 .ad-reports__badge {
     flex: none;
-    min-width: 60px;
+    min-width: 3.75rem;
     text-align: center;
-    padding: 5px 11px;
-    border-radius: 8px;
+    padding: 0.3125rem 0.6875rem;
+    border-radius: 0.5rem;
     font-family: var(--rc-display);
     font-weight: 900;
-    font-size: 12px;
+    font-size: 0.75rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--rc-white);
@@ -576,7 +589,7 @@
 
 .ad-reports__name {
     font-weight: 600;
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--rc-ink);
     white-space: nowrap;
     overflow: hidden;
@@ -595,8 +608,8 @@
 }
 
 .ad-reports__sub {
-    margin-top: 2px;
-    font-size: 12px;
+    margin-top: 0.125rem;
+    font-size: 0.75rem;
     color: var(--rc-mute);
     white-space: nowrap;
     overflow: hidden;
@@ -607,25 +620,25 @@
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 7px;
+    gap: 0.375rem;
+    margin-top: 0.4375rem;
 }
 
 .ad-reports__token {
     display: inline-flex;
     align-items: baseline;
-    gap: 5px;
-    padding: 3px 9px;
-    border-radius: 999px;
+    gap: 0.3125rem;
+    padding: 0.1875rem 0.5625rem;
+    border-radius: 62.4375rem;
     background: var(--rc-gray-wash);
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--rc-slate);
     font-variant-numeric: tabular-nums;
 }
 
 .ad-reports__tokenlabel {
-    font-size: 10px;
+    font-size: 0.625rem;
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -641,12 +654,12 @@
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 6px 12px;
-    margin-top: 6px;
+    gap: 0.375rem 0.75rem;
+    margin-top: 0.375rem;
 }
 
 .ad-reports__srclabel {
-    font-size: 11px;
+    font-size: 0.6875rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -654,7 +667,7 @@
 }
 
 .ad-reports__srclink {
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--rc-blue);
     text-decoration: none;
@@ -668,13 +681,13 @@
     flex: none;
     display: inline-flex;
     align-items: center;
-    padding: 9px 16px;
-    border: 1px solid var(--rc-input-border);
-    border-radius: 56px;
+    padding: 0.5625rem 1rem;
+    border: 0.0625rem solid var(--rc-input-border);
+    border-radius: 3.5rem;
     background: var(--rc-white);
     font-family: var(--rc-font);
     font-weight: 600;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--rc-slate);
     text-decoration: none;
     white-space: nowrap;
@@ -687,13 +700,13 @@
 
 .ad-reports__open {
     flex: none;
-    padding: 9px 18px;
-    border: 1px solid var(--rc-input-border);
-    border-radius: 56px;
+    padding: 0.5625rem 1.125rem;
+    border: 0.0625rem solid var(--rc-input-border);
+    border-radius: 3.5rem;
     background: var(--rc-white);
     font-family: var(--rc-font);
     font-weight: 600;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--rc-slate);
     cursor: pointer;
     transition: border-color 0.15s ease;
@@ -710,24 +723,24 @@
 
 /* Failures list */
 .ad-fails {
-    border: 1px solid var(--rc-card-border);
-    border-radius: 14px;
+    border: 0.0625rem solid var(--rc-card-border);
+    border-radius: 0.875rem;
     overflow: hidden;
 }
 
 .ad-fails .ad-reports__head {
-    gap: 12px;
+    gap: 0.75rem;
 }
 
 .ad-fails__clear {
     margin-left: auto;
     flex: none;
-    padding: 6px 14px;
-    border-radius: 8px;
-    border: 1px solid var(--rc-card-border);
+    padding: 0.375rem 0.875rem;
+    border-radius: 0.5rem;
+    border: 0.0625rem solid var(--rc-card-border);
     background: var(--rc-white);
     color: var(--rc-slate);
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 600;
     cursor: pointer;
 }
@@ -743,19 +756,19 @@
 }
 
 .ad-fails__row {
-    padding: 18px 22px;
+    padding: 1.125rem 1.375rem;
     background: var(--rc-white);
 }
 
 .ad-fails__dismiss {
     flex: none;
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    border: 1px solid var(--rc-card-border);
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.5rem;
+    border: 0.0625rem solid var(--rc-card-border);
     background: var(--rc-white);
     color: var(--rc-mute);
-    font-size: 13px;
+    font-size: 0.8125rem;
     line-height: 1;
     cursor: pointer;
 }
@@ -771,13 +784,13 @@
 }
 
 .ad-fails__row + .ad-fails__row {
-    border-top: 1px solid var(--rc-line-2);
+    border-top: 0.0625rem solid var(--rc-line-2);
 }
 
 .ad-fails__head {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 1rem;
 }
 
 .ad-fails__meta {
@@ -787,23 +800,23 @@
 
 .ad-fails__step {
     flex: none;
-    padding: 5px 12px;
-    border-radius: 999px;
+    padding: 0.3125rem 0.75rem;
+    border-radius: 62.4375rem;
     background: var(--rc-orange-bg);
     color: var(--rc-orange);
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 600;
     white-space: nowrap;
-    max-width: 320px;
+    max-width: 20rem;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .ad-fails__sev {
     flex: none;
-    padding: 5px 12px;
-    border-radius: 999px;
-    font-size: 12px;
+    padding: 0.3125rem 0.75rem;
+    border-radius: 62.4375rem;
+    font-size: 0.75rem;
     font-weight: 600;
     white-space: nowrap;
 }
@@ -811,17 +824,17 @@
 .ad-fails__sev--warning {
     background: var(--rc-amber-tint);
     color: var(--rc-amber);
-    border: 1px solid var(--rc-amber-border);
+    border: 0.0625rem solid var(--rc-amber-border);
 }
 
 .ad-fails__error {
-    margin-top: 12px;
-    padding: 12px 14px;
-    border-radius: 10px;
-    border: 1px solid var(--rc-line);
+    margin-top: 0.75rem;
+    padding: 0.75rem 0.875rem;
+    border-radius: 0.625rem;
+    border: 0.0625rem solid var(--rc-line);
     background: var(--rc-sheet-head);
     font-family: var(--rc-mono);
-    font-size: 12px;
+    font-size: 0.75rem;
     line-height: 1.55;
     color: var(--rc-slate);
     white-space: pre-wrap;
@@ -829,12 +842,12 @@
 }
 
 .ad-fails__details {
-    margin-top: 12px;
+    margin-top: 0.75rem;
 }
 
 .ad-fails__summary {
-    margin-top: 12px;
-    font-size: 13px;
+    margin-top: 0.75rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: var(--rc-slate);
 }
@@ -844,7 +857,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 0.75rem;
     cursor: pointer;
     list-style: none;
 }
@@ -862,15 +875,15 @@
     flex: none;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 12px;
+    gap: 0.25rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--rc-blue);
 }
 
 .ad-fails__chevron {
     transition: transform 0.15s ease;
-    font-size: 14px;
+    font-size: 0.875rem;
     line-height: 1;
 }
 
@@ -883,49 +896,49 @@
 }
 
 .ad-fails__warnings {
-    margin: 8px 0 0;
+    margin: 0.5rem 0 0;
     padding: 0;
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 0.375rem;
 }
 
 .ad-fails__warning {
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 1px solid var(--rc-amber-border);
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.625rem;
+    border: 0.0625rem solid var(--rc-amber-border);
     background: var(--rc-amber-tint);
-    font-size: 12px;
+    font-size: 0.75rem;
     line-height: 1.5;
     color: var(--rc-slate);
     overflow-wrap: anywhere;
 }
 
 .ad-fails__spend {
-    margin-top: 8px;
-    font-size: 12px;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
     color: var(--rc-mute);
 }
 
 /* Manage admins */
 .ad-admins {
-    max-width: 620px;
+    max-width: 38.75rem;
 }
 
 .ad-admins__add {
     display: flex;
-    gap: 10px;
-    margin-bottom: 16px;
+    gap: 0.625rem;
+    margin-bottom: 1rem;
 }
 
 .ad-admins__input {
     flex: 1;
-    padding: 12px 16px;
-    border: 1px solid var(--rc-input-border);
-    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    border: 0.0625rem solid var(--rc-input-border);
+    border-radius: 0.75rem;
     font-family: var(--rc-font);
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--rc-ink);
     background: var(--rc-white);
 }
@@ -937,14 +950,14 @@
 
 .ad-admins__addbtn {
     flex: none;
-    padding: 0 22px;
+    padding: 0 1.375rem;
     border: 0;
-    border-radius: 12px;
+    border-radius: 0.75rem;
     background: var(--rc-blue);
     color: var(--rc-white);
     font-family: var(--rc-font);
     font-weight: 700;
-    font-size: 14px;
+    font-size: 0.875rem;
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.15s ease;
@@ -960,34 +973,34 @@
 }
 
 .ad-admins__list {
-    border: 1px solid var(--rc-card-border);
-    border-radius: 14px;
+    border: 0.0625rem solid var(--rc-card-border);
+    border-radius: 0.875rem;
     overflow: hidden;
-    margin-top: 8px;
+    margin-top: 0.5rem;
 }
 
 .ad-admins__row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    padding: 14px 20px;
+    gap: 1rem;
+    padding: 0.875rem 1.25rem;
     background: var(--rc-white);
 }
 
 .ad-admins__row + .ad-admins__row {
-    border-top: 1px solid var(--rc-line-2);
+    border-top: 0.0625rem solid var(--rc-line-2);
 }
 
 .ad-admins__id {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 0.625rem;
     min-width: 0;
 }
 
 .ad-admins__email {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--rc-ink);
     white-space: nowrap;
@@ -997,12 +1010,12 @@
 
 .ad-admins__tag {
     flex: none;
-    font-size: 11px;
+    font-size: 0.6875rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    padding: 3px 9px;
-    border-radius: 999px;
+    padding: 0.1875rem 0.5625rem;
+    border-radius: 62.4375rem;
 }
 
 .ad-admins__tag--config {
@@ -1017,13 +1030,13 @@
 
 .ad-admins__remove {
     flex: none;
-    padding: 8px 16px;
-    border: 1px solid var(--rc-input-border);
-    border-radius: 56px;
+    padding: 0.5rem 1rem;
+    border: 0.0625rem solid var(--rc-input-border);
+    border-radius: 3.5rem;
     background: var(--rc-white);
     font-family: var(--rc-font);
     font-weight: 600;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--rc-type-eoc);
     cursor: pointer;
     transition: border-color 0.15s ease, background 0.15s ease;
@@ -1041,7 +1054,7 @@
 
 .ad-admins__locked {
     flex: none;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--rc-mute);
 }
 
@@ -1053,12 +1066,12 @@
 .ad-sort {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 0.375rem;
     width: 100%;
-    padding: 12px 22px;
+    padding: 0.75rem 1.375rem;
     border: none;
     font: inherit;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -1073,8 +1086,8 @@
 }
 
 .ad-sort:focus-visible {
-    outline: 2px solid var(--rc-blue);
-    outline-offset: -2px;
+    outline: 0.125rem solid var(--rc-blue);
+    outline-offset: -0.125rem;
 }
 
 .ad-sort--right {
@@ -1086,7 +1099,7 @@
 }
 
 .ad-sort__arrow {
-    font-size: 11px;
+    font-size: 0.6875rem;
     opacity: 0.45;
 }
 
@@ -1100,8 +1113,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 18px;
+    gap: 0.75rem;
+    margin-bottom: 1.125rem;
 }
 
 .ad-rail__head .ad-rail__title {
@@ -1110,18 +1123,18 @@
 
 .ad-toggle {
     display: inline-flex;
-    padding: 2px;
-    border: 1px solid var(--rc-card-border);
-    border-radius: 999px;
+    padding: 0.125rem;
+    border: 0.0625rem solid var(--rc-card-border);
+    border-radius: 62.4375rem;
     background: var(--rc-sheet-head);
 }
 
 .ad-toggle__btn {
-    padding: 5px 12px;
+    padding: 0.3125rem 0.75rem;
     border: none;
-    border-radius: 999px;
+    border-radius: 62.4375rem;
     font: inherit;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--rc-mute);
     background: transparent;
@@ -1131,7 +1144,7 @@
 .ad-toggle__btn--active {
     color: var(--rc-ink);
     background: var(--rc-white);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+    box-shadow: 0 0.0625rem 0.125rem rgb(0 0 0 / 8%);
 }
 
 /* ── Period trend tables (tokens by week/month, active users by month) ───── */
@@ -1139,7 +1152,7 @@
     display: grid;
     grid-template-columns: 1.6fr 0.7fr 0.9fr 0.8fr 0.9fr;
     align-items: center;
-    font-size: 13px;
+    font-size: 0.8125rem;
 }
 
 .ad-trend__grid--users {
@@ -1147,8 +1160,8 @@
 }
 
 .ad-trend__th {
-    padding: 0 0 8px;
-    font-size: 11px;
+    padding: 0 0 0.5rem;
+    font-size: 0.6875rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -1169,16 +1182,16 @@
 .ad-trend__period,
 .ad-trend__num,
 .ad-trend__delta {
-    padding: 9px 0;
-    border-top: 1px solid var(--rc-line-3);
+    padding: 0.5625rem 0;
+    border-top: 0.0625rem solid var(--rc-line-3);
     min-width: 0;
 }
 
 .ad-trend__period {
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    padding-right: 14px;
+    gap: 0.3125rem;
+    padding-right: 0.875rem;
 }
 
 .ad-trend__label {
@@ -1189,8 +1202,8 @@
 /* A bar under the label rather than its own column: the shape of the series is
    worth seeing, but not at the cost of a column the numbers need. */
 .ad-trend__track {
-    height: 4px;
-    border-radius: 999px;
+    height: 0.25rem;
+    border-radius: 62.4375rem;
     background: var(--rc-line-3);
     overflow: hidden;
 }
@@ -1198,20 +1211,20 @@
 .ad-trend__fill {
     display: block;
     height: 100%;
-    border-radius: 999px;
+    border-radius: 62.4375rem;
     background: var(--rc-blue);
 }
 
 .ad-trend__num {
     font-variant-numeric: tabular-nums;
     color: var(--rc-ink);
-    padding-left: 10px;
+    padding-left: 0.625rem;
 }
 
 .ad-trend__delta {
     font-variant-numeric: tabular-nums;
     font-weight: 600;
-    padding-left: 10px;
+    padding-left: 0.625rem;
 }
 
 /* Colour marks direction, not goodness: more tokens is not good news and more
@@ -1232,10 +1245,10 @@
 
 /* ── Savings panel ───────────────────────────────────────────────────────── */
 .ad-savings {
-    margin: 0 0 26px;
-    padding: 22px;
-    border: 1px solid var(--rc-tint-2);
-    border-radius: 14px;
+    margin: 0 0 1.625rem;
+    padding: 1.375rem;
+    border: 0.0625rem solid var(--rc-tint-2);
+    border-radius: 0.875rem;
     background: var(--rc-tint);
 }
 
@@ -1243,20 +1256,20 @@
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 12px;
+    gap: 0.75rem;
     flex-wrap: wrap;
-    margin-bottom: 18px;
+    margin-bottom: 1.125rem;
 }
 
 .ad-savings__title {
     font-weight: 700;
-    font-size: 16px;
+    font-size: 1rem;
     letter-spacing: -0.02em;
     color: var(--rc-ink);
 }
 
 .ad-savings__basis {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--rc-mute);
 }
 
@@ -1266,10 +1279,10 @@
  */
 .ad-savings__figures {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
     grid-template-rows: auto auto auto;
-    gap: 18px 24px;
-    margin-bottom: 18px;
+    gap: 1.125rem 1.5rem;
+    margin-bottom: 1.125rem;
 }
 
 .ad-savings__figure {
@@ -1277,12 +1290,12 @@
     grid-row: span 3;
     grid-template-rows: subgrid;
     align-content: start;
-    row-gap: 2px;
+    row-gap: 0.125rem;
 }
 
 .ad-savings__num {
     align-self: end;
-    font-size: 26px;
+    font-size: 1.625rem;
     line-height: 1.1;
     font-weight: 700;
     letter-spacing: -0.03em;
@@ -1290,25 +1303,25 @@
 }
 
 .ad-savings__figure--hero .ad-savings__num {
-    font-size: 34px;
+    font-size: 2.125rem;
     color: var(--rc-blue);
 }
 
 .ad-savings__label {
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: var(--rc-ink);
 }
 
 .ad-savings__sub {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--rc-mute);
 }
 
 
 .ad-savings__note {
-    margin: 16px 0 0;
-    font-size: 12px;
+    margin: 1rem 0 0;
+    font-size: 0.75rem;
     line-height: 1.5;
     color: var(--rc-mute);
 }
@@ -1318,14 +1331,14 @@
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 4px;
-    padding: 0 22px 12px;
+    gap: 0.25rem;
+    padding: 0 1.375rem 0.75rem;
 }
 
 .ad-reports__sorts .ad-sort {
     width: auto;
-    padding: 6px 10px;
-    border-radius: 8px;
+    padding: 0.375rem 0.625rem;
+    border-radius: 0.5rem;
     background: transparent;
 }
 
@@ -1334,8 +1347,8 @@
 }
 
 .ad-reports__sortlabel {
-    margin-right: 6px;
-    font-size: 12px;
+    margin-right: 0.375rem;
+    font-size: 0.75rem;
     color: var(--rc-mute);
 }
 
@@ -1349,17 +1362,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 14px;
-    padding: 18px 22px;
-    border-top: 1px solid var(--rc-line-3);
+    gap: 0.875rem;
+    padding: 1.125rem 1.375rem;
+    border-top: 0.0625rem solid var(--rc-line-3);
 }
 
 .ad-reports__page {
-    padding: 8px 16px;
-    border: 1px solid var(--rc-card-border);
-    border-radius: 10px;
+    padding: 0.5rem 1rem;
+    border: 0.0625rem solid var(--rc-card-border);
+    border-radius: 0.625rem;
     font: inherit;
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: var(--rc-ink);
     background: var(--rc-white);
@@ -1373,7 +1386,7 @@
 }
 
 .ad-reports__pagenum {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--rc-mute);
     font-variant-numeric: tabular-nums;
 }
@@ -1388,12 +1401,12 @@
 .ad-range__trigger {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 9px 14px;
-    border: 1px solid var(--rc-card-border);
-    border-radius: 10px;
+    gap: 0.5rem;
+    padding: 0.5625rem 0.875rem;
+    border: 0.0625rem solid var(--rc-card-border);
+    border-radius: 0.625rem;
     font: inherit;
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: var(--rc-ink);
     background: var(--rc-white);
@@ -1406,47 +1419,48 @@
 }
 
 .ad-range__trigger:focus-visible {
-    outline: 2px solid var(--rc-blue);
-    outline-offset: 2px;
+    outline: 0.125rem solid var(--rc-blue);
+    outline-offset: 0.125rem;
 }
 
 .ad-range__icon {
-    font-size: 14px;
+    font-size: 0.875rem;
 }
 
 .ad-range__caret {
-    font-size: 10px;
+    font-size: 0.625rem;
     color: var(--rc-mute);
 }
 
 .ad-range__panel {
     position: absolute;
-    top: calc(100% + 8px);
+    top: calc(100% + 0.5rem);
     right: 0;
     z-index: 20;
-    min-width: 280px;
-    padding: 14px;
-    border: 1px solid var(--rc-card-border);
-    border-radius: 14px;
+    min-width: 17.5rem;
+    padding: 0.875rem;
+    border: 0.0625rem solid var(--rc-card-border);
+    border-radius: 0.875rem;
     background: var(--rc-white);
-    box-shadow: 0 12px 32px rgb(0 0 0 / 12%);
+    box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 12%);
 }
 
 .ad-range__presets {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 6px;
+    gap: 0.375rem;
 }
 
 .ad-range__preset {
-    padding: 8px 10px;
-    border: 1px solid transparent;
-    border-radius: 8px;
+    padding: 0.5rem 0.625rem;
+    border: 0.0625rem solid transparent;
+    border-radius: 0.5rem;
     font: inherit;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--rc-ink);
     background: var(--rc-sheet-head);
     cursor: pointer;
+    justify-content: flex-start;
     text-align: left;
 }
 
@@ -1462,20 +1476,20 @@
 .ad-range__custom {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 14px;
-    padding-top: 14px;
-    border-top: 1px solid var(--rc-line-3);
+    gap: 0.625rem;
+    margin-top: 0.875rem;
+    padding-top: 0.875rem;
+    border-top: 0.0625rem solid var(--rc-line-3);
 }
 
 .ad-range__field {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0.25rem;
 }
 
 .ad-range__label {
-    font-size: 11px;
+    font-size: 0.6875rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -1483,22 +1497,29 @@
 }
 
 .ad-range__input {
-    padding: 7px 9px;
-    border: 1px solid var(--rc-card-border);
-    border-radius: 8px;
+    padding: 0.4375rem 0.5625rem;
+    border: 0.0625rem solid var(--rc-card-border);
+    border-radius: 0.5rem;
     font: inherit;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--rc-ink);
     background: var(--rc-white);
 }
 
+.ad-range__error {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--color-danger);
+}
+
 .ad-range__apply {
     grid-column: 1 / -1;
-    padding: 9px;
+    padding: 0.5625rem;
     border: none;
-    border-radius: 9px;
+    border-radius: 0.5625rem;
     font: inherit;
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: var(--rc-white);
     background: var(--rc-blue);
@@ -1516,8 +1537,8 @@
 .ad-chart__plot {
     display: flex;
     align-items: flex-end;
-    gap: 3px;
-    min-height: 104px;
+    gap: 0.1875rem;
+    min-height: 6.5rem;
 }
 
 .ad-chart__col {
@@ -1525,28 +1546,28 @@
     flex: 1 1 0;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 0.375rem;
     min-width: 0;
 }
 
 .ad-chart__bar {
     width: 100%;
-    max-width: 34px;
-    border-radius: 4px;
+    max-width: 2.125rem;
+    border-radius: 0.25rem;
     background: var(--rc-blue);
 }
 
 .ad-chart__label {
-    font-size: 10px;
+    font-size: 0.625rem;
     line-height: 1.2;
     color: var(--rc-mute);
     white-space: nowrap;
-    min-height: 12px;
+    min-height: 0.75rem;
 }
 
 .ad-chart__unit {
-    margin-top: 10px;
-    font-size: 11px;
+    margin-top: 0.625rem;
+    font-size: 0.6875rem;
     color: var(--rc-mute);
     text-align: right;
 }

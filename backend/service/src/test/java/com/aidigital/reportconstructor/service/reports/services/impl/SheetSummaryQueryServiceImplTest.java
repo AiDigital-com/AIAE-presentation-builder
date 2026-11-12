@@ -25,14 +25,14 @@ import static org.mockito.Mockito.when;
 class SheetSummaryQueryServiceImplTest {
 
 	@Mock
-	ReportSheetHelper sheetHelper;
+	private ReportSheetHelper sheetHelper;
 	@Mock
-	SheetPlaceholderReader placeholderReader;
+	private SheetPlaceholderReader placeholderReader;
 	@Mock
-	ObjectProvider<UserGoogleTokenProvider> userGoogleTokens;
+	private ObjectProvider<UserGoogleTokenProvider> userGoogleTokens;
 
 	@InjectMocks
-	SheetSummaryQueryServiceImpl service;
+	private SheetSummaryQueryServiceImpl service;
 
 	@Test
 	void shouldProjectContiguousTacticsWithPlanAndFactFiguresTest() {

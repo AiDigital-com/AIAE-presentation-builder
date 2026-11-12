@@ -1,55 +1,65 @@
 ---
 name: frontend-style-review
-description: Review changed frontend code against the AIAE Presentation Builder design system and frontend rules (BEM + tokens, one block per directory, shared OpenAPI client only, TanStack Query, left-nav app shell kept, loading/error/empty/success states). Use before committing frontend changes or when asked to review UI for style/rule compliance.
-metadata:
-  user-invocable: "true"
+description: Review changed React frontend code for behavior, visual consistency, accessibility, responsive layout, request efficiency, and installed frontend-rule compliance. Use after frontend changes, before commit/PR, for UI parity checks, or when asked to audit CSS, TanStack Query, Clerk, or OpenAPI client usage.
 ---
 
 # Frontend Style Review
 
-Review frontend changes against `.claude/agent_docs/frontend_style.md` and
-`.claude/rules/40-frontend-rules.md`. Read-only gate. Report
-`file:line — rule — fix` then `STATUS: PASS | CHANGES_REQUESTED`.
+Perform a read-only review. Treat frontend correctness as behavior plus visual
+output plus network behavior, not merely CSS naming.
 
-Scope: the working diff by default; whole `frontend/src` on request.
+## Inputs
 
-## Scanners
+1. Read `CLAUDE.md`, `.claude/rules/40-frontend-rules.md`,
+   `.claude/agent_docs/frontend_architecture.md`, and `frontend_style.md`.
+2. Establish scope from requested files, diff/range, or the whole frontend.
+3. Determine whether the task is visual parity, a constrained improvement, or a
+   new design. Review against that mode; do not reward redesign during parity.
+
+## Review sequence
+
+1. Inspect component logic, styles, query hooks, and tests together.
+2. Check behavior and states: loading, error, empty, success, disabled, denied,
+   mutation pending/success/failure, and long-content handling.
+3. Check data behavior:
+   - typed shared OpenAPI client only;
+   - one canonical query-key owner per resource;
+   - no equivalent duplicate requests;
+   - inactive/dependent UI does not fetch unnecessarily;
+   - mutations update authoritative cache or narrowly invalidate;
+   - user-scoped cache clears on sign-out/account switch.
+4. Check UI implementation:
+   - established navigation and design system remain intact;
+   - BEM/plain CSS/token rules are followed;
+   - icons, labels, spacing, and interaction states match the approved source;
+   - no overlap or overflow at supported widths;
+   - keyboard focus, semantics, contrast, reduced motion, and touch access work.
+5. When runtime access exists, inspect desktop/mobile screenshots, console, and
+   network requests. Static source review alone cannot prove visual parity.
+6. Map behavior to existing tests and request-count assertions when relevant.
+
+Useful discovery scans:
 
 ```bash
-# Raw HTTP / hardcoded URLs (must go through shared/api/client.ts)
 grep -rnE "\b(fetch|axios|XMLHttpRequest)\b|http://localhost" frontend/src | grep -v "shared/api/client"
-
-# Forbidden styling tech
 grep -rnE "tailwind|styled-components|@emotion|\.module\.css" frontend/src frontend/package.json
-
-# Hardcoded colors instead of tokens
 grep -rnE "#[0-9a-fA-F]{3,6}|hsl\(|rgb\(" frontend/src/features frontend/src/shared | grep -v tokens.css
-
-# Generated types not hand-edited
 git -C frontend diff --name-only -- src/shared/api/generated/schema.d.ts
 ```
 
-## Read-audit checklist
+Scanner output is evidence to inspect, not an automatic violation.
 
-- **BEM**: `block`, `block__element`, `block--modifier`; lowercase kebab; flat
-  class selectors; no IDs, tag selectors, or descendant selectors in component
-  CSS; blocks set no external margins (parent owns spacing via gap/padding).
-- **One block per directory**: `<block>.tsx` + `<block>.css` (+ `components/`),
-  directory name = CSS file = root block class.
-- **Tokens**: colors/spacing/radius come from `app/tokens.css`; status colors
-  used only for state, never decoration; radius scales not mixed.
-- **Layout**: the left-nav app shell (`features/layout/app-shell` + `sidebar`)
-  is kept; pages use a compact `page-header`; one primary CTA per view.
-- **Data**: TanStack Query for server state; every async surface renders
-  loading / error / empty / success; Clerk auth via shared client with Bearer
-  JWT; no secrets in frontend env.
-- **Tests**: Vitest + Testing Library, `should …` naming, Given/When/Then,
-  loading/error/empty/success and a critical-action success + error case.
+## Finding threshold and output
 
-## Output
+Report only findings with confidence at least 80/100. Order by user impact:
 
-```
+```text
 STATUS: PASS | CHANGES_REQUESTED
+Scope: <files/routes/states/viewports>
+Verification: <tests/build/browser/network evidence, or gaps>
 Findings:
-- <file>:<line> — <rule> — <fix>
+- [BLOCKING|IMPORTANT|MINOR, confidence] file:line - problem - impact - fix
 ```
+
+If no qualifying findings exist, state that clearly and identify any unverified
+runtime, viewport, role, or network state.

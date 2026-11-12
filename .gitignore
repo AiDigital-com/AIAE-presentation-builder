@@ -4,25 +4,22 @@
 # the first scaffold step. Two purposes:
 #
 #  1. Standard ignores for Java/Node build output and IDE files.
-#  2. **Exclude the template control plane** so that when the user does
+#  2. **Exclude the template-only control plane** so that when the user does
 #     `git init` + `git remote add origin <company-repo>` + `git push`, the
-#     template-only files (rules, skills, canonical scaffolds, embedded
-#     docs) do not pollute the company repository.
+#     canonical scaffolds and embedded source documents do not pollute the
+#     company repository.
 #
-#     The control-plane files stay in the Replit workspace because Replit
-#     Agent reads them on every conversation; they're how this template
-#     keeps governing the generated app over time. But they belong to the
-#     template, not the app. Git history of the app must not contain them.
+#     The active dual-agent runtime is part of the app: AGENTS.md, replit.md,
+#     .agents/, CLAUDE.md, and .claude/ are committed so both agents work after
+#     clone. Engineering handoff removes only the Replit surface explicitly.
 
 # ====================================================================
-# Template control plane — DO NOT COMMIT TO COMPANY REPO
+# Template-only control plane — DO NOT COMMIT TO COMPANY REPO
 # ====================================================================
-# Replit Agent reads these from the workspace; the company repo never needs them.
-.agents/
+# Canonical sources are absent from a materialized project and never belong in
+# its Git history. Both active agent surfaces are deliberately NOT ignored.
 templates/
 custom_instruction/
-AGENTS.md
-replit.md
 # Note: .replit and replit.nix DO get committed — they're part of the runnable
 # app (define how Replit launches it). Only the rule-set files are excluded.
 
@@ -56,6 +53,22 @@ venv/
 # IDE / OS
 # ====================================================================
 .idea/
+# Shared Claude rules/docs/skills are part of the engineering contract and are
+# committed. Only personal settings, installation state, and per-task working
+# artifacts stay local.
+.claude/agents/
+.claude/commands/
+.claude/gsd-core/
+.claude/hooks/
+.claude/scripts/
+.claude/.gsd-profile
+.claude/gsd-file-manifest.json
+.claude/package.json
+.claude/settings.json
+.claude/settings.local.json
+.claude/gsd-install-state.json
+# This project tracks .claude/tasks/<task>/ plan artifacts in git on purpose
+# (deviation from the scaffold, which ignores everything except README.md).
 *.iml
 .vscode/
 .DS_Store

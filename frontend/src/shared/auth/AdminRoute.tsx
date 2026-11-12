@@ -1,11 +1,9 @@
-import { ReactNode } from "react";
+
 import { Navigate } from "react-router-dom";
+
 import { LoadingBlock } from "../ui/LoadingBlock";
 import { useCurrentUser } from "./useCurrentUser";
-
-interface Props {
-    children: ReactNode;
-}
+import type { Props } from "./model/adminRoute";
 
 /**
  * Gates admin-only routes on the server-computed `is_admin` flag from /auth/me.

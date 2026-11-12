@@ -1,43 +1,8 @@
 import { useState } from "react";
+
 import { IconArrowLeft, IconArrowRight, IconInfo, IconSpinner } from "./icons";
-
-export const BREAKDOWNS = [
-    { id: "tp", label: "Top Publishers" },
-    { id: "ca", label: "Creative Analysis" },
-    { id: "geo", label: "Geo Performance" },
-    { id: "aud", label: "Audience Analysis" },
-    { id: "dev", label: "Device Breakdown" },
-] as const;
-
-export type BreakdownId = (typeof BREAKDOWNS)[number]["id"];
-export type BreakdownState = Record<BreakdownId, boolean>;
-
-/**
- * Walled-garden tactics: the ad platform reports no publisher and no device split, so only creative,
- * geo and audience analysis can ever be filled in. Mirrors the channel map in the backend
- * TacticCatalog for Meta, TikTok, Google Search and Performance Max.
- */
-const CREATIVE_GEO_AUDIENCE_ONLY_TACTICS = new Set([
-    "meta (cpm)",
-    "meta (cpc)",
-    "facebook specific",
-    "meta lead forms",
-    "meta boosted posts",
-    "instagram specific",
-    "tiktok (cpm)",
-    "tiktok (cpc)",
-    "tiktok spark ads (cpm)",
-    "tiktok spark ads (cpc)",
-    "tiktok search ads",
-    "google sem",
-    "demand gen",
-    "performance max",
-]);
-
-/** Channels matching the tactics above, for mappings that carry an explicit channel. */
-const CREATIVE_GEO_AUDIENCE_ONLY_CHANNELS = new Set(["meta", "tiktok", "google search", "performance max"]);
-
-const CREATIVE_GEO_AUDIENCE_IDS: readonly BreakdownId[] = ["ca", "geo", "aud"];
+import type { BreakdownId, Props } from "../model/stepBreakdowns";
+import { BREAKDOWNS, CREATIVE_GEO_AUDIENCE_ONLY_TACTICS, CREATIVE_GEO_AUDIENCE_ONLY_CHANNELS, CREATIVE_GEO_AUDIENCE_IDS, MAX_TACTICS } from "../constants/stepBreakdowns";
 
 /**
  * Breakdown sections offered for a tactic. Meta, TikTok, Google Search and Performance Max drop
@@ -48,28 +13,6 @@ export function allowedBreakdowns(tacticName: string, channel: string): readonly
         CREATIVE_GEO_AUDIENCE_ONLY_TACTICS.has(tacticName.trim().toLowerCase()) ||
         CREATIVE_GEO_AUDIENCE_ONLY_CHANNELS.has(channel.trim().toLowerCase());
     return limited ? CREATIVE_GEO_AUDIENCE_IDS : BREAKDOWNS.map((b) => b.id);
-}
-
-/** Max tactics the report deck template supports; extras are trimmed to this at generation time. */
-const MAX_TACTICS = 28;
-
-export interface TacticView {
-    tacticNum: number;
-    name: string;
-    channel: string;
-    meta: string;
-    on: BreakdownState;
-}
-
-interface Props {
-    tactics: TacticView[];
-    building: boolean;
-    /** True once a sheet has already been assembled — enables Continue and gates rebuilds. */
-    sheetBuilt: boolean;
-    onToggle(tacticNum: number, id: BreakdownId): void;
-    onBuild(): void;
-    onContinue(): void;
-    onBack(): void;
 }
 
 /**

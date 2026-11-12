@@ -1,61 +1,8 @@
-import type { ReportType, TemplateVariant } from "@/shared/api/types";
+
 import { useWizard } from "@/shared/wizard/WizardContext";
 import { IconArrowRight, IconCheck } from "./icons";
-
-interface TypeCard {
-    /** Backend report type, or null when the card is not yet wired up. */
-    id: ReportType | null;
-    name: string;
-    tag: string;
-    desc: string;
-}
-
-interface TemplateTab {
-    id: TemplateVariant;
-    label: string;
-    /** Short marker next to the label, e.g. "Beta". */
-    badge?: string;
-    cards: TypeCard[];
-}
-
-// Standard keeps today's deliverables: EOC and EOM are active (backend supports both); Agenda & Excel
-// don't exist server-side yet and are shown disabled with a "Soon" marker. MPO is the new deck design,
-// offered for both slide reports.
-const TABS: TemplateTab[] = [
-    {
-        id: "STANDARD",
-        label: "Standard templates",
-        cards: [
-            { id: null, name: "Agenda", tag: "Document", desc: "Kickoff agenda — objectives, timeline, owners and next steps." },
-            { id: null, name: "Excel", tag: "Spreadsheet", desc: "Formatted performance workbook with raw pivots per tactic." },
-            { id: "EOM", name: "EOM", tag: "Slides", desc: "End-of-month performance review across every active tactic." },
-            { id: "EOC", name: "EOC", tag: "Slides", desc: "End-of-campaign wrap — full results, insights and learnings." },
-        ],
-    },
-    {
-        id: "MPO",
-        label: "MPO templates",
-        badge: "Beta",
-        cards: [
-            {
-                id: "EOM",
-                name: "EOM",
-                tag: "Slides · MPO",
-                desc: "Monthly review on the MPO design — pacing dashboard, performance vs. plan and channel-by-channel breakdowns.",
-            },
-            {
-                id: "EOC",
-                name: "EOC",
-                tag: "Slides · MPO",
-                desc: "End-of-campaign wrap on the MPO design — strategic framework, funnel story and per-channel results.",
-            },
-        ],
-    },
-];
-
-interface Props {
-    onContinue(): void;
-}
+import type { Props } from "../model/stepReportType";
+import { TABS } from "../constants/stepReportType";
 
 /** Screen 1 — pick the template family (tab) and the deliverable (report type). */
 export function StepReportType({ onContinue }: Props) {

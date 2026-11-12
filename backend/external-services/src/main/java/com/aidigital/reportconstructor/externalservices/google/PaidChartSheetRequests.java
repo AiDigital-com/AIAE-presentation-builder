@@ -1,7 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.enums.PaidChartType;
-import com.aidigital.reportconstructor.service.reports.model.PaidSlideChart;
+import com.aidigital.reportconstructor.externalservices.google.charts.PaidChartShape;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.PaidChart;
 import com.google.api.services.sheets.v4.model.AddChartRequest;
 import com.google.api.services.sheets.v4.model.BasicChartAxis;
 import com.google.api.services.sheets.v4.model.BasicChartDomain;
@@ -88,7 +88,7 @@ public class PaidChartSheetRequests {
 	 * @param heightPixels the chart's height in the spreadsheet
 	 * @return theme, data and chart requests, in that order
 	 */
-	public List<Request> requests(PaidSlideChart chart, PaidChartStyle style, int widthPixels, int heightPixels) {
+	public List<Request> requests(PaidChart chart, PaidChartStyle style, int widthPixels, int heightPixels) {
 		List<Request> requests = new ArrayList<>();
 		requests.add(new Request().setUpdateSpreadsheetProperties(new UpdateSpreadsheetPropertiesRequest()
 				.setProperties(new SpreadsheetProperties().setSpreadsheetTheme(theme(style)))
@@ -126,8 +126,8 @@ public class PaidChartSheetRequests {
 	 * @param chart the chart's data
 	 * @return a header row, then one row per point: label, value and, for clicks &amp; CTR, the CTR
 	 */
-	List<RowData> rows(PaidSlideChart chart) {
-		PaidChartType type = chart.marker().type();
+	List<RowData> rows(PaidChart chart) {
+		PaidChartShape type = chart.marker().type();
 		List<RowData> rows = new ArrayList<>();
 		rows.add(new RowData().setValues(switch (type) {
 			case CLICKS_CTR -> List.of(text(MONTH_HEADER), text(CLICKS_HEADER), text(CTR_HEADER));
@@ -152,11 +152,11 @@ public class PaidChartSheetRequests {
 	 * @param style the chart's style
 	 * @return the chart spec: a column/line combo, a column chart or a donut
 	 */
-	ChartSpec spec(PaidSlideChart chart, PaidChartStyle style) {
+	ChartSpec spec(PaidChart chart, PaidChartStyle style) {
 		int points = chart.labels().size();
 		ChartSpec spec = new ChartSpec().setFontName(FONT).setMaximized(true)
 				.setBackgroundColorStyle(colorStyle(BACKGROUND_COLOR));
-		if (chart.marker().type() == PaidChartType.DONUT) {
+		if (chart.marker().type() == PaidChartShape.DONUT) {
 			return spec.setPieChart(new PieChartSpec()
 					.setLegendPosition("NO_LEGEND")
 					.setPieHole(PIE_HOLE)
@@ -166,7 +166,7 @@ public class PaidChartSheetRequests {
 		List<BasicChartSeries> series = new ArrayList<>();
 		series.add(new BasicChartSeries().setType("COLUMN").setTargetAxis("LEFT_AXIS")
 				.setColorStyle(colorStyle(style.colors().get(0))).setSeries(source(1, 0, points + 1)));
-		boolean combo = chart.marker().type() == PaidChartType.CLICKS_CTR;
+		boolean combo = chart.marker().type() == PaidChartShape.CLICKS_CTR;
 		if (combo) {
 			series.add(new BasicChartSeries().setType("LINE").setTargetAxis("RIGHT_AXIS")
 					.setColorStyle(colorStyle(style.colors().get(1))).setSeries(source(2, 0, points + 1)));

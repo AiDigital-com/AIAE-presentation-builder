@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.service.reports.dto.SheetChartData;
 import com.aidigital.reportconstructor.service.reports.engine.Pivot;
 import org.junit.jupiter.api.Test;
@@ -12,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SheetChartDataReaderImplTest {
 
 	private final SheetChartDataReaderImpl reader =
-			new SheetChartDataReaderImpl(new SheetRowHelperImpl(), new ReportNumberParserImpl());
+			new SheetChartDataReaderImpl(new SheetRowHelperImpl(new CurrentTimeImpl()), new ReportNumberParserImpl());
 
 	@Test
 	void shouldReadDailyAndMonthlyPivotsForCtrTacticTest() {

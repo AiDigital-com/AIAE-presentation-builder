@@ -79,26 +79,6 @@ public class ClaudeResponseNormalizer {
 			"across", "within", "between", "through", "during", "against", "toward", "towards", "upon");
 
 	/**
-	 * Extracts concatenated text blocks from an Anthropic Messages API response.
-	 *
-	 * @param resp parsed JSON body
-	 * @return combined text or {@code null} when empty
-	 */
-	String extractText(JsonNode resp) {
-		JsonNode content = resp.path("content");
-		if (!content.isArray() || content.isEmpty()) {
-			return null;
-		}
-		StringBuilder sb = new StringBuilder();
-		for (JsonNode part : content) {
-			if ("text".equals(part.path("type").asText())) {
-				sb.append(part.path("text").asText());
-			}
-		}
-		return sb.toString();
-	}
-
-	/**
 	 * Finds the last sentence-ending period in {@code window}, treating a period immediately followed by a
 	 * digit (e.g. the {@code "."} in {@code "94.72"}) as part of a decimal number rather than a sentence
 	 * boundary.

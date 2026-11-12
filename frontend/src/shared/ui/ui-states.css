@@ -1,11 +1,11 @@
 .ui-state {
     margin: var(--space-md, 1rem) 0;
     font-size: var(--font-size-md, 1rem);
-    color: var(--color-text-muted, #5c6370);
+    color: var(--color-text-muted);
 }
 
 .ui-state--error {
-    color: var(--color-danger, #c0392b);
+    color: var(--color-danger);
 }
 
 .ui-state--empty {

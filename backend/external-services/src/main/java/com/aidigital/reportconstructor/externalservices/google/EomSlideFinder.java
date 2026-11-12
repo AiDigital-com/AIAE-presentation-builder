@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckBreakdown;
 import com.google.api.services.slides.v1.model.Page;
 import com.google.api.services.slides.v1.model.PageElement;
 import com.google.api.services.slides.v1.model.Table;
@@ -55,12 +55,12 @@ public class EomSlideFinder {
 	 * template and the EOM MPO template carry: the MPO audience slide draws its age chart as an image and has
 	 * no {@code {{age_n_gr}}}, so the audience master is found by its key-takeaway token instead.
 	 */
-	private static final Map<BreakdownType, String> BREAKDOWN_MARKERS = Map.of(
-			BreakdownType.TOP_PUBLISHERS, "{{publisher_n.1}}",
-			BreakdownType.CREATIVE, "{{cr_live_n}}",
-			BreakdownType.GEO, "{{geo_n.1}}",
-			BreakdownType.AUDIENCE, "{{aud_n_takeaway}}",
-			BreakdownType.DEVICE, "{{dev_n_ctr}}");
+	private static final Map<DeckBreakdown, String> BREAKDOWN_MARKERS = Map.of(
+			DeckBreakdown.TOP_PUBLISHERS, "{{publisher_n.1}}",
+			DeckBreakdown.CREATIVE, "{{cr_live_n}}",
+			DeckBreakdown.GEO, "{{geo_n.1}}",
+			DeckBreakdown.AUDIENCE, "{{aud_n_takeaway}}",
+			DeckBreakdown.DEVICE, "{{dev_n_ctr}}");
 
 	/**
 	 * Token that identifies the "Thoughts on tactic performance" master slide. Like the breakdown markers
@@ -109,8 +109,8 @@ public class EomSlideFinder {
 	 * @param pages the deck's slides in order, from {@code presentations.get}
 	 * @return breakdown section → master slide object id, for the sections present in the deck
 	 */
-	public Map<BreakdownType, String> breakdownMasterSlideIds(List<Page> pages) {
-		Map<BreakdownType, String> found = new LinkedHashMap<>();
+	public Map<DeckBreakdown, String> breakdownMasterSlideIds(List<Page> pages) {
+		Map<DeckBreakdown, String> found = new LinkedHashMap<>();
 		if (pages == null) {
 			return found;
 		}
@@ -120,7 +120,7 @@ public class EomSlideFinder {
 				continue;
 			}
 			Set<String> tokens = tokensOf(page);
-			for (BreakdownType type : BreakdownType.values()) {
+			for (DeckBreakdown type : DeckBreakdown.values()) {
 				String marker = BREAKDOWN_MARKERS.get(type);
 				if (marker != null && tokens.contains(marker) && !found.containsKey(type)) {
 					found.put(type, objectId);

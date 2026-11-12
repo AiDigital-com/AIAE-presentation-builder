@@ -1,9 +1,9 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartRequest;
-import com.aidigital.reportconstructor.service.reports.ports.ChartProvider;
-import com.aidigital.reportconstructor.service.reports.ports.ChartRequest;
-import com.aidigital.reportconstructor.service.reports.ports.PaidChartRequest;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.BreakdownChartsRequest;
+import com.aidigital.reportconstructor.externalservices.google.charts.SlidesChartClient;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.TacticChartsRequest;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.PaidChartsRequest;
 import com.google.api.client.http.HttpRequestInitializer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Primary;
@@ -12,14 +12,14 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * Live {@link ChartProvider}: creates the per-request Google Drive/Sheets/Slides clients
+ * Live {@link SlidesChartClient}: creates the per-request Google Drive/Sheets/Slides clients
  * (as the service account, or as the signed-in user when a user token is supplied) and
  * delegates the actual chart building and slide swapping to {@link TacticChartBuilder}.
  */
 @Component
 @Primary
 @ConditionalOnBean(GoogleCredentialsFactory.class)
-public class RealChartProvider implements ChartProvider {
+public class RealChartProvider implements SlidesChartClient {
 
 	private final GoogleClientsFactory clients;
 	private final TacticChartBuilder chartBuilder;
@@ -41,17 +41,17 @@ public class RealChartProvider implements ChartProvider {
 	}
 
 	@Override
-	public List<String> buildCharts(ChartRequest req) {
+	public List<String> buildCharts(TacticChartsRequest req) {
 		return chartBuilder.buildAllCharts(chartClients(req.userGoogleAccessToken()), req);
 	}
 
 	@Override
-	public List<String> buildBreakdownCharts(BreakdownChartRequest req) {
+	public List<String> buildBreakdownCharts(BreakdownChartsRequest req) {
 		return breakdownChartBuilder.buildBreakdownCharts(chartClients(req.userGoogleAccessToken()), req);
 	}
 
 	@Override
-	public List<String> buildPaidCharts(PaidChartRequest req) {
+	public List<String> buildPaidCharts(PaidChartsRequest req) {
 		return paidChartBuilder.buildPaidCharts(chartClients(req.userGoogleAccessToken()), req);
 	}
 

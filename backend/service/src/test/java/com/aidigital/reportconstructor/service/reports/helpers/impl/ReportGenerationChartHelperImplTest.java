@@ -55,24 +55,24 @@ import static org.mockito.Mockito.when;
 class ReportGenerationChartHelperImplTest {
 
 	@Mock
-	ChartProvider charts;
+	private ChartProvider charts;
 	@Mock
-	SlidesProvider slides;
+	private SlidesProvider slides;
 	@Mock
-	TacticExtractionHelper tacticExtraction;
+	private TacticExtractionHelper tacticExtraction;
 	@Mock
-	EffectiveTacticsHelper effectiveTactics;
+	private EffectiveTacticsHelper effectiveTactics;
 	@Mock
-	ReportNumberParser reportNumbers;
+	private ReportNumberParser reportNumbers;
 	@Mock
-	SheetChartDataReader sheetChartData;
+	private SheetChartDataReader sheetChartData;
 	@Mock
-	BreakdownSelectionResolver breakdownResolver;
+	private BreakdownSelectionResolver breakdownResolver;
 	@Mock
-	ReportSheetHelper sheetHelper;
+	private ReportSheetHelper sheetHelper;
 
 	@InjectMocks
-	ReportGenerationChartHelperImpl helper;
+	private ReportGenerationChartHelperImpl helper;
 
 	@Test
 	void shouldApplyTheBoldMarkupBeforeDashingTheUnresolvedTokensTest() {

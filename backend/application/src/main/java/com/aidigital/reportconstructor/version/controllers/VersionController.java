@@ -3,7 +3,7 @@ package com.aidigital.reportconstructor.version.controllers;
 import com.aidigital.reportconstructor.api.v1.SystemApi;
 import com.aidigital.reportconstructor.api.v1.model.VersionV1;
 import com.aidigital.reportconstructor.service.version.services.GitVersionService;
-import com.aidigital.reportconstructor.version.mappers.VersionApiMapper;
+import com.aidigital.reportconstructor.mappers.version.VersionApiMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;

@@ -1,40 +1,40 @@
-/* Screen 6 — My reports (report history). AI Digital handoff, 920px card. */
+/* Screen 6 — My reports (report history). AI Digital handoff, 57.5rem card. */
 
 .mr {
-    padding: 48px 40px 96px;
+    padding: 3rem 2.5rem 6rem;
 }
 
 .mr__card {
-    width: 920px;
+    width: 57.5rem;
     max-width: 100%;
     margin: 0 auto;
     background: var(--rc-white);
-    border: 1px solid var(--rc-card-border);
-    border-radius: 18px;
+    border: 0.0625rem solid var(--rc-card-border);
+    border-radius: 1.125rem;
     box-shadow: var(--rc-shadow-frame);
-    padding: 36px 40px 40px;
+    padding: 2.25rem 2.5rem 2.5rem;
 }
 
 .mr__head {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    gap: 24px;
-    margin-bottom: 28px;
+    gap: 1.5rem;
+    margin-bottom: 1.75rem;
 }
 
 .mr__title {
-    margin: 0 0 5px;
+    margin: 0 0 0.3125rem;
     font-family: var(--rc-font);
     font-weight: 700;
-    font-size: 26px;
+    font-size: 1.625rem;
     letter-spacing: -0.02em;
     color: var(--rc-ink);
 }
 
 .mr__subtitle {
     margin: 0;
-    font-size: 15px;
+    font-size: 0.9375rem;
     color: var(--rc-mute);
 }
 
@@ -45,14 +45,14 @@
 
 .mr__new {
     flex: none;
-    padding: 13px 24px;
+    padding: 0.8125rem 1.5rem;
     border: 0;
-    border-radius: 56px;
+    border-radius: 3.5rem;
     background: var(--rc-blue);
     color: var(--rc-white);
     font-family: var(--rc-font);
     font-weight: 700;
-    font-size: 15px;
+    font-size: 0.9375rem;
     letter-spacing: -0.02em;
     cursor: pointer;
     white-space: nowrap;
@@ -64,8 +64,8 @@
 }
 
 .mr__list {
-    border: 1px solid var(--rc-connector);
-    border-radius: 14px;
+    border: 0.0625rem solid var(--rc-connector);
+    border-radius: 0.875rem;
     overflow: hidden;
 }
 
@@ -73,32 +73,32 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 20px;
-    padding: 18px 22px;
+    gap: 1.25rem;
+    padding: 1.125rem 1.375rem;
     background: var(--rc-white);
 }
 
 .mr__row + .mr__row {
-    border-top: 1px solid var(--rc-line-2);
+    border-top: 0.0625rem solid var(--rc-line-2);
 }
 
 .mr__left {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 1rem;
     min-width: 0;
     flex: 1;
 }
 
 .mr-badge {
     flex: none;
-    min-width: 64px;
+    min-width: 4rem;
     text-align: center;
-    padding: 6px 12px;
-    border-radius: 8px;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.5rem;
     font-family: var(--rc-display);
     font-weight: 900;
-    font-size: 13px;
+    font-size: 0.8125rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--rc-white);
@@ -131,7 +131,7 @@
 
 .mr__name {
     font-weight: 600;
-    font-size: 15px;
+    font-size: 0.9375rem;
     color: var(--rc-ink);
     letter-spacing: -0.01em;
     white-space: nowrap;
@@ -140,27 +140,27 @@
 }
 
 .mr__sub {
-    margin-top: 2px;
-    font-size: 13px;
+    margin-top: 0.125rem;
+    font-size: 0.8125rem;
     color: var(--rc-mute);
 }
 
 .mr__actions {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 0.625rem;
     flex: none;
 }
 
 .mr__open {
-    padding: 10px 20px;
+    padding: 0.625rem 1.25rem;
     border: 0;
-    border-radius: 56px;
+    border-radius: 3.5rem;
     background: var(--rc-blue);
     color: var(--rc-white);
     font-family: var(--rc-font);
     font-weight: 700;
-    font-size: 14px;
+    font-size: 0.875rem;
     letter-spacing: -0.02em;
     cursor: pointer;
     white-space: nowrap;
@@ -179,14 +179,14 @@
 .mr__sheet {
     display: inline-flex;
     align-items: center;
-    padding: 10px 18px;
-    border: 1px solid var(--rc-input-border);
-    border-radius: 56px;
+    padding: 0.625rem 1.125rem;
+    border: 0.0625rem solid var(--rc-input-border);
+    border-radius: 3.5rem;
     background: var(--rc-white);
     color: var(--rc-slate);
     font-family: var(--rc-font);
     font-weight: 600;
-    font-size: 14px;
+    font-size: 0.875rem;
     text-decoration: none;
     white-space: nowrap;
     transition: border-color 0.15s ease;
@@ -199,7 +199,7 @@
 /* Shares the outline shape of the sheet link, but is a real button (and destructive-ish). */
 .mr__discard {
     font-family: var(--rc-font);
-    font-size: 14px;
+    font-size: 0.875rem;
     cursor: pointer;
 }
 

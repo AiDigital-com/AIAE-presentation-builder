@@ -1,10 +1,20 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
+import com.aidigital.reportconstructor.externalservices.google.drive.DriveCopier;
+import com.aidigital.reportconstructor.externalservices.google.drive.ChartFileSharer;
+import com.aidigital.reportconstructor.observability.external.ExternalCallTimer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.google.api.services.slides.v1.model.AffineTransform;
 import com.google.api.services.slides.v1.model.Size;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.TacticChartsRequest;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PacingPivot;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PacingSeries;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.TacticPacing;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -13,16 +23,14 @@ class TacticChartBuilderTest {
 
 	private TacticChartBuilder newBuilder(ChartTemplateCatalog templates) {
 		return new TacticChartBuilder(
-				Mockito.mock(com.aidigital.reportconstructor.service.reports.engine.ChartPivot.class),
 				Mockito.mock(ChartSheetWriter.class),
 				Mockito.mock(ChartSpecBuilder.class),
 				Mockito.mock(SlideChartSwapper.class),
 				Mockito.mock(DriveCopier.class),
 				Mockito.mock(ChartErrorTranslator.class),
 				templates,
-				Mockito.mock(TacticLineItemGrouper.class),
 				Mockito.mock(ChartFileSharer.class),
-				new TacticChartLocator(new BreakdownSlideNaming()));
+				new TacticChartLocator(new BreakdownSlideNaming(), new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry()))));
 	}
 
 	@Test
@@ -118,5 +126,37 @@ class TacticChartBuilderTest {
 		assertThat(templates.monthlyTemplateFor(28)).isEqualTo("book_monthly");
 		assertThat(templates.dailyTemplateFor(1)).isEqualTo("legacy_book_1");
 		assertThat(templates.dailyTemplateFor(2)).isNull();
+	}
+
+	@Test
+	void shouldReportMissingExportColumnsInsteadOfDrawingDailyChartsTest() {
+		// Given: a BigQuery-sourced request whose export had no Date/Impressions column
+		TacticChartBuilder builder = newBuilder(new ChartTemplateCatalog());
+		TacticChartsRequest request = new TacticChartsRequest("deck-1", 2, "Acme", Map.of(), Map.of(), 0, Map.of(),
+				null, new TacticPacing(false, Map.of(), new PacingSeries(false, Map.of()),
+				new PacingSeries(false, Map.of())));
+
+		// When: no Google client is needed, because the pass stops before touching the deck
+		List<String> errors = builder.buildDailyCharts(null, request, null, Map.of());
+
+		// Then:
+		assertThat(errors).containsExactly("Daily: BQ sheet — Date or Impressions column not found");
+	}
+
+	@Test
+	void shouldSkipATacticWhosePivotIsEmptyAndSayWhereItCameFromTest() {
+		// Given: tactic 1's daily pivot came from the BigQuery export (empty for its line items) on a scanned
+		// master-model deck, so no transform read is needed
+		TacticChartBuilder builder = newBuilder(new ChartTemplateCatalog());
+		PacingPivot empty = new PacingPivot(new LinkedHashMap<>(), false, false);
+		TacticChartsRequest request = new TacticChartsRequest("deck-1", 1, "Acme", Map.of(), Map.of(), 0, Map.of(),
+				null, new TacticPacing(true, Map.of(1, List.of("li-1", "li-2")),
+				new PacingSeries(false, Map.of(1, empty)), new PacingSeries(false, Map.of())));
+
+		// When:
+		List<String> errors = builder.buildDailyCharts(null, request, null, Map.of(1, Map.of()));
+
+		// Then: the message names the line items the export was filtered by
+		assertThat(errors).containsExactly("Tactic 1: no pacing data (line item ids: li-1,li-2)");
 	}
 }

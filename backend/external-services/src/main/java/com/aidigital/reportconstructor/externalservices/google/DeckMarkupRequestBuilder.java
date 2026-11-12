@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.ports.DeckMarkup;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckMarkers;
 import com.google.api.services.slides.v1.model.DeleteObjectRequest;
 import com.google.api.services.slides.v1.model.DeleteTextRequest;
 import com.google.api.services.slides.v1.model.OpaqueColor;
@@ -24,7 +24,7 @@ import java.util.List;
 
 /**
  * Applies the markup placeholder values carry to a finished deck: {@code **key phrase**} markers become real
- * bold text, and a shape whose whole text is {@link DeckMarkup#HIDE_SHAPE} is removed.
+ * bold text, and a shape whose whole text is {@link DeckMarkers#HIDE_SHAPE} is removed.
  *
  * <p>{@code replaceAllText} can only carry plain text, and the replaced text takes the style of the token it
  * replaced — so a thought written into a bold placeholder came out bold end to end, and one written into a
@@ -42,7 +42,7 @@ import java.util.List;
  * a white lead phrase over light body text — so the brand-blue lead never lands on a blue panel.
  *
  * <p>An optional chip (an audience segment the campaign does not have) is written as
- * {@link DeckMarkup#HIDE_SHAPE}; its shape is deleted so the slide shows no empty pill.
+ * {@link DeckMarkers#HIDE_SHAPE}; its shape is deleted so the slide shows no empty pill.
  */
 @Component
 @RequiredArgsConstructor
@@ -52,10 +52,10 @@ public class DeckMarkupRequestBuilder {
 	private static final String MARKER = "**";
 
 	/** Opens a lead phrase. */
-	private static final String LEAD_OPEN = DeckMarkup.LEAD_OPEN;
+	private static final String LEAD_OPEN = DeckMarkers.LEAD_OPEN;
 
 	/** Closes a lead phrase. */
-	private static final String LEAD_CLOSE = DeckMarkup.LEAD_CLOSE;
+	private static final String LEAD_CLOSE = DeckMarkers.LEAD_CLOSE;
 
 	/** Brand blue of a lead phrase (the design's #0120F1). */
 	static final RgbColor LEAD_COLOR = new RgbColor().setRed(0.003921569f).setGreen(0.1254902f).setBlue(0.94509804f);
@@ -138,7 +138,7 @@ public class DeckMarkupRequestBuilder {
 			return List.of();
 		}
 		String text = shapeText(element.getShape().getText().getTextElements());
-		if (DeckMarkup.HIDE_SHAPE.equals(text.strip())) {
+		if (DeckMarkers.HIDE_SHAPE.equals(text.strip())) {
 			return List.of(new Request().setDeleteObject(new DeleteObjectRequest().setObjectId(element.getObjectId())));
 		}
 		if (text.contains(LEAD_OPEN) || text.contains(LEAD_CLOSE)) {

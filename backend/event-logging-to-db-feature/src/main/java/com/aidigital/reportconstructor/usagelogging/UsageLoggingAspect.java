@@ -21,7 +21,7 @@
 //     column. The aspect embeds both inside `attributes` JSON
 //     ({"correlation_id": "...", "user_name": "..."}) alongside any
 //     caller-supplied UsageAttributes entries.
-// Full contract: `templates/generated-project/observability/usage-logging-rules.md`.
+// Full contract: `.claude/agent_docs/observability/usage-logging-rules.md`.
 
 package com.aidigital.reportconstructor.usagelogging;
 

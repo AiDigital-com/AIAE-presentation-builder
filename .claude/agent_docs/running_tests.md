@@ -17,24 +17,26 @@
 - `@testing-library/jest-dom` for DOM assertions
 - Typed DTO factories in `frontend/src/test/factories.ts`
 
-## Current test layers in this repository
+## Test-layer discovery
 
-The backend currently uses:
+Use only layers present in the current repository. Common backend layers are:
 
 - service unit tests
 - controller/MVC tests
 - repository query tests
 
-The frontend currently uses:
+Common frontend layers are:
 
 - component/feature behavior tests
 - API/client unit tests
 - config/helper unit tests
 
-There is currently **no dedicated `*IT` integration-test layer** in this repository.
-Do not describe or require one unless the repository actually gains it.
+Do not invent or require an integration-test layer that the repository does not
+have. When one exists, follow its established naming and command conventions.
 
-## Backend unit test commands
+## Common backend unit test commands
+
+Adapt Maven module names to the current repository.
 
 ```bash
 mvn -f backend/pom.xml -pl service -am test

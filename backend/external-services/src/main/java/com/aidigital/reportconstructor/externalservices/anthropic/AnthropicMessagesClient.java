@@ -1,19 +1,19 @@
 package com.aidigital.reportconstructor.externalservices.anthropic;
 
-import com.aidigital.reportconstructor.service.reports.diagnostics.ClaudeFailureLog;
-import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageTracker;
+import com.aidigital.reportconstructor.externalservices.common.http.PooledRestClientFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StreamUtils;
+import org.springframework.web.client.RestClient;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -21,6 +21,8 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
 import java.util.regex.Pattern;
 
@@ -30,10 +32,16 @@ import java.util.regex.Pattern;
 @Slf4j
 @Component
 @ConditionalOnExpression("'${external.anthropic.api-key:}' != ''")
-public class AnthropicMessagesClient {
+public class AnthropicMessagesClient implements AnthropicClient {
 
-	private static final String ENDPOINT = "https://api.anthropic.com/v1/messages";
+	/** Low-cardinality client name used for metrics and pooled-client diagnostics. */
+	static final String CLIENT_NAME = "anthropic";
+	static final String API_BASE = "https://api.anthropic.com";
+	static final String MESSAGES_PATH = "/v1/messages";
+	static final String API_KEY_HEADER = "x-api-key";
+	static final String VERSION_HEADER = "anthropic-version";
 	private static final String VERSION = "2023-06-01";
+	private static final int HTTP_OK = 200;
 	private static final Pattern FENCE_OPEN = Pattern.compile("^```(?:json)?\\s*", Pattern.CASE_INSENSITIVE);
 	private static final Pattern FENCE_CLOSE = Pattern.compile("\\s*```$");
 
@@ -73,7 +81,12 @@ public class AnthropicMessagesClient {
 
 	private final String apiKey;
 	private final String model;
-	private final HttpClient http;
+	/** Builds the pooled HTTP clients; see {@link #restClientFor(int)}. */
+	private final PooledRestClientFactory httpClients;
+
+	/** Pooled client per per-call response timeout in seconds. */
+	private final ConcurrentMap<Integer, RestClient> clientsByTimeout = new ConcurrentHashMap<>();
+
 	/**
 	 * Reads replies leniently about raw control characters: the model sometimes breaks a long string with a
 	 * literal newline instead of {@code \n}, which strict JSON rejects even though the meaning is unambiguous.
@@ -81,12 +94,9 @@ public class AnthropicMessagesClient {
 	private final ObjectMapper json = JsonMapper.builder()
 			.enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
 			.build();
-	private final ClaudeResponseNormalizer normalizer;
-	private final ClaudeUsageTracker usageTracker;
+	/** Receives every call's token usage and why a reply was rejected (the run's accounting and result card). */
+	private final AnthropicCallListener listener;
 	private final PromptTokenEstimator tokenEstimator;
-
-	/** Run-scoped sink an unparseable reply's head goes to, so the report's own card can explain itself. */
-	private final ClaudeFailureLog failureLog;
 
 	/** Extra attempts after the first send when a transient upstream failure is retryable; at least 0. */
 	private final int maxRetries;
@@ -115,28 +125,24 @@ public class AnthropicMessagesClient {
 	private final Semaphore callLimiter;
 
 	/**
-	 * Creates the client, capturing the configured API key and target Claude model and building an
-	 * HTTP client with a 15-second connect timeout.
+	 * Creates the client, capturing the configured API key and target Claude model. HTTP clients come from
+	 * the shared pooled factory, one per distinct per-call response timeout, created on first use.
 	 *
+	 * @param httpClients  shared factory building pooled, instrumented and logged HTTP clients
 	 * @param props        Anthropic configuration supplying the API key and model identifier
-	 * @param normalizer   helper that extracts the assistant text content from a Messages API response
-	 * @param usageTracker   token accounting every call is reported to
+	 * @param listener       receives every call's token usage and the reasons replies were rejected
 	 * @param tokenEstimator local prompt-size estimate, used to book a call whose reply never arrived
-	 * @param failureLog     run-scoped sink the reasons replies were rejected are collected in
 	 */
 	public AnthropicMessagesClient(
+			PooledRestClientFactory httpClients,
 			AnthropicProperties props,
-			ClaudeResponseNormalizer normalizer,
-			ClaudeUsageTracker usageTracker,
-			PromptTokenEstimator tokenEstimator,
-			ClaudeFailureLog failureLog) {
+			AnthropicCallListener listener,
+			PromptTokenEstimator tokenEstimator) {
 		this.apiKey = props.getApiKey();
 		this.model = props.getModel();
-		this.normalizer = normalizer;
-		this.usageTracker = usageTracker;
+		this.listener = listener;
 		this.tokenEstimator = tokenEstimator;
-		this.failureLog = failureLog;
-		this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build();
+		this.httpClients = httpClients;
 		this.callLimiter = new Semaphore(Math.max(1, props.getMaxConcurrentCalls()));
 		this.maxRetries = Math.max(0, props.getMaxRetries());
 		this.retryBackoffMillis = Math.max(0, props.getRetryBackoffMillis());
@@ -157,7 +163,8 @@ public class AnthropicMessagesClient {
 	 *                     repair the trailing JSON by closing open braces
 	 * @return parsed object node, or {@code null} on failure
 	 */
-	JsonNode callJsonObject(
+	@Override
+	public JsonNode callJsonObject(
 			String prompt, int maxTokens, int timeoutSec, String label, boolean allowPartial) {
 		JsonNode resp = callRaw(prompt, maxTokens, timeoutSec, label);
 		if (resp == null) {
@@ -171,7 +178,7 @@ public class AnthropicMessagesClient {
 		if (truncated) {
 			noteSalvagedTruncation(label, effectiveMaxTokens(maxTokens));
 		}
-		String text = normalizer.extractText(resp);
+		String text = replyText(resp);
 		if (text == null || text.isBlank()) {
 			return null;
 		}
@@ -204,7 +211,8 @@ public class AnthropicMessagesClient {
 	 *                     had, and the only way a reply that merely forgot its final {@code ]} survives
 	 * @return the parsed array node, or {@code null} when no usable array could be recovered
 	 */
-	JsonNode callJsonArray(
+	@Override
+	public JsonNode callJsonArray(
 			String prompt, int maxTokens, int timeoutSec, String label, boolean allowPartial) {
 		JsonNode resp = callRaw(prompt, maxTokens, timeoutSec, label);
 		if (resp == null) {
@@ -218,7 +226,7 @@ public class AnthropicMessagesClient {
 		if (truncated) {
 			noteSalvagedTruncation(label, effectiveMaxTokens(maxTokens));
 		}
-		String text = normalizer.extractText(resp);
+		String text = replyText(resp);
 		if (text == null || text.isBlank()) {
 			return null;
 		}
@@ -451,7 +459,7 @@ public class AnthropicMessagesClient {
 		log.debug("[claude:{}] full unparseable reply:\n{}", label, text);
 		// The head of the reply is the one piece of evidence that says what actually broke the parse, and the
 		// person whose report degraded cannot open the server log — so it goes on their result card too.
-		failureLog.record(label, "reply was not valid JSON (" + shape + ", " + text.length()
+		listener.replyProblem(label, "reply was not valid JSON (" + shape + ", " + text.length()
 				+ " chars); it began: " + snippet(text));
 	}
 
@@ -470,7 +478,7 @@ public class AnthropicMessagesClient {
 	void noteSalvagedTruncation(String label, int maxTokens) {
 		log.warn("[claude:{}] reply ran out of its {}-token output budget; salvaged the part that arrived, so "
 				+ "later fields kept their previous values", label, maxTokens);
-		failureLog.record(label, "reply ran out of its " + maxTokens + "-token output budget; the fields it "
+		listener.replyProblem(label, "reply ran out of its " + maxTokens + "-token output budget; the fields it "
 				+ "never reached kept their previous values");
 	}
 
@@ -615,8 +623,10 @@ public class AnthropicMessagesClient {
 	 * @param label      short tag identifying this call in log messages
 	 * @return the full Messages API response as a JSON tree, or {@code null} on failure
 	 */
-	JsonNode callRaw(String prompt, int maxTokens, int timeoutSec, String label) {
-		HttpRequest req;
+	@Override
+	public JsonNode callRaw(String prompt, int maxTokens, int timeoutSec, String label) {
+		RestClient client;
+		byte[] requestBody;
 		try {
 			// No sampling parameters: Sonnet 5 rejects temperature, top_p and top_k outright, and the
 			// schema discipline they used to buy is carried by the prompts themselves, which state the
@@ -627,14 +637,8 @@ public class AnthropicMessagesClient {
 					"thinking", THINKING_DISABLED,
 					"messages", buildMessages(prompt)
 			);
-			req = HttpRequest.newBuilder()
-					.uri(URI.create(ENDPOINT))
-					.timeout(Duration.ofSeconds(timeoutSec))
-					.header("x-api-key", apiKey)
-					.header("anthropic-version", VERSION)
-					.header("content-type", "application/json")
-					.POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)))
-					.build();
+			requestBody = json.writeValueAsString(body).getBytes(StandardCharsets.UTF_8);
+			client = restClientFor(timeoutSec);
 		} catch (Exception ex) {
 			// Nothing left the process, so nothing was billed and nothing is recorded.
 			log.error("[claude:{}] request could not be built: {}", label, ex.getMessage());
@@ -646,10 +650,43 @@ public class AnthropicMessagesClient {
 		// Released in the finally so a permit is never leaked on a timeout or dropped connection.
 		callLimiter.acquireUninterruptibly();
 		try {
-			return sendWithRetry(req, prompt, label);
+			return sendWithRetry(client, requestBody, prompt, label);
 		} finally {
 			callLimiter.release();
 		}
+	}
+
+	/**
+	 * Returns the pooled client for a per-call response timeout, creating it on first use. Callers use a
+	 * handful of fixed timeouts (30, 60 and 120 s plus a few derived ones), so this stays a small bounded set,
+	 * each with its own bounded pool from {@link PooledRestClientFactory}.
+	 *
+	 * @param timeoutSec per-request response timeout in seconds
+	 * @return the client whose requests time out after {@code timeoutSec}
+	 */
+	RestClient restClientFor(int timeoutSec) {
+		return clientsByTimeout.computeIfAbsent(timeoutSec,
+				seconds -> httpClients.createClient(CLIENT_NAME, API_BASE, Duration.ofSeconds(seconds)));
+	}
+
+	/**
+	 * Sends one Messages API request and returns its status and body without throwing on a non-2xx status,
+	 * so {@link #sendWithRetry} keeps deciding between retry and fail-fast. Transport failures (connect or
+	 * read timeout, dropped connection) propagate as exceptions.
+	 *
+	 * @param client      pooled client carrying this call's response timeout
+	 * @param requestBody the serialized Messages API request body (UTF-8 JSON)
+	 * @return the response status and body text
+	 */
+	ResponseEntity<String> exchange(RestClient client, byte[] requestBody) {
+		return client.post()
+				.uri(MESSAGES_PATH)
+				.header(API_KEY_HEADER, apiKey)
+				.header(VERSION_HEADER, VERSION)
+				.contentType(MediaType.APPLICATION_JSON)
+				.body(requestBody)
+				.exchange((request, response) -> ResponseEntity.status(response.getStatusCode())
+						.body(StreamUtils.copyToString(response.getBody(), StandardCharsets.UTF_8)));
 	}
 
 	/**
@@ -665,37 +702,39 @@ public class AnthropicMessagesClient {
 	 * billed by Anthropic without being recorded here — the same understatement-on-failure the single-shot
 	 * path already accepted, now confined to a call that ultimately succeeds or times out on its last try.
 	 *
-	 * @param req    the fully built Messages API request
+	 * @param client      pooled client carrying this call's response timeout
+	 * @param requestBody the serialized Messages API request body (UTF-8 JSON)
 	 * @param prompt the prompt text, used only to estimate spend when no reply arrives
 	 * @param label  short tag identifying this call in log messages
 	 * @return the parsed Messages API response, or {@code null} once the status is permanent or retries run out
 	 */
-	JsonNode sendWithRetry(HttpRequest req, String prompt, String label) {
+	JsonNode sendWithRetry(RestClient client, byte[] requestBody, String prompt, String label) {
 		int attempts = maxRetries + 1;
 		for (int attempt = 1; attempt <= attempts; attempt++) {
 			boolean lastAttempt = attempt == attempts;
 			try {
-				HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
-				if (res.statusCode() == 200) {
-					JsonNode parsed = json.readTree(res.body());
+				ResponseEntity<String> res = exchange(client, requestBody);
+				int statusCode = res.getStatusCode().value();
+				if (statusCode == HTTP_OK) {
+					JsonNode parsed = json.readTree(res.getBody());
 					recordUsage(parsed, label);
 					return parsed;
 				}
 				// Rejected requests — rate limits, overloads, bad requests — are not billed, so they are
 				// deliberately not recorded as spend. A permanent status, or the last attempt, ends here.
-				if (lastAttempt || !isTransientStatus(res.statusCode())) {
-					log.error("[claude:{}] error {} body={}", label, res.statusCode(), res.body());
+				if (lastAttempt || !isTransientStatus(statusCode)) {
+					log.error("[claude:{}] error {} body={}", label, statusCode, res.getBody());
 					return null;
 				}
 				log.warn("[claude:{}] transient error {} (attempt {}/{}) — retrying",
-						label, res.statusCode(), attempt, attempts);
+						label, statusCode, attempt, attempts);
 			} catch (Exception ex) {
 				// The request went out and Claude may well have answered it — a read timeout or a dropped
 				// connection loses the reply, not the charge. On the final attempt the call is booked with an
 				// estimate of what it cost and flagged as such rather than dropped.
 				if (lastAttempt) {
 					log.error("[claude:{}] request failed after sending: {}", label, ex.getMessage());
-					usageTracker.recordEstimated(label, tokenEstimator.estimateTokens(prompt), model);
+					listener.estimatedUsage(label, tokenEstimator.estimateTokens(prompt), model);
 					return null;
 				}
 				log.warn("[claude:{}] request failed after sending (attempt {}/{}) — retrying: {}",
@@ -758,8 +797,23 @@ public class AnthropicMessagesClient {
 		long output = usage.path("output_tokens").asLong(0);
 		long cacheWrite = usage.path("cache_creation_input_tokens").asLong(0);
 		long cacheRead = usage.path("cache_read_input_tokens").asLong(0);
-		usageTracker.record(label, input, output, cacheWrite, cacheRead, response.path("model").asText(model));
+		listener.usage(label, input, output, cacheWrite, cacheRead, response.path("model").asText(model));
 		log.debug("[claude:{}] usage in={} out={} cacheWrite={} cacheRead={}",
 				label, input, output, cacheWrite, cacheRead);
+	}
+
+	@Override
+	public String replyText(JsonNode response) {
+		JsonNode content = response.path("content");
+		if (!content.isArray() || content.isEmpty()) {
+			return null;
+		}
+		StringBuilder sb = new StringBuilder();
+		for (JsonNode part : content) {
+			if ("text".equals(part.path("type").asText())) {
+				sb.append(part.path("text").asText());
+			}
+		}
+		return sb.toString();
 	}
 }

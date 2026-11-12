@@ -1,10 +1,8 @@
 import { UserButton } from "@clerk/clerk-react";
-import { useVersionQuery } from "@/shared/api/useVersionQuery";
-import "./app-shell.css";
 
-interface Props {
-    appName: string;
-}
+import { useVersionQuery } from "@/shared/api/useVersionQuery";
+import type { Props } from "./model/appHeader";
+import "./app-shell.css";
 
 /** Top app header — Elevate layout (no left sidebar). */
 export function AppHeader({ appName }: Props) {

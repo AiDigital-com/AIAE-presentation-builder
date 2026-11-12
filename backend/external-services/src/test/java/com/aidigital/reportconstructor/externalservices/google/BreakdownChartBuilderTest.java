@@ -1,6 +1,8 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartSlice;
+import com.aidigital.reportconstructor.observability.external.ExternalCallTimer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.ChartSlice;
 import com.google.api.services.sheets.v4.model.EmbeddedChart;
 import com.google.api.services.sheets.v4.model.Sheet;
 import com.google.api.services.sheets.v4.model.SheetProperties;
@@ -23,8 +25,8 @@ class BreakdownChartBuilderTest {
 		// The pure methods under test use only the ChartSheetWriter (for label normalisation); the Google
 		// collaborators are not touched, so nulls are safe here.
 		return new BreakdownChartBuilder(
-				null, new ChartSheetWriter(), null, null, null, new BreakdownChartCatalog(),
-				new BreakdownSlideNaming(), null);
+				null, new ChartSheetWriter(new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry()))), null, null, null, new BreakdownChartCatalog(),
+				new BreakdownSlideNaming(), null, null);
 	}
 
 	@Test
@@ -45,11 +47,11 @@ class BreakdownChartBuilderTest {
 		// Given: slices for four devices, one with zero impressions and one CTV row — a series whose labels
 		// are matched against the workbook's own category column
 		BreakdownChartBuilder builder = newBuilder();
-		List<BreakdownChartSlice> slices = List.of(
-				new BreakdownChartSlice("Mobile", 1000.4),
-				new BreakdownChartSlice("CTV", 500.0),
-				new BreakdownChartSlice("Desktop", 0.0),
-				new BreakdownChartSlice("Tablet", -5.0));
+		List<ChartSlice> slices = List.of(
+				new ChartSlice("Mobile", 1000.4),
+				new ChartSlice("CTV", 500.0),
+				new ChartSlice("Desktop", 0.0),
+				new ChartSlice("Tablet", -5.0));
 
 		// When:
 		Map<String, Double> byLabel = builder.valuesByLabel(slices, false);
@@ -69,11 +71,11 @@ class BreakdownChartBuilderTest {
 	void valuesByLabel_shouldKeepLabelsVerbatimWhenTheyAreWrittenIntoTheWorkbookTest() {
 		// Given: audience segments, whose names go onto the chart as the reader sees them
 		BreakdownChartBuilder builder = newBuilder();
-		List<BreakdownChartSlice> slices = List.of(
-				new BreakdownChartSlice("  In-Market: Luxury Travel ", 142.0),
-				new BreakdownChartSlice("Affinity: Foodies", 118.5),
-				new BreakdownChartSlice("", 100.0),
-				new BreakdownChartSlice("Affinity: Sports", 0.0));
+		List<ChartSlice> slices = List.of(
+				new ChartSlice("  In-Market: Luxury Travel ", 142.0),
+				new ChartSlice("Affinity: Foodies", 118.5),
+				new ChartSlice("", 100.0),
+				new ChartSlice("Affinity: Sports", 0.0));
 
 		// When:
 		Map<String, Double> byLabel = builder.valuesByLabel(slices, true);
@@ -88,9 +90,9 @@ class BreakdownChartBuilderTest {
 	void valuesByLabel_shouldBeEmptyWhenNoSliceIsPositiveTest() {
 		// Given: every slice is non-positive
 		BreakdownChartBuilder builder = newBuilder();
-		List<BreakdownChartSlice> slices = List.of(
-				new BreakdownChartSlice("Mobile", 0.0),
-				new BreakdownChartSlice("Desktop", -1.0));
+		List<ChartSlice> slices = List.of(
+				new ChartSlice("Mobile", 0.0),
+				new ChartSlice("Desktop", -1.0));
 
 		// When-Then: nothing to chart
 		assertThat(builder.valuesByLabel(slices, false)).isEmpty();

@@ -82,6 +82,7 @@ paths:
       security:
         - bearerAuth: [ ]
       requestBody:
+        description: "The spreadsheet URL and the tab to read."
         required: true
         content:
           application/json:
@@ -117,6 +118,7 @@ paths:
       security:
         - bearerAuth: [ ]
       requestBody:
+        description: "The generated report workbook to read the summary table from."
         required: true
         content:
           application/json:
@@ -171,6 +173,7 @@ paths:
       security:
         - bearerAuth: [ ]
       requestBody:
+        description: "The delivery-export rows and the media-plan rows to match."
         required: true
         content:
           application/json:
@@ -206,6 +209,7 @@ paths:
       security:
         - bearerAuth: [ ]
       requestBody:
+        description: "The wizard inputs the placeholders are resolved from."
         required: true
         content:
           application/json:
@@ -241,6 +245,7 @@ paths:
       security:
         - bearerAuth: [ ]
       requestBody:
+        description: "The raw-data rows to scan for delivery dates."
         required: true
         content:
           application/json:
@@ -275,6 +280,7 @@ paths:
       security:
         - bearerAuth: [ ]
       requestBody:
+        description: "Everything the report pipeline needs: brief, source grids, matching and options."
         required: true
         content:
           application/json:
@@ -443,6 +449,7 @@ paths:
       security:
         - bearerAuth: [ ]
       requestBody:
+        description: "The filled workbook and the report type it is for."
         required: true
         content:
           application/json:
@@ -627,19 +634,13 @@ paths:
         - name: sort
           in: query
           required: false
-          description: "Column to order by."
-          schema:
-            type: string
-            enum: [ createdAt, tokens, slides, owner, type, status ]
-            default: createdAt
+          description: "Column to order by; `createdAt` when omitted."
+          schema: { $ref: "#/components/schemas/AdminReportSortV1" }
         - name: dir
           in: query
           required: false
-          description: "Order direction."
-          schema:
-            type: string
-            enum: [ asc, desc ]
-            default: desc
+          description: "Order direction; `desc` when omitted."
+          schema: { $ref: "#/components/schemas/SortDirectionV1" }
       responses:
         "200":
           description: One page of report jobs, in the requested order.
@@ -681,6 +682,7 @@ paths:
       security:
         - bearerAuth: [ ]
       requestBody:
+        description: "The email to grant admin access to."
         required: true
         content:
           application/json:
@@ -718,6 +720,7 @@ paths:
           required: true
           schema:
             type: string
+            maxLength: 320
           description: Email of the managed admin to revoke (URL-encoded).
       responses:
         "200":
@@ -780,39 +783,63 @@ components:
             $ref: "#/components/schemas/ApiErrorV1"
 
   schemas:
+    AdminReportSortV1:
+      type: string
+      description: "Column the admin report history is ordered by."
+      enum: [ createdAt, tokens, slides, owner, type, status ]
+    SortDirectionV1:
+      type: string
+      description: "Order direction."
+      enum: [ asc, desc ]
+    AdminSeriesUnitV1:
+      type: string
+      description: "Bucket size the admin dashboard's `series` uses."
+      enum: [ day, week, month ]
+    AdminTrendUnitV1:
+      type: string
+      description: |
+        The trend granularity a span reads best at — weeks for a short window, months for a long one.
+        A default, not a rule: the client may show the other one.
+      enum: [ week, month ]
     # ── Identity & shared error (scaffold — keep verbatim) ──────────────────────
     UserV1:
       type: object
+      additionalProperties: false
       required: [ user_id, email ]
       # Baseline payload carries identity plus a single server-computed admin flag.
       # `is_admin` is derived from the `app.admin.emails` allow-list and is the only
       # authorization signal the client may trust for showing the admin surface.
       properties:
         user_id: { type: string, description: "Clerk user id (sub/user_id claim)" }
-        email: { type: string, format: email }
-        full_name: { type: string }
+        email: { type: string, format: email, description: "The caller's email address, from the Clerk session." }
+        full_name: { type: string, description: "The caller's display name, from the Clerk session." }
         is_admin:
           type: boolean
           description: "True when the caller's email is on the server admin allow-list. Gates the Dashboard nav item and the /admin API."
 
     ApiErrorV1:
+      description: "Error body returned for every non-2xx response."
       type: object
+      additionalProperties: false
       required: [ code, message, timestamp ]
       properties:
         code: { type: string, description: "Machine-readable error code" }
         message: { type: string, description: "Human-readable message" }
-        timestamp: { type: string, format: date-time }
-        correlationId: { type: string }
+        timestamp: { type: string, format: date-time, description: "When the error was produced (UTC)." }
+        correlationId: { type: string, description: "Request correlation id, also present in the server logs." }
         parameters:
+          description: "Structured details of the error, e.g. validation failures."
           type: array
           items: { $ref: "#/components/schemas/ValidationParameterV1" }
 
     ValidationParameterV1:
+      description: "One named detail attached to an error, e.g. the field that failed validation."
       type: object
+      additionalProperties: false
       required: [ code, value ]
       properties:
-        code: { type: string }
-        value: { type: string }
+        code: { type: string, description: "Name of the detail, e.g. 'detail' or a field name." }
+        value: { type: string, description: "Value of the detail." }
 
     # ── Enums (standalone $ref schemas — never inline) ──────────────────────────
     SourceV1:
@@ -879,12 +906,13 @@ components:
 
     DateFilterV1:
       type: object
+      additionalProperties: false
       description: |
         User-selected date window applied to the raw-data rows for the report.
         When omitted the server defaults to ALL (every date in the raw data).
       required: [ mode ]
       properties:
-        mode: { $ref: "#/components/schemas/DateFilterModeV1" }
+        mode: { $ref: "#/components/schemas/DateFilterModeV1", description: "ALL to include every date, RANGE to include only start..end." }
         start:
           type: string
           format: date
@@ -896,15 +924,17 @@ components:
 
     DateRangeRequestV1:
       type: object
+      additionalProperties: false
       description: |
         Raw-data rows to scan for the delivery date range shown to the user for
         confirmation before generation.
       required: [ adjRows ]
       properties:
-        adjRows: { $ref: "#/components/schemas/Rows2DV1" }
+        adjRows: { $ref: "#/components/schemas/Rows2DV1", description: "Rows of the raw-data (Elevate 'Basic') tab." }
 
     DateRangeResultV1:
       type: object
+      additionalProperties: false
       description: |
         Inclusive min/max delivery date detected in the raw-data ("Basic" tab)
         rows. Both fields are null when no dated delivery rows are present.
@@ -922,39 +952,45 @@ components:
 
     # ── DataSource ──────────────────────────────────────────────────────────────
     GoogleConnectionStatusV1:
+      description: "The caller's Google connectivity for reading sheets and generating decks."
       type: object
+      additionalProperties: false
       required: [ connected, email, scopes, connectUrl, mockMode ]
       properties:
-        connected: { type: boolean }
-        email: { type: string }
+        connected: { type: boolean, description: "Whether a usable Google connection (real or mock) is available." }
+        email: { type: string, description: "The connected Google account's email, or empty when none is linked." }
         scopes:
+          description: "OAuth scopes granted to the connection; empty when none."
           type: array
           items: { type: string }
-        connectUrl: { type: string }
-        mockMode: { type: boolean }
+        connectUrl: { type: string, description: "URL to visit to connect Google, or empty when no explicit connect is needed." }
+        mockMode: { type: boolean, description: "Whether the offline stub provider is active instead of a live connection." }
 
     SheetReadRequestV1:
+      description: "One tab of one Google Sheet to read."
       type: object
+      additionalProperties: false
       required: [ url, tab ]
       properties:
-        url: { type: string, description: "Full Google Sheets URL (the spreadsheet id is parsed out)." }
-        tab: { type: string, description: "Exact tab name, e.g. Proposal, Audience&Inventory, Estimates, Geo, Basic." }
+        url: { type: string, minLength: 1, maxLength: 2048, description: "Full Google Sheets URL (the spreadsheet id is parsed out)." }
+        tab: { type: string, minLength: 1, maxLength: 100, description: "Exact tab name, e.g. Proposal, Audience&Inventory, Estimates, Geo, Basic." }
 
     SheetReadResultV1:
       type: object
+      additionalProperties: false
       required: [ ok, tab, rows, cols, tabs, headers, preview, rawRows ]
       properties:
         ok: { type: boolean, description: "True when the tab was read; false with `error` set otherwise." }
         error: { type: string, description: "Error code when ok=false, e.g. tab_not_found." }
-        sheetId: { type: string }
+        sheetId: { type: string, description: "Spreadsheet id parsed from the URL." }
         title: { type: string, description: "Spreadsheet title." }
         tab: { type: string, description: "Tab that was read." }
         tabs:
           type: array
           description: All tab titles in the spreadsheet.
           items: { type: string }
-        rows: { type: integer, format: int32 }
-        cols: { type: integer, format: int32 }
+        rows: { type: integer, format: int32, description: "Number of rows read." }
+        cols: { type: integer, format: int32, description: "Number of columns read (at most 26, A..Z)." }
         headers:
           type: array
           description: First row (header cells).
@@ -974,6 +1010,7 @@ components:
 
     SheetSummaryRequestV1:
       type: object
+      additionalProperties: false
       description: |
         Request to read back the per-tactic summary table from a generated report
         workbook (the sheet produced by the `target=SHEET` job). Only the workbook
@@ -983,10 +1020,13 @@ components:
       properties:
         sheetUrl:
           type: string
+          minLength: 1
+          maxLength: 2048
           description: "Full Google Sheets URL of the generated report workbook."
 
     SheetSummaryRowV1:
       type: object
+      additionalProperties: false
       description: |
         One tactic's plan/fact figures as they appear in the generated workbook's
         summary table. Values are already-formatted display strings taken verbatim
@@ -1006,6 +1046,7 @@ components:
 
     SheetSummaryResultV1:
       type: object
+      additionalProperties: false
       description: |
         Per-tactic summary rows read back from the generated report workbook, plus the
         campaign-context cells the review step needs to tell a workbook that carries its
@@ -1030,34 +1071,42 @@ components:
     # ── LineItemMatching ─────────────────────────────────────────────────────────
     LineItemMatchRequestV1:
       type: object
+      additionalProperties: false
       required: [ bqRows, planRows ]
       properties:
         bqRows:
           type: array
           description: Rows of the Elevate/BigQuery-export tab (Basic).
+          maxItems: 200000
           items:
             type: array
-            items: { type: string }
+            maxItems: 702
+            items: { type: string, maxLength: 50000 }
         planRows:
           type: array
           description: Rows of the media-plan tab (Proposal).
+          maxItems: 200000
           items:
             type: array
-            items: { type: string }
+            maxItems: 702
+            items: { type: string, maxLength: 50000 }
 
     IdNamingV1:
+      description: "Naming, channel and tactic of one delivery line item."
       type: object
+      additionalProperties: false
       required: [ naming, channel, tactic ]
       properties:
-        naming: { type: string }
-        channel: { type: string }
-        tactic: { type: string }
+        naming: { type: string, description: "The line item's Level-1 naming." }
+        channel: { type: string, description: "The line item's channel, as written in the data." }
+        tactic: { type: string, description: "The line item's tactic, as written in the data." }
 
     MappingEntryV1:
       type: object
+      additionalProperties: false
       required: [ tacticNum, tacticName, autoMatched ]
       properties:
-        tacticNum: { type: integer, format: int32 }
+        tacticNum: { type: integer, format: int32, description: "1-based report slot of the tactic." }
         planTacticNum:
           type: integer
           format: int32
@@ -1067,12 +1116,12 @@ components:
             after an exclusion the surviving tactics are renumbered 1..N in tacticNum while this
             field still points at their original plan row, which is what the plan-side figures
             (Estimates tab) are aligned by. Absent means "same as tacticNum".
-        tacticName: { type: string }
+        tacticName: { type: string, description: "The tactic as written in the media plan." }
         lineItemId: { type: string, description: "Matched line-item id, or null when unmatched." }
         namingSample: { type: string, description: "Sample Level-1 naming for the matched id (display only)." }
-        autoMatched: { type: boolean }
+        autoMatched: { type: boolean, description: "Whether the line item was matched automatically rather than by the user." }
         expectedChannel: { type: string, description: "Channel that needs manual assignment (when ambiguous)." }
-        rateType: { $ref: "#/components/schemas/RateTypeV1" }
+        rateType: { $ref: "#/components/schemas/RateTypeV1", description: "How the tactic is bought (CPM/CPC/CPV), chosen by the user. EOM only." }
         unitPrice:
           type: number
           description: "Final unit price entered by the user (cost per 1000 impressions/click/view, per rateType). EOM only."
@@ -1082,6 +1131,7 @@ components:
 
     BreakdownSelectionV1:
       type: object
+      additionalProperties: false
       required: [ tacticNum ]
       description: |
         One tactic's Step-3 breakdown toggles. Lists the breakdown section ids the
@@ -1098,12 +1148,15 @@ components:
 
     LineItemMatchResultV1:
       type: object
+      additionalProperties: false
       required: [ mapping, uniqueIds, idNamings, channelToIds, warnings, autoMatched, autoMatchCount ]
       properties:
         mapping:
+          description: "One row per media-plan tactic, in plan order."
           type: array
           items: { $ref: "#/components/schemas/MappingEntryV1" }
         uniqueIds:
+          description: "Every distinct line-item id found in the delivery rows."
           type: array
           items: { type: string }
         idNamings:
@@ -1117,71 +1170,86 @@ components:
             type: array
             items: { type: string }
         warnings:
+          description: "Non-fatal matching warnings; currently always empty."
           type: array
           items: { type: string }
         autoMatched: { type: boolean, description: "True only when every entry auto-matched and mapping is non-empty." }
-        autoMatchCount: { type: integer, format: int32 }
+        autoMatchCount: { type: integer, format: int32, description: "Number of tactics matched automatically." }
 
     # ── Placeholders ──────────────────────────────────────────────────────────────
     PreviewRequestV1:
       type: object
+      additionalProperties: false
       required: [ brief, reportType ]
       properties:
-        brief: { type: string }
-        reportType: { $ref: "#/components/schemas/ReportTypeV1" }
+        brief: { type: string, maxLength: 100000, description: "The campaign brief entered in the wizard." }
+        reportType: { $ref: "#/components/schemas/ReportTypeV1", description: "Report type being previewed." }
         marketVolume:
           type: string
+          maxLength: 100
           description: |
             Maximum addressable audience volume entered in the UI (DV360 audience
             estimate). Free text; the server parses the number and renders it
             compact (e.g. 74k, 702k, 1.2M) into {{market volume}}.
-        sheetRows: { $ref: "#/components/schemas/Rows2DV1" }
-        adjRows: { $ref: "#/components/schemas/Rows2DV1" }
-        audienceRows: { $ref: "#/components/schemas/Rows2DV1" }
-        estimatesRows: { $ref: "#/components/schemas/Rows2DV1" }
-        geoRows: { $ref: "#/components/schemas/Rows2DV1" }
+        sheetRows: { $ref: "#/components/schemas/Rows2DV1", description: "Rows of the media-plan tab." }
+        adjRows: { $ref: "#/components/schemas/Rows2DV1", description: "Rows of the raw-data (Elevate 'Basic') tab." }
+        audienceRows: { $ref: "#/components/schemas/Rows2DV1", description: "Rows of the audience/inventory tab." }
+        estimatesRows: { $ref: "#/components/schemas/Rows2DV1", description: "Rows of the estimates tab." }
+        geoRows: { $ref: "#/components/schemas/Rows2DV1", description: "Rows of the geo tab." }
         lineItemMapping:
+          description: "The tactic-to-line-item mapping confirmed in the wizard."
           type: array
           items: { $ref: "#/components/schemas/MappingEntryV1" }
-        dateFilter: { $ref: "#/components/schemas/DateFilterV1" }
+        dateFilter: { $ref: "#/components/schemas/DateFilterV1", description: "Date window applied to the raw-data rows; ALL when omitted." }
 
     PlaceholderEntryV1:
+      description: "One resolved placeholder in the preview."
       type: object
+      additionalProperties: false
       required: [ key, label, value, source ]
       properties:
         key: { type: string, description: "Placeholder token, e.g. {{total imps}}." }
         label: { type: string, description: "Human label (Russian, verbatim)." }
         value: { type: string, description: "Resolved value, or — when unresolved." }
-        source: { $ref: "#/components/schemas/SourceV1" }
+        source: { $ref: "#/components/schemas/SourceV1", description: "Where the value came from." }
 
     SectionV1:
+      description: "A titled group of placeholders in the preview panel."
       type: object
+      additionalProperties: false
       required: [ title, placeholders ]
       properties:
         title: { type: string, description: "Section title (English, verbatim — Start, Overview, …)." }
         placeholders:
+          description: "The section's placeholders, in display order."
           type: array
           items: { $ref: "#/components/schemas/PlaceholderEntryV1" }
 
     LabelPairV1:
+      description: "One label/value pair found in a source sheet."
       type: object
+      additionalProperties: false
       required: [ label, value ]
       properties:
-        label: { type: string }
-        value: { type: string }
+        label: { type: string, description: "Label as written in the sheet." }
+        value: { type: string, description: "Value next to the label." }
 
     PreviewStatsV1:
+      description: "How many placeholders resolved to a value."
       type: object
+      additionalProperties: false
       required: [ found, total ]
       properties:
-        found: { type: integer, format: int32 }
-        total: { type: integer, format: int32 }
+        found: { type: integer, format: int32, description: "Placeholders that resolved to a value." }
+        total: { type: integer, format: int32, description: "Placeholders in the catalog." }
 
     PreviewResultV1:
       type: object
+      additionalProperties: false
       required: [ sections, allLabels, stats, sheetCount, adjCount ]
       properties:
         sections:
+          description: "Resolved placeholders grouped for the preview panel."
           type: array
           items: { $ref: "#/components/schemas/SectionV1" }
         allLabels:
@@ -1190,24 +1258,26 @@ components:
           additionalProperties:
             type: array
             items: { $ref: "#/components/schemas/LabelPairV1" }
-        stats: { $ref: "#/components/schemas/PreviewStatsV1" }
-        sheetCount: { type: integer, format: int32 }
-        adjCount: { type: integer, format: int32 }
+        stats: { $ref: "#/components/schemas/PreviewStatsV1", description: "How many placeholders resolved." }
+        sheetCount: { type: integer, format: int32, description: "Number of media-plan rows in the request." }
+        adjCount: { type: integer, format: int32, description: "Number of raw-data rows in the request." }
 
     # ── ReportJobs ────────────────────────────────────────────────────────────────
     GenerateRequestV1:
       type: object
+      additionalProperties: false
       required: [ brief, reportType, marketVolume ]
       properties:
-        brief: { type: string }
+        brief: { type: string, maxLength: 100000, description: "The campaign brief entered in the wizard." }
         changeLog:
           type: string
+          maxLength: 20000
           description: |
             Optional free-text log of mid-flight changes/optimizations applied to
             the campaign (budget shifts, audience weight changes, delayed launches).
             Written into the sheet's {{change log}} placeholder and fed to Claude as
             extra context so the narrative can attribute results to the actions taken.
-        reportType: { $ref: "#/components/schemas/ReportTypeV1" }
+        reportType: { $ref: "#/components/schemas/ReportTypeV1", description: "Report type to generate." }
         templateVariant:
           allOf:
             - $ref: "#/components/schemas/TemplateVariantV1"
@@ -1222,17 +1292,18 @@ components:
             keep producing decks. Set SHEET for the "Generate Sheet" flow.
         marketVolume:
           type: string
+          maxLength: 100
           description: |
             Maximum addressable audience volume entered in the UI (DV360 audience
             estimate). Free text; the server parses the number and renders it
             compact (e.g. 74k, 702k, 1.2M) into {{market volume}}. Required by the
             UI for EOC reports; EOM reports have no market-volume slide and send it
             empty, so no minimum length is enforced here.
-        sheetRows: { $ref: "#/components/schemas/Rows2DV1" }
-        adjRows: { $ref: "#/components/schemas/Rows2DV1" }
-        audienceRows: { $ref: "#/components/schemas/Rows2DV1" }
-        estimatesRows: { $ref: "#/components/schemas/Rows2DV1" }
-        geoRows: { $ref: "#/components/schemas/Rows2DV1" }
+        sheetRows: { $ref: "#/components/schemas/Rows2DV1", description: "Rows of the media-plan tab." }
+        adjRows: { $ref: "#/components/schemas/Rows2DV1", description: "Rows of the raw-data (Elevate 'Basic') tab." }
+        audienceRows: { $ref: "#/components/schemas/Rows2DV1", description: "Rows of the audience/inventory tab." }
+        estimatesRows: { $ref: "#/components/schemas/Rows2DV1", description: "Rows of the estimates tab." }
+        geoRows: { $ref: "#/components/schemas/Rows2DV1", description: "Rows of the geo tab." }
         paidSearchTabs:
           allOf:
             - $ref: "#/components/schemas/PaidExportTabsV1"
@@ -1246,9 +1317,10 @@ components:
           description: |
             Paid Social (Meta) export, connected on the MPO templates tab, keyed by tab name like
             paidSearchTabs. Optional and sent only for templateVariant=MPO.
-        paidSearchUrl: { type: string, description: "Paid Search export sheet the user connected (provenance, like mediaPlanUrl)." }
-        paidSocialUrl: { type: string, description: "Paid Social export sheet the user connected (provenance, like mediaPlanUrl)." }
+        paidSearchUrl: { type: string, maxLength: 2048, description: "Paid Search export sheet the user connected (provenance, like mediaPlanUrl)." }
+        paidSocialUrl: { type: string, maxLength: 2048, description: "Paid Social export sheet the user connected (provenance, like mediaPlanUrl)." }
         lineItemMapping:
+          description: "The tactic-to-line-item mapping confirmed in the wizard."
           type: array
           items: { $ref: "#/components/schemas/MappingEntryV1" }
         breakdownSelections:
@@ -1262,6 +1334,7 @@ components:
         estimateDaypartGender:
           type: boolean
           default: true
+          x-unconstrained-reason: "Boolean flag; both values are valid."
           description: |
             Whether Claude may estimate the per-tactic dayparting (weekdays /
             weekends peak windows) and gender split (male / female) when the
@@ -1274,40 +1347,47 @@ components:
             be a prediction rather than a measured figure.
         bqSheetId:
           type: string
+          maxLength: 200
           description: |
             Spreadsheet id of the Elevate/BQ sheet. PRESENCE-GATE ONLY — gates the
             chart step; the server does NOT re-read it (BQ pivots read adjRows).
-        dateFilter: { $ref: "#/components/schemas/DateFilterV1" }
+        dateFilter: { $ref: "#/components/schemas/DateFilterV1", description: "Date window applied to the raw-data rows; for EOM it is also the reporting month. ALL when omitted." }
         sheetUrl:
           type: string
+          maxLength: 2048
           description: |
             URL of a previously generated (and user-edited) Google Sheet. Used only
             when target=SLIDES_FROM_SHEET, where the deck is filled from this sheet's
             values instead of the raw grids. Ignored for SLIDES and SHEET.
         mediaPlanUrl:
           type: string
+          maxLength: 2048
           description: |
             URL of the Media Plan Google Sheet the user connected. Persisted for the
             admin history so reviewers can open the source data; not used by the engine.
         elevateUrl:
           type: string
+          maxLength: 2048
           description: |
             URL of the Elevate row-data Google Sheet the user connected. Persisted for
             the admin history so reviewers can open the source data; not used by the engine.
 
     ReportJobCreatedV1:
+      description: "Id of the newly enqueued report job."
       type: object
+      additionalProperties: false
       required: [ jobId ]
       properties:
-        jobId: { type: integer, format: int64 }
+        jobId: { type: integer, format: int64, description: "Id to poll with GET /api/v1/report-jobs/{jobId}." }
 
     ReportJobV1:
       type: object
+      additionalProperties: false
       required: [ jobId, status, step, total, warnings ]
       properties:
-        jobId: { type: integer, format: int64 }
-        status: { $ref: "#/components/schemas/ReportJobStatusV1" }
-        step: { type: integer, format: int32 }
+        jobId: { type: integer, format: int64, description: "Id of the job." }
+        status: { $ref: "#/components/schemas/ReportJobStatusV1", description: "Where the job is in its lifecycle." }
+        step: { type: integer, format: int32, description: "1-based pipeline step the job has reached (0 while queued)." }
         total: { type: integer, format: int32, description: "Always 7." }
         label: { type: string, description: "Human progress label." }
         slideUrl: { type: string, description: "Generated artifact URL (Slides deck or Sheet, per target; set when status=done)." }
@@ -1319,23 +1399,27 @@ components:
 
     # ── My reports (report history) ─────────────────────────────────────────────
     ReportListV1:
+      description: "The caller's report history for the My reports screen."
       type: object
+      additionalProperties: false
       required: [ total, reports ]
       properties:
         total: { type: integer, format: int32, description: "Number of reports the caller owns." }
         reports:
+          description: "The caller's reports, newest first."
           type: array
           items: { $ref: "#/components/schemas/ReportSummaryV1" }
 
     ReportSummaryV1:
       type: object
+      additionalProperties: false
       required: [ jobId, status, title, createdAt, inputTokens, outputTokens, totalTokens, costUsd ]
       properties:
-        jobId: { type: integer, format: int64 }
+        jobId: { type: integer, format: int64, description: "Id of the report job." }
         type: { type: string, description: "Report type code (e.g. EOM/EOC), when known." }
-        status: { $ref: "#/components/schemas/ReportJobStatusV1" }
+        status: { $ref: "#/components/schemas/ReportJobStatusV1", description: "Where the job is in its lifecycle." }
         title: { type: string, description: "Human-friendly report name for the row." }
-        createdAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time, description: "When the job was created." }
         slideUrl: { type: string, description: "Generated deck/artifact URL when the job is done." }
         sheetUrl: { type: string, description: "Source Google Sheet URL the report was built from, when available." }
         fileName: { type: string, description: "Human file name of the generated artifact (e.g. the pptx/deck name)." }
@@ -1357,13 +1441,16 @@ components:
 
     AdoptSheetRequestV1:
       type: object
+      additionalProperties: false
       description: A workbook the user filled themselves, to be registered as a resumable draft.
       required: [ sheetUrl, reportType ]
       properties:
         sheetUrl:
           type: string
+          minLength: 1
+          maxLength: 2048
           description: "URL of the user's filled Google Sheet. The caller must have access to it."
-        reportType: { $ref: "#/components/schemas/ReportTypeV1" }
+        reportType: { $ref: "#/components/schemas/ReportTypeV1", description: "Report type the workbook is for." }
         templateVariant:
           allOf:
             - $ref: "#/components/schemas/TemplateVariantV1"
@@ -1371,6 +1458,7 @@ components:
 
     ReportResumeV1:
       type: object
+      additionalProperties: false
       description: |
         A resumable draft: the generated workbook to review, plus the wizard state the interrupted
         session was carrying. Everything else the deck needs is read back out of the workbook, so
@@ -1390,7 +1478,7 @@ components:
         brief: { type: string, description: "Campaign brief, as the fallback for a workbook whose {{RFP info}} cell was emptied." }
         changeLog: { type: string, description: "Change log, fallback for {{change log}} the same way." }
         marketVolume: { type: string, description: "Maximum addressable audience volume entered in the UI." }
-        dateFilter: { $ref: "#/components/schemas/DateFilterV1" }
+        dateFilter: { $ref: "#/components/schemas/DateFilterV1", description: "Date window the run was started with." }
         estimateDaypartGender: { type: boolean, description: "Whether Claude may estimate the dayparting/gender tokens." }
         breakdownSelections:
           type: array
@@ -1406,6 +1494,7 @@ components:
     # ── Admin management (admins by email) ──────────────────────────────────────
     AdminReportPageV1:
       type: object
+      additionalProperties: false
       description: |
         One page of the team-wide report history. `total` counts every deliverable report in the
         whole history, not the rows in this page — that is what lets the table say "50 of 12,480".
@@ -1416,6 +1505,7 @@ components:
         size: { type: integer, format: int32, description: "Rows per page that was applied, after clamping." }
         hasMore: { type: boolean, description: "Whether another page follows this one." }
         reports:
+          description: "The rows of this page, in the requested order."
           type: array
           items: { $ref: "#/components/schemas/ReportSummaryV1" }
 
@@ -1428,32 +1518,40 @@ components:
       enum: [ config, managed ]
 
     AdminListV1:
+      description: "The current admins: config (root) admins first, then managed ones."
       type: object
+      additionalProperties: false
       required: [ admins ]
       properties:
         admins:
+          description: "The admins, config (root) first, then managed."
           type: array
           items: { $ref: "#/components/schemas/AdminEntryV1" }
 
     AdminEntryV1:
+      description: "One admin and where the grant comes from."
       type: object
+      additionalProperties: false
       required: [ email, source, removable ]
       properties:
-        email: { type: string }
-        source: { $ref: "#/components/schemas/AdminSourceV1" }
+        email: { type: string, description: "The admin's email." }
+        source: { $ref: "#/components/schemas/AdminSourceV1", description: "Where the grant comes from." }
         addedByEmail: { type: string, description: "Who granted this admin (managed entries only)." }
         createdAt: { type: string, format: date-time, description: "When the grant was created (managed entries only)." }
         removable: { type: boolean, description: "True when this grant can be revoked via the UI (managed only)." }
 
     AddAdminRequestV1:
+      description: "An email to grant admin access to."
       type: object
+      additionalProperties: false
       required: [ email ]
       properties:
-        email: { type: string, description: "Email to grant admin access to." }
+        email: { type: string, format: email, maxLength: 320, description: "Email to grant admin access to." }
 
     # ── Admin dashboard (team statistics + technical health) ────────────────────
     AdminStatsV1:
       type: object
+      additionalProperties: false
       required:
         [ updatedAt, range, totals, savings, byUser, byType, series, seriesUnit, tokens,
           tokensByWeek, tokensByMonth, activeUsersWeeks, activeUsersMonths, byLabel, failures ]
@@ -1466,13 +1564,15 @@ components:
             When the `usage_daily` rollup these figures are derived from was last rebuilt. Absent when
             the rollup has never been built. Everything except `totals.running`/`totals.failed` and
             `failures` is as fresh as this timestamp, not as fresh as `updatedAt`.
-        range: { $ref: "#/components/schemas/AdminRangeV1" }
-        totals: { $ref: "#/components/schemas/AdminTotalsV1" }
-        savings: { $ref: "#/components/schemas/AdminSavingsV1" }
+        range: { $ref: "#/components/schemas/AdminRangeV1", description: "The window the figures actually cover." }
+        totals: { $ref: "#/components/schemas/AdminTotalsV1", description: "Headline counters." }
+        savings: { $ref: "#/components/schemas/AdminSavingsV1", description: "Modelled time and money saved over manual report building." }
         byUser:
+          description: "Per-user activity in the window, most active first."
           type: array
           items: { $ref: "#/components/schemas/AdminUserStatV1" }
         byType:
+          description: "Reports per report type in the window."
           type: array
           items: { $ref: "#/components/schemas/AdminTypeStatV1" }
         series:
@@ -1481,11 +1581,8 @@ components:
             Report volume and token spend across the window, bucketed for charting, oldest first. The
             bucket size is chosen from the span so the chart stays readable — see `seriesUnit`.
           items: { $ref: "#/components/schemas/AdminTokenPeriodV1" }
-        seriesUnit:
-          type: string
-          enum: [ day, week, month ]
-          description: "Bucket size `series` uses."
-        tokens: { $ref: "#/components/schemas/AdminTokenTotalsV1" }
+        seriesUnit: { $ref: "#/components/schemas/AdminSeriesUnitV1", description: "Bucket size `series` uses." }
+        tokens: { $ref: "#/components/schemas/AdminTokenTotalsV1", description: "Team-wide Claude token consumption in the window." }
         tokensByWeek:
           type: array
           description: "Token spend per ISO week with week-over-week comparison, oldest first."
@@ -1513,6 +1610,7 @@ components:
 
     AdminRangeV1:
       type: object
+      additionalProperties: false
       description: |
         The window the figures actually cover, after the requested dates were resolved and clamped.
         Sent back because what was asked for and what was answered can differ, and a screen that
@@ -1521,15 +1619,11 @@ components:
       properties:
         from: { type: string, format: date, description: "First day covered, inclusive." }
         to: { type: string, format: date, description: "Last day covered, inclusive." }
-        suggestedUnit:
-          type: string
-          enum: [ week, month ]
-          description: |
-            The trend granularity this span reads best at — weeks for a short window, months for a
-            long one. A default, not a rule: the client may show the other one.
+        suggestedUnit: { $ref: "#/components/schemas/AdminTrendUnitV1", description: "Trend granularity the span reads best at." }
 
     AdminTotalsV1:
       type: object
+      additionalProperties: false
       description: |
         Headline counters, split by what they are about. `reports`, `activeUsers` and `newUsers`
         describe the selected window. `running` and `failed` deliberately do not — a job queued right
@@ -1545,10 +1639,11 @@ components:
 
     AdminUserStatV1:
       type: object
+      additionalProperties: false
       required: [ email, name, total, slides, inputTokens, outputTokens, cacheTokens, totalTokens, costUsd ]
       properties:
-        userId: { type: string }
-        email: { type: string }
+        userId: { type: string, description: "Clerk user id, when known." }
+        email: { type: string, description: "The user's email." }
         name: { type: string, description: "Display name (falls back to the email local part)." }
         total: { type: integer, format: int32, description: "Reports the user created in the window." }
         slides: { type: integer, format: int64, description: "Slides those reports shipped, measured where known and modelled where not." }
@@ -1563,14 +1658,17 @@ components:
         costUsd: { type: number, format: double, description: "Estimated cost of the user's reports in USD at configured list prices." }
 
     AdminTypeStatV1:
+      description: "Reports of one type created in the window."
       type: object
+      additionalProperties: false
       required: [ type, count ]
       properties:
         type: { type: string, description: "Report type code (uppercased); 'OTHER' when unknown." }
-        count: { type: integer, format: int32 }
+        count: { type: integer, format: int32, description: "Reports of this type created in the window." }
 
     AdminSavingsV1:
       type: object
+      additionalProperties: false
       description: |
         What the generated reports would have cost to build by hand over the selected window, and
         what that is worth.
@@ -1590,7 +1688,7 @@ components:
         reportsCounted: { type: integer, format: int32, description: "Reports the figure covers." }
         slidesTotal: { type: integer, format: int64, description: "Slides those reports shipped, measured where known and modelled where not." }
         slidesMeasured: { type: integer, format: int64, description: "Of those, the slides actually counted in a finished deck." }
-        avgSlidesPerReport: { type: number, format: double }
+        avgSlidesPerReport: { type: number, format: double, description: "slidesTotal divided by reportsCounted." }
         manualHours: { type: number, format: double, description: "Hours the same output would have cost by hand." }
         automationHours: { type: number, format: double, description: "Wall-clock hours the generated runs actually took." }
         savedHours: { type: number, format: double, description: "manualHours less automationHours, floored at zero." }
@@ -1600,6 +1698,7 @@ components:
 
     AdminTokenPeriodV1:
       type: object
+      additionalProperties: false
       description: |
         One bucket of a trend — a day, a week or a month — carrying both its own figures and the
         comparison with the bucket before it.
@@ -1614,21 +1713,22 @@ components:
         key: { type: string, description: "Stable bucket id: '2026-08-03' for a day, '2026-W32' for a week, '2026-08' for a month." }
         start: { type: string, format: date, description: "First day of the bucket." }
         label: { type: string, description: "Short human label, e.g. 'Aug 3' or 'Aug 2026'." }
-        reports: { type: integer, format: int32 }
-        inputTokens: { type: integer, format: int64 }
-        outputTokens: { type: integer, format: int64 }
+        reports: { type: integer, format: int32, description: "Reports created in the bucket." }
+        inputTokens: { type: integer, format: int64, description: "Plain (uncached) input tokens." }
+        outputTokens: { type: integer, format: int64, description: "Output tokens." }
         cacheTokens: { type: integer, format: int64, description: "Prompt-cache write + read tokens." }
-        totalTokens: { type: integer, format: int64 }
-        costUsd: { type: number, format: double }
-        prevTotalTokens: { type: integer, format: int64 }
+        totalTokens: { type: integer, format: int64, description: "Every token in the bucket, summed." }
+        costUsd: { type: number, format: double, description: "Estimated cost in USD at the configured list prices." }
+        prevTotalTokens: { type: integer, format: int64, description: "The previous bucket's tokens; absent for the first bucket." }
         tokensDeltaPct: { type: number, format: double, description: "Signed percentage change in tokens against the previous bucket." }
-        prevReports: { type: integer, format: int32 }
-        reportsDeltaPct: { type: number, format: double }
-        prevCostUsd: { type: number, format: double }
-        costDeltaPct: { type: number, format: double }
+        prevReports: { type: integer, format: int32, description: "The previous bucket's report count; absent for the first bucket." }
+        reportsDeltaPct: { type: number, format: double, description: "Signed percentage change in reports against the previous bucket." }
+        prevCostUsd: { type: number, format: double, description: "The previous bucket's cost; absent for the first bucket." }
+        costDeltaPct: { type: number, format: double, description: "Signed percentage change in cost against the previous bucket." }
 
     AdminActiveUsersPeriodV1:
       type: object
+      additionalProperties: false
       description: |
         Active users in one bucket — a week or a month — with the comparison against the bucket
         before it. "Active" means the user generated at least one report in the bucket, counted once
@@ -1639,16 +1739,17 @@ components:
       required: [ key, start, label, activeUsers, newUsers ]
       properties:
         key: { type: string, description: "Stable bucket id: '2026-W32' for a week, '2026-08' for a month." }
-        start: { type: string, format: date }
-        label: { type: string }
-        activeUsers: { type: integer, format: int32 }
+        start: { type: string, format: date, description: "First day of the bucket." }
+        label: { type: string, description: "Short human label, e.g. 'Aug 3' or 'Aug 2026'." }
+        activeUsers: { type: integer, format: int32, description: "Distinct users who generated something in the bucket." }
         newUsers: { type: integer, format: int32, description: "Of those, the ones who had never generated anything before." }
-        prevActive: { type: integer, format: int32 }
+        prevActive: { type: integer, format: int32, description: "The previous bucket's active users; absent for the first bucket." }
         deltaPct: { type: number, format: double, description: "Signed percentage change against the previous bucket." }
 
     # ── Claude token consumption (admin "Token consumption" tab) ────────────────
     AdminTokenTotalsV1:
       type: object
+      additionalProperties: false
       description: |
         Team-wide Claude token consumption. Cache write/read tokens are reported apart from
         plain input because they are billed at different rates. Costs are estimates at the
@@ -1663,16 +1764,16 @@ components:
       properties:
         reportsWithUsage: { type: integer, format: int32, description: "Reports that carry recorded token counts." }
         claudeCalls: { type: integer, format: int64, description: "Anthropic API calls those reports made." }
-        inputTokens: { type: integer, format: int64 }
-        outputTokens: { type: integer, format: int64 }
+        inputTokens: { type: integer, format: int64, description: "Plain (uncached) input tokens." }
+        outputTokens: { type: integer, format: int64, description: "Output tokens." }
         cacheWriteTokens: { type: integer, format: int64, description: "Input tokens written into the prompt cache." }
         cacheReadTokens: { type: integer, format: int64, description: "Input tokens served from the prompt cache." }
         totalTokens: { type: integer, format: int64, description: "Every token above, summed." }
         costUsd: { type: number, format: double, description: "Estimated total cost in USD." }
-        avgTokensPerReport: { type: integer, format: int64 }
+        avgTokensPerReport: { type: integer, format: int64, description: "Mean total tokens per report that carries usage." }
         avgInputPerReport: { type: integer, format: int64, description: "Mean input-side tokens (plain + cache) per report." }
-        avgOutputPerReport: { type: integer, format: int64 }
-        avgCostPerReportUsd: { type: number, format: double }
+        avgOutputPerReport: { type: integer, format: int64, description: "Mean output tokens per report that carries usage." }
+        avgCostPerReportUsd: { type: number, format: double, description: "Mean estimated cost in USD per report that carries usage." }
         unknownCalls:
           type: integer
           format: int64
@@ -1693,21 +1794,23 @@ components:
           type: integer
           format: int64
           description: "Measured tokens of those calls. Already included in `totalTokens`, excluded from the per-report averages."
-        unattributedCostUsd: { type: number, format: double }
+        unattributedCostUsd: { type: number, format: double, description: "Estimated cost of the unattributed calls." }
 
     AdminTokenLabelV1:
       type: object
+      additionalProperties: false
       description: "Measured Claude spend for one pipeline stage, keyed by the batch tag its calls are logged under."
       required: [ label, calls, totalTokens, costUsd, unknownCalls ]
       properties:
         label: { type: string, description: "Batch tag, e.g. 'BatchC', 'BatchGeo', 'LineItemMatch'." }
-        calls: { type: integer, format: int64 }
-        totalTokens: { type: integer, format: int64 }
-        costUsd: { type: number, format: double }
+        calls: { type: integer, format: int64, description: "Measured calls of this stage." }
+        totalTokens: { type: integer, format: int64, description: "Every token those calls used." }
+        costUsd: { type: number, format: double, description: "Estimated cost of those tokens in USD." }
         unknownCalls: { type: integer, format: int64, description: "Calls of this stage whose reply never arrived." }
 
     AdminFailedJobV1:
       type: object
+      additionalProperties: false
       description: |
         One report-job issue: either a hard failure (the run threw and produced no report) or a
         degraded report (the run finished but a slide shipped without its Claude copy). `severity`
@@ -1715,13 +1818,13 @@ components:
         a hard failure they name the stage that threw and for a degraded report the final step.
       required: [ jobId, title, step, total, severity, errorMessage, warnings, totalTokens, costUsd ]
       properties:
-        jobId: { type: integer, format: int64 }
+        jobId: { type: integer, format: int64, description: "Id of the report job." }
         type: { type: string, description: "Report type code, when known." }
         title: { type: string, description: "Human-friendly report name." }
         slideUrl: { type: string, description: "Generated deck URL when the run produced one (degraded reports); absent for a hard failure." }
-        ownerEmail: { type: string }
-        ownerName: { type: string }
-        createdAt: { type: string, format: date-time }
+        ownerEmail: { type: string, description: "Email of the job's owner." }
+        ownerName: { type: string, description: "Display name of the job's owner." }
+        createdAt: { type: string, format: date-time, description: "When the job was created." }
         failedAt: { type: string, format: date-time, description: "When the job was last updated, i.e. when it failed or finished." }
         step: { type: integer, format: int32, description: "1-based pipeline step the job had reached." }
         total: { type: integer, format: int32, description: "Number of steps in the pipeline." }
@@ -1739,6 +1842,7 @@ components:
 
     VersionV1:
       type: object
+      additionalProperties: false
       required: [ commitId ]
       properties:
         commitId:
@@ -1751,10 +1855,14 @@ components:
     # ── Shared building block ───────────────────────────────────────────────────
     Rows2DV1:
       type: array
-      description: A ragged-tolerant 2-D grid of sheet cell strings (A1:Z).
+      description: |
+        A ragged-tolerant 2-D grid of sheet cell strings, as read by the server (A1:ZZ). Bounded at
+        200,000 rows, 702 cells per row (A..ZZ) and 50,000 characters per cell (Google's own cell limit).
+      maxItems: 200000
       items:
         type: array
-        items: { type: string }
+        maxItems: 702
+        items: { type: string, maxLength: 50000 }
 
     PaidExportTabsV1:
       type: object
@@ -1762,4 +1870,5 @@ components:
         The tabs of one paid-media export workbook (Google Ads or Meta), keyed by the tab name as it
         appears in the workbook (e.g. "FULL-FLIGHT PERFORMANCE", "KEYWORD BREAKDOWN"). Each value is the
         tab's grid with trailing blank rows removed.
+      maxProperties: 100
       additionalProperties: { $ref: "#/components/schemas/Rows2DV1" }

@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.service.reports.dto.LineItemMapping;
 import com.aidigital.reportconstructor.service.reports.dto.PlanTactic;
 import com.aidigital.reportconstructor.service.reports.engine.TacticCatalog;
@@ -13,7 +14,7 @@ class EffectiveTacticsHelperImplTest {
 
 	private final EffectiveTacticsHelperImpl helper =
 			new EffectiveTacticsHelperImpl(new MediaPlanTacticExtractorImpl(new TacticCatalog(),
-					new SheetRowHelperImpl()));
+					new SheetRowHelperImpl(new CurrentTimeImpl())));
 
 	private final List<List<String>> plan = List.of(
 			List.of("Media"),

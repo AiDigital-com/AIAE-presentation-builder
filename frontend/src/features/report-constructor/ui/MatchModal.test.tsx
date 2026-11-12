@@ -1,11 +1,12 @@
 import { useEffect } from "react";
+
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+
 import type { LineItemMatchResult, MappingEntry } from "@/shared/api/types";
 import { useWizard, WizardProvider } from "@/shared/wizard/WizardContext";
+import { NAMING_PREFIX as P } from "../testing/matchModalFixtures";
 import { MatchModal } from "./MatchModal";
-
-const P = "GCVB_Grapevine Convention & Visitors Bureau_";
 
 /**
  * Builds a match result whose ids carry the given channel; namings follow the real Level 1 pattern.

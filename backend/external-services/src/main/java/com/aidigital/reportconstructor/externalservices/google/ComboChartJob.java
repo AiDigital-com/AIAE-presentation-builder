@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.engine.Pivot;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PacingPivot;
 
 /**
  * Inputs for one combo (daily or monthly) chart.
@@ -14,7 +14,7 @@ import com.aidigital.reportconstructor.service.reports.engine.Pivot;
  *                   the pivot's own clicks/completions presence) deciding the Amount-column metric and
  *                   the CTR/VCR header
  */
-record ComboChartJob(String templateId, ChartTarget target, String copyName, Pivot pivot, String tag,
+record ComboChartJob(String templateId, ChartTarget target, String copyName, PacingPivot pivot, String tag,
                      String kpiType) {
 
 }

@@ -1,9 +1,9 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.enums.PaidChannelKind;
-import com.aidigital.reportconstructor.service.reports.enums.PaidTableMarker;
-import com.aidigital.reportconstructor.service.reports.model.PaidSlideTable;
-import com.aidigital.reportconstructor.service.reports.model.PaidSlidesFill;
+import com.aidigital.reportconstructor.externalservices.google.deck.PaidDeckChannel;
+import com.aidigital.reportconstructor.externalservices.google.deck.PaidDeckTableMarker;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PaidDeckTable;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PaidDeckFill;
 import com.google.api.services.slides.v1.model.DeleteObjectRequest;
 import com.google.api.services.slides.v1.model.DeleteTableRowRequest;
 import com.google.api.services.slides.v1.model.DeleteTextRequest;
@@ -62,13 +62,13 @@ public class PaidSlidesWriter {
 	 * @param fill   the tables to write and the channels to delete
 	 * @return the requests, in the order they must run
 	 */
-	List<Request> requests(List<Page> slides, PaidSlidesFill fill) {
+	List<Request> requests(List<Page> slides, PaidDeckFill fill) {
 		List<Request> requests = new ArrayList<>();
 		List<Page> pages = slides == null ? List.of() : slides;
-		for (PaidSlideTable table : fill.tables()) {
+		for (PaidDeckTable table : fill.tables()) {
 			requests.addAll(tableRequests(pages, table));
 		}
-		for (PaidChannelKind channel : fill.absentChannels()) {
+		for (PaidDeckChannel channel : fill.absentChannels()) {
 			requests.addAll(slideDeleteRequests(pages, channel));
 		}
 		return requests;
@@ -81,7 +81,7 @@ public class PaidSlidesWriter {
 	 * @param table  the table's values
 	 * @return the cell writes, then the row deletions bottom-up; empty when the deck has no such table
 	 */
-	List<Request> tableRequests(List<Page> slides, PaidSlideTable table) {
+	List<Request> tableRequests(List<Page> slides, PaidDeckTable table) {
 		PageElement element = findTable(slides, table.marker());
 		if (element == null) {
 			log.warn("[slides] fillPaidSlides: no table titled {} in the deck - its sample values stay",
@@ -124,7 +124,7 @@ public class PaidSlidesWriter {
 	 * @param marker the table to find
 	 * @return the first table whose alt-text title is the marker (trimmed, case-insensitive), or {@code null}
 	 */
-	PageElement findTable(List<Page> slides, PaidTableMarker marker) {
+	PageElement findTable(List<Page> slides, PaidDeckTableMarker marker) {
 		for (Page page : slides) {
 			for (PageElement element : elements(page)) {
 				if (element.getTable() != null && element.getTitle() != null
@@ -196,7 +196,7 @@ public class PaidSlidesWriter {
 	 * @param channel the channel to remove
 	 * @return one deletion per slide, in deck order
 	 */
-	List<Request> slideDeleteRequests(List<Page> slides, PaidChannelKind channel) {
+	List<Request> slideDeleteRequests(List<Page> slides, PaidDeckChannel channel) {
 		String tokenStart = TOKEN_OPEN + channel.tokenPrefix();
 		String divider = normalize(channel.dividerTitle());
 		List<Request> requests = new ArrayList<>();
@@ -222,11 +222,11 @@ public class PaidSlidesWriter {
 	 * @param channel the channel
 	 * @return {@code true} when the element's alt-text title is one of the channel's table markers
 	 */
-	boolean carriesMarker(PageElement element, PaidChannelKind channel) {
+	boolean carriesMarker(PageElement element, PaidDeckChannel channel) {
 		if (element.getTitle() == null) {
 			return false;
 		}
-		for (PaidTableMarker marker : PaidTableMarker.values()) {
+		for (PaidDeckTableMarker marker : PaidDeckTableMarker.values()) {
 			if (marker.channel() == channel && marker.marker().equalsIgnoreCase(element.getTitle().trim())) {
 				return true;
 			}

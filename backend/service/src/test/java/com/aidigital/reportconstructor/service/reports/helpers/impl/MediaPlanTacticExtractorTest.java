@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.service.reports.dto.PlanTactic;
 import com.aidigital.reportconstructor.service.reports.engine.TacticCatalog;
 import org.junit.jupiter.api.Test;
@@ -11,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MediaPlanTacticExtractorTest {
 
 	private final MediaPlanTacticExtractorImpl extractor =
-			new MediaPlanTacticExtractorImpl(new TacticCatalog(), new SheetRowHelperImpl());
+			new MediaPlanTacticExtractorImpl(new TacticCatalog(), new SheetRowHelperImpl(new CurrentTimeImpl()));
 
 	@Test
 	void extract_skipsStopPhrasesAndNonWhitelist() {

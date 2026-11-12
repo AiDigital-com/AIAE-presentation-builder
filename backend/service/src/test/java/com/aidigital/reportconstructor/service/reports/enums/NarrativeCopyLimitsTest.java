@@ -8,9 +8,12 @@ class NarrativeCopyLimitsTest {
 
 	@Test
 	void shouldPickTheCompactBudgetsOnlyForAnMpoDeckTest() {
-		// Given-When-Then: an MPO deck gets the narrow boxes' budgets, every other deck the standard ones
-		assertThat(NarrativeCopyLimits.forDeck(true)).isEqualTo(NarrativeCopyLimits.COMPACT);
-		assertThat(NarrativeCopyLimits.forDeck(false)).isEqualTo(NarrativeCopyLimits.STANDARD);
+		// Given:
+		NarrativeCopyLimitsResolver resolver = new NarrativeCopyLimitsResolver();
+
+		// When-Then: an MPO deck gets the narrow boxes' budgets, every other deck the standard ones
+		assertThat(resolver.forDeck(true)).isEqualTo(NarrativeCopyLimits.COMPACT);
+		assertThat(resolver.forDeck(false)).isEqualTo(NarrativeCopyLimits.STANDARD);
 	}
 
 	@Test

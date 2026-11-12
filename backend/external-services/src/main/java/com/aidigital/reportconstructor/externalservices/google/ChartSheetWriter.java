@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.engine.Pivot;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PacingPivot;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest;
 import com.google.api.services.sheets.v4.model.BatchUpdateValuesRequest;
@@ -9,6 +9,7 @@ import com.google.api.services.sheets.v4.model.DimensionRange;
 import com.google.api.services.sheets.v4.model.Sheet;
 import com.google.api.services.sheets.v4.model.Spreadsheet;
 import com.google.api.services.sheets.v4.model.ValueRange;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -23,6 +24,7 @@ import java.util.Optional;
  * Owns column geometry (A=date, B=imps, C=CTR/VCR formula, D=clicks/completions).
  */
 @Component
+@RequiredArgsConstructor
 public class ChartSheetWriter {
 
 	/**
@@ -36,6 +38,9 @@ public class ChartSheetWriter {
 
 	/** The value written over a breakdown workbook's sample impressions when the tactic has none for it. */
 	private static final String BLANK_CELL = "";
+
+	/** Times every Sheets call on the shared external-call timer. */
+	private final GoogleCallTimer googleCalls;
 
 	/**
 	 * Decimal CTR/VCR ratio for a percentage-formatted cell ({@code 0.025} displays as 2.5%).
@@ -71,7 +76,7 @@ public class ChartSheetWriter {
 	 * @return cell values per row, or empty when column C must not be overwritten
 	 */
 	Optional<List<List<Object>>> rateColumnValuesForPivot(
-			Pivot pivot, boolean hasClicks, boolean forceWrite) {
+			PacingPivot pivot, boolean hasClicks, boolean forceWrite) {
 		if (!forceWrite && !shouldWriteDailyRateColumn()) {
 			return Optional.empty();
 		}
@@ -93,9 +98,9 @@ public class ChartSheetWriter {
 	 * @param pivot     pivoted series
 	 * @param hasClicks whether the numerator is clicks (else completions)
 	 * @return cell values per row, or empty when column C must not be overwritten
-	 * @see #rateColumnValuesForPivot(Pivot, boolean, boolean)
+	 * @see #rateColumnValuesForPivot(PacingPivot, boolean, boolean)
 	 */
-	Optional<List<List<Object>>> rateColumnValuesForPivot(Pivot pivot, boolean hasClicks) {
+	Optional<List<List<Object>>> rateColumnValuesForPivot(PacingPivot pivot, boolean hasClicks) {
 		return rateColumnValuesForPivot(pivot, hasClicks, false);
 	}
 
@@ -119,7 +124,7 @@ public class ChartSheetWriter {
 	 *                      metric from the pivot's clicks/completions presence
 	 * @throws IOException when a Sheets API call fails
 	 */
-	void writePivot(Sheets sheets, String spreadsheetId, String tabName, Pivot pivot, String kpiType)
+	void writePivot(Sheets sheets, String spreadsheetId, String tabName, PacingPivot pivot, String kpiType)
 			throws IOException {
 		if (pivot.isEmpty()) {
 			return;
@@ -199,16 +204,16 @@ public class ChartSheetWriter {
 							new DeleteDimensionRequest().setRange(new DimensionRange().setSheetId(sid)
 									.setDimension("COLUMNS").setStartIndex(2).setEndIndex(3)))
 			);
-			sheets.spreadsheets().batchUpdate(spreadsheetId,
-					new BatchUpdateSpreadsheetRequest().setRequests(del)).execute();
+			googleCalls.execute(sheets.spreadsheets().batchUpdate(spreadsheetId,
+					new BatchUpdateSpreadsheetRequest().setRequests(del)));
 		}
 
 		if (!noCdCols && ctrHeaderCol >= 0 && headerRow >= 0) {
 			String hdrRange = tabName + "!" + colLetter(ctrHeaderCol) + (headerRow + 1);
 			String hdrLabel = useClicks ? "CTR" : ("acr".equalsIgnoreCase(kpiType) ? "ACR" : "VCR");
-			sheets.spreadsheets().values().update(spreadsheetId, hdrRange,
+			googleCalls.execute(sheets.spreadsheets().values().update(spreadsheetId, hdrRange,
 							new ValueRange().setValues(List.of(List.of(hdrLabel))))
-					.setValueInputOption("RAW").execute();
+					.setValueInputOption("RAW"));
 		}
 
 		int startRow = dataStartRow + 1;
@@ -241,8 +246,8 @@ public class ChartSheetWriter {
 					.setValues(metrics));
 		}
 
-		sheets.spreadsheets().values().batchUpdate(spreadsheetId,
-				new BatchUpdateValuesRequest().setValueInputOption("RAW").setData(data)).execute();
+		googleCalls.execute(sheets.spreadsheets().values().batchUpdate(spreadsheetId,
+				new BatchUpdateValuesRequest().setValueInputOption("RAW").setData(data)));
 	}
 
 	/**
@@ -282,8 +287,8 @@ public class ChartSheetWriter {
 						.setValues(List.of(List.of("Other", Math.round(otherImps))))
 		);
 
-		sheets.spreadsheets().values().batchUpdate(spreadsheetId,
-				new BatchUpdateValuesRequest().setValueInputOption("RAW").setData(data)).execute();
+		googleCalls.execute(sheets.spreadsheets().values().batchUpdate(spreadsheetId,
+				new BatchUpdateValuesRequest().setValueInputOption("RAW").setData(data)));
 	}
 
 	/**
@@ -319,8 +324,8 @@ public class ChartSheetWriter {
 		if (matched == 0) {
 			return 0;
 		}
-		sheets.spreadsheets().values().batchUpdate(spreadsheetId,
-				new BatchUpdateValuesRequest().setValueInputOption("RAW").setData(data)).execute();
+		googleCalls.execute(sheets.spreadsheets().values().batchUpdate(spreadsheetId,
+				new BatchUpdateValuesRequest().setValueInputOption("RAW").setData(data)));
 		return (int) matched;
 	}
 
@@ -406,8 +411,8 @@ public class ChartSheetWriter {
 		List<ValueRange> data = List.of(new ValueRange()
 				.setRange(tabName + "!A" + dataStartRow + ":B" + (dataStartRow + rows.size() - 1))
 				.setValues(rows));
-		sheets.spreadsheets().values().batchUpdate(spreadsheetId,
-				new BatchUpdateValuesRequest().setValueInputOption("RAW").setData(data)).execute();
+		googleCalls.execute(sheets.spreadsheets().values().batchUpdate(spreadsheetId,
+				new BatchUpdateValuesRequest().setValueInputOption("RAW").setData(data)));
 		return valuesByLabel.size();
 	}
 
@@ -444,7 +449,7 @@ public class ChartSheetWriter {
 	}
 
 	List<List<Object>> readValues(Sheets sheets, String spreadsheetId, String range) throws IOException {
-		ValueRange vr = sheets.spreadsheets().values().get(spreadsheetId, range).execute();
+		ValueRange vr = googleCalls.execute(sheets.spreadsheets().values().get(spreadsheetId, range));
 		return vr.getValues() == null ? List.of() : vr.getValues();
 	}
 
@@ -458,10 +463,9 @@ public class ChartSheetWriter {
 	 * @throws IOException when the metadata request fails
 	 */
 	int sheetIdForTab(Sheets sheets, String spreadsheetId, String tabName) throws IOException {
-		Spreadsheet ss = sheets.spreadsheets().get(spreadsheetId)
+		Spreadsheet ss = googleCalls.execute(sheets.spreadsheets().get(spreadsheetId)
 				.setIncludeGridData(false)
-				.setFields("sheets.properties(sheetId,title)")
-				.execute();
+				.setFields("sheets.properties(sheetId,title)"));
 		if (ss.getSheets() != null) {
 			for (Sheet s : ss.getSheets()) {
 				if (s.getProperties() != null && tabName.equals(s.getProperties().getTitle())) {

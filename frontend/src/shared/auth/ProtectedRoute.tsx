@@ -1,11 +1,9 @@
-import { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@clerk/clerk-react";
-import { LoadingBlock } from "../ui/LoadingBlock";
 
-interface Props {
-    children: ReactNode;
-}
+import { useAuth } from "@clerk/clerk-react";
+
+import { LoadingBlock } from "../ui/LoadingBlock";
+import type { Props } from "./model/protectedRoute";
 
 /** Redirects unauthenticated users to {@code /login}; shows a loading state while Clerk boots. */
 export function ProtectedRoute({ children }: Props) {

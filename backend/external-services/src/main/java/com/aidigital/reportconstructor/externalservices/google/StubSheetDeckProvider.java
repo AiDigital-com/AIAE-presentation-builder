@@ -1,13 +1,13 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.dto.AudienceTable;
-import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
-import com.aidigital.reportconstructor.service.reports.dto.CreativeTable;
-import com.aidigital.reportconstructor.service.reports.dto.DeviceTable;
-import com.aidigital.reportconstructor.service.reports.dto.GeoTable;
-import com.aidigital.reportconstructor.service.reports.dto.PublisherRow;
-import com.aidigital.reportconstructor.service.reports.ports.PacingTablesRequest;
-import com.aidigital.reportconstructor.service.reports.ports.SheetDeckProvider;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookAudienceTable;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckBreakdown;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookCreativeTable;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookDeviceTable;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookGeoTable;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookPublisherRow;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookPacingRequest;
+import com.aidigital.reportconstructor.externalservices.google.sheets.SheetWorkbookClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +26,7 @@ import java.util.Set;
  */
 @Component
 @RequiredArgsConstructor
-public class StubSheetDeckProvider implements SheetDeckProvider {
+public class StubSheetDeckProvider implements SheetWorkbookClient {
 
 	private final GoogleProperties props;
 
@@ -51,7 +51,7 @@ public class StubSheetDeckProvider implements SheetDeckProvider {
 	}
 
 	@Override
-	public List<String> writePacingTables(String spreadsheetId, PacingTablesRequest request) {
+	public List<String> writePacingTables(String spreadsheetId, WorkbookPacingRequest request) {
 		// No-op: the stub never clones a real workbook, so there are no tables to write.
 		return List.of();
 	}
@@ -64,40 +64,40 @@ public class StubSheetDeckProvider implements SheetDeckProvider {
 
 	@Override
 	public void clearBreakdowns(
-			String spreadsheetId, Map<Integer, Set<BreakdownType>> enabledByTactic, String userGoogleAccessToken) {
+			String spreadsheetId, Map<Integer, Set<DeckBreakdown>> enabledByTactic, String userGoogleAccessToken) {
 		// No-op: the stub never clones a real workbook, so there is no "Breakdowns" tab to clear.
 	}
 
 	@Override
-	public Map<Integer, List<PublisherRow>> readPublisherTables(
+	public Map<Integer, List<WorkbookPublisherRow>> readPublisherTables(
 			String spreadsheetId, Set<Integer> tacticNums, String userGoogleAccessToken) {
 		// The stub never clones a real workbook, so there are no hand-entered publisher rows to read.
 		return Map.of();
 	}
 
 	@Override
-	public Map<Integer, CreativeTable> readCreativeTables(
+	public Map<Integer, WorkbookCreativeTable> readCreativeTables(
 			String spreadsheetId, Set<Integer> tacticNums, String userGoogleAccessToken) {
 		// The stub never clones a real workbook, so there are no hand-entered creative rows to read.
 		return Map.of();
 	}
 
 	@Override
-	public Map<Integer, GeoTable> readGeoTables(
+	public Map<Integer, WorkbookGeoTable> readGeoTables(
 			String spreadsheetId, Set<Integer> tacticNums, String userGoogleAccessToken) {
 		// The stub never clones a real workbook, so there are no hand-entered geo rows to read.
 		return Map.of();
 	}
 
 	@Override
-	public Map<Integer, AudienceTable> readAudienceTables(
+	public Map<Integer, WorkbookAudienceTable> readAudienceTables(
 			String spreadsheetId, Set<Integer> tacticNums, String userGoogleAccessToken) {
 		// The stub never clones a real workbook, so there are no hand-entered audience rows to read.
 		return Map.of();
 	}
 
 	@Override
-	public Map<Integer, DeviceTable> readDeviceTables(
+	public Map<Integer, WorkbookDeviceTable> readDeviceTables(
 			String spreadsheetId, Set<Integer> tacticNums, String userGoogleAccessToken) {
 		// The stub never clones a real workbook, so there are no hand-entered device rows to read.
 		return Map.of();

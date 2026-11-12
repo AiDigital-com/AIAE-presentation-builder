@@ -1,13 +1,12 @@
+import { MemoryRouter } from "react-router-dom";
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
-import type { ReportSummary } from "@/shared/api/types";
-import { MyReportsPage } from "./MyReportsPage";
 
-const navigate = vi.fn();
-const dismiss = vi.fn();
-const reportsQuery = vi.fn();
+import type { ReportSummary } from "@/shared/api/types";
+import { dismiss, navigate, reportsQuery } from "../testing/myReportsPageMocks";
+import { MyReportsPage } from "./MyReportsPage";
 
 vi.mock("react-router-dom", async () => {
     const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");

@@ -1,8 +1,5 @@
 package com.aidigital.reportconstructor.service.reports.enums;
 
-import java.util.Arrays;
-import java.util.List;
-
 /**
  * The Claude-written copy slots of the MPO deck's Paid Search ({@code ps_}) and Paid Social ({@code pso_}) slides.
  * Each constant is one slot family: a single token ({@code {{ps_verdict}}}) or a numbered run
@@ -146,16 +143,13 @@ public enum PaidCopySlot {
 	}
 
 	/**
-	 * The slot families one channel's slides carry in one report type.
+	 * Whether this slot appears in the given report type.
 	 *
-	 * @param channel the paid channel
-	 * @param eom     whether the deck is an EOM report
-	 * @return the channel's slots, in declaration (slide) order
+	 * @param eom whether the deck is an EOM report
+	 * @return {@code true} when the slot's report scope includes that report type
 	 */
-	public static List<PaidCopySlot> forChannel(PaidChannelKind channel, boolean eom) {
-		return Arrays.stream(values())
-				.filter(s -> s.channel == channel && s.scope.includes(eom))
-				.toList();
+	public boolean inReport(boolean eom) {
+		return scope.includes(eom);
 	}
 
 	/**

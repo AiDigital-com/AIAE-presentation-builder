@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+
 import { useClerk, useUser } from "@clerk/clerk-react";
+
 import { useCurrentUser } from "@/shared/auth/useCurrentUser";
 import { useVersionQuery } from "@/shared/api/useVersionQuery";
+import type { NavItem } from "./model/appNav";
 import "./app-nav.css";
 
 /** AI Digital wordmark (blue), from the design-system logo asset. */
@@ -21,12 +24,6 @@ function BrandLogo() {
             <path d="M187.611 27.8277V26.2023C187.611 25.6319 187.147 25.1714 186.58 25.1714H178.508C177.938 25.1714 177.477 24.7075 177.477 24.1405V1.51889C177.477 0.948455 177.013 0.487981 176.446 0.487981H174.577C174.006 0.487981 173.546 0.948455 173.546 1.51889V27.8277C173.546 28.3982 174.006 28.8587 174.577 28.8587H186.58C187.147 28.8587 187.611 28.3982 187.611 27.8277Z" fill="#0009DC" />
         </svg>
     );
-}
-
-interface NavItem {
-    label: string;
-    to: string;
-    end?: boolean;
 }
 
 /**

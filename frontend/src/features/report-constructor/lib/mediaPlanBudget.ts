@@ -208,7 +208,7 @@ export function extractTacticBudgets(rows: Rows2D | null, tacticNames: string[])
  */
 export function namingTail(naming: string, id: string): string {
     if (!naming) return "";
-    const clean = (s: string) => s.replace(/[_\-]+/g, " ").replace(/\s+/g, " ").trim();
+    const clean = (s: string) => s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 
     if (id) {
         const marker = `_${id}_`;

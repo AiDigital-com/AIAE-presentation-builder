@@ -25,19 +25,19 @@ import static org.mockito.Mockito.when;
 class AdminFailuresServiceImplTest {
 
 	@Mock
-	AdminAccessPolicy adminAccessPolicy;
+	private AdminAccessPolicy adminAccessPolicy;
 
 	@Mock
-	ReportJobProgressHelper jobs;
+	private ReportJobProgressHelper jobs;
 
 	@Mock
-	ClaudeUsageEventService usageEvents;
+	private ClaudeUsageEventService usageEvents;
 
 	@Mock
-	AdminStatsCache statsCache;
+	private AdminStatsCache statsCache;
 
 	@InjectMocks
-	AdminFailuresServiceImpl service;
+	private AdminFailuresServiceImpl service;
 
 	/**
 	 * Builds a job with the id, status and warnings under test.

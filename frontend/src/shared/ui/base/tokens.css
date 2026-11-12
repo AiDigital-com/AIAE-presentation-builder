@@ -33,29 +33,29 @@
     --chart-magenta: 346 69% 52%;
 
     /* Spacing scale */
-    --space-1: 4px;
-    --space-1-5: 6px;
-    --space-2: 8px;
-    --space-3: 12px;
-    --space-4: 16px;
-    --space-6: 24px;
-    --space-10: 40px;
+    --space-1: 0.25rem;
+    --space-1-5: 0.375rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-10: 2.5rem;
 
     /* Radii */
-    --radius-sm: 8px;
-    --radius-md: 10px;
-    --radius-lg: 12px;
-    --radius-xl: 12px;
-    --radius-full: 999px;
+    --radius-sm: 0.5rem;
+    --radius-md: 0.625rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 0.75rem;
+    --radius-full: 62.4375rem;
 
     /* Text sizes */
-    --text-badge: 11px;
-    --text-pill: 12px;
-    --text-body: 13px;
-    --text-table-head: 14px;
-    --text-subhead: 16px;
-    --text-section: 18px;
-    --text-page-title: 32px;
+    --text-badge: 0.6875rem;
+    --text-pill: 0.75rem;
+    --text-body: 0.8125rem;
+    --text-table-head: 0.875rem;
+    --text-subhead: 1rem;
+    --text-section: 1.125rem;
+    --text-page-title: 2rem;
 
     /* Compatibility aliases consumed by scaffold blocks */
     --text-sm: var(--text-pill);
@@ -80,5 +80,9 @@
 
     --border-default: hsl(var(--border));
     --focus-ring: hsl(var(--ring) / 40%);
-    --shadow-soft: 0 2px 8px hsl(var(--foreground) / 6%);
+    --shadow-soft: 0 0.125rem 0.5rem hsl(var(--foreground) / 6%);
+
+    /* Loading / empty / error states (shared/ui/ui-states.css) */
+    --color-text-muted: rgb(92 99 112);
+    --color-danger: rgb(192 57 43);
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+
 import {
     MEDIA_PLAN_FALLBACK_TAB,
     MEDIA_PLAN_PRIMARY_TAB,
@@ -29,37 +30,19 @@ import { useReportResume } from "../api/useReportResume";
 import { MatchModal } from "./MatchModal";
 import { PacingModal } from "./PacingModal";
 import { Stepper } from "./Stepper";
-import {
-    allowedBreakdowns,
-    BREAKDOWNS,
-    StepBreakdowns,
-    type BreakdownId,
-    type BreakdownState,
-    type TacticView,
-} from "./StepBreakdowns";
-import { StepDataInputs, type InputErrors } from "./StepDataInputs";
-import { StepGenerate, type GenStatus } from "./StepGenerate";
+import { allowedBreakdowns, StepBreakdowns } from "./StepBreakdowns";
+import { BREAKDOWNS } from "../constants/stepBreakdowns";
+import type { BreakdownId, BreakdownState, TacticView } from "../model/stepBreakdowns";
+import { StepDataInputs } from "./StepDataInputs";
+import type { InputErrors } from "../model/stepDataInputs";
+import { StepGenerate } from "./StepGenerate";
+import type { GenStatus } from "../model/stepGenerate";
 import { StepReportType } from "./StepReportType";
-import { StepReviewSheet, type ReviewRow } from "./StepReviewSheet";
+import { StepReviewSheet } from "./StepReviewSheet";
+import type { ReviewRow } from "../model/stepReviewSheet";
 import { ToastProvider, useToast } from "./ToastContext";
+import { DEFAULT_BREAKDOWNS, NO_ERRORS, JOB_TOTAL, GEN_STEP_CHECKPOINTS, usd, grouped } from "../constants/reportConstructorPage";
 import "./report-constructor.css";
-
-const DEFAULT_BREAKDOWNS: BreakdownState = { tp: false, ca: false, geo: false, aud: false, dev: false };
-const NO_ERRORS: InputErrors = {
-    brief: false,
-    marketVolume: false,
-    sheet: false,
-    adj: false,
-    dates: false,
-};
-const JOB_TOTAL = 7;
-// Step numbers the SLIDES_FROM_SHEET job reports, in order (ReportGenerationServiceImpl
-// #runSlidesFromSheet emits 1, 3, 6, 7 — not a dense 1..7 run). Each checkpoint maps to one
-// displayed stage in StepGenerate, so the visual stages stay in sync with the real work.
-const GEN_STEP_CHECKPOINTS = [1, 3, 6, 7];
-
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-const grouped = new Intl.NumberFormat("en-US");
 
 function compactUnits(n: number): string {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}M`;

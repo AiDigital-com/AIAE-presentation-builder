@@ -1,8 +1,7 @@
+
+import type { P } from "../model/icons";
+
 // Inline SVG icons (stroke = currentColor) matching the original index.php markup.
-interface P {
-    size?: number;
-    className?: string;
-}
 
 function stroke(size: number) {
     return {

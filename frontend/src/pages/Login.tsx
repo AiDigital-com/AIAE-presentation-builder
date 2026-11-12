@@ -1,4 +1,5 @@
 import { SignIn } from "@clerk/clerk-react";
+
 import "./login.css";
 
 // Login — Clerk SSO sign-in (the only auth mode). Clerk renders and manages the

@@ -1,9 +1,7 @@
 package com.aidigital.reportconstructor.service.reports.services;
 
+import com.aidigital.reportconstructor.service.reports.dto.ReportHistory;
 import com.aidigital.reportconstructor.service.reports.dto.ReportResume;
-import com.aidigital.reportconstructor.service.reports.dto.ReportSummary;
-
-import java.util.List;
 
 /**
  * Read side for the "My reports" screen: lists a single user's report jobs, and serves the
@@ -16,9 +14,9 @@ public interface ReportHistoryService {
 	 * finished sheet builds the owner can still resume, flagged as drafts.
 	 *
 	 * @param userId internal owner id whose history is returned
-	 * @return the owner's reports, newest first (possibly empty)
+	 * @return the owner's reports, newest first (possibly empty), with their count
 	 */
-	List<ReportSummary> historyForOwner(String userId);
+	ReportHistory historyForOwner(String userId);
 
 	/**
 	 * Loads the state needed to re-enter the wizard at the review step for one of the owner's drafts.

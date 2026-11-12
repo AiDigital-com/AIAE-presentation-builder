@@ -5,6 +5,10 @@
 - PostgreSQL only.
 - Schema changes go through Liquibase in `backend/migrations/src/main/resources/db/changelog`.
 - Add new changelog files; do not rewrite existing applied changelogs.
+- Every Liquibase `changeSet` declares direct `preConditions`. For create-table
+  changes, use `onFail="MARK_RAN"` with `not/tableExists`; for create-index
+  changes, use the matching existence check. `scripts/verify-gates.sh` runs the
+  Liquibase precondition checker.
 
 ## Backend entity conventions
 

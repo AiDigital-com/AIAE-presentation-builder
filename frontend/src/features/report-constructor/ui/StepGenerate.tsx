@@ -1,31 +1,7 @@
-import type { ReportType } from "@/shared/api/types";
+
 import { IconArrowLeft, IconCheck, IconExternalLink, IconInfo } from "./icons";
-
-// Mirrors the backend SLIDES_FROM_SHEET job's actual steps (see ReportGenerationServiceImpl
-// #runSlidesFromSheet): read the reviewed sheet → write the narrative copy → fill the deck →
-// render the charts. Keep this in lock-step with GEN_STEP_CHECKPOINTS on the page.
-const STAGES = [
-    "Reading sheet data",
-    "Writing the narrative",
-    "Building the slide deck",
-    "Building charts",
-];
-
-export type GenStatus = "idle" | "running" | "done";
-
-interface Props {
-    reportType: ReportType;
-    status: GenStatus;
-    /** Number of stages completed (0..STAGES.length). */
-    completed: number;
-    resultUrl: string | null;
-    /** Non-fatal warnings (a chart that failed to build, a breakdown slide that shipped without its
-     * Claude bullets); the report still completes. */
-    warnings: string[];
-    onGenerate(): void;
-    onRunAgain(): void;
-    onBack(): void;
-}
+import type { Props } from "../model/stepGenerate";
+import { STAGES } from "../constants/stepGenerate";
 
 /** Screen 5 — trigger generation and watch per-stage status. */
 export function StepGenerate({ reportType, status, completed, resultUrl, warnings, onGenerate, onRunAgain, onBack }: Props) {

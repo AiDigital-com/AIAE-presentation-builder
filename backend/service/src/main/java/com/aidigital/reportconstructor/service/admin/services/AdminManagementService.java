@@ -1,8 +1,6 @@
 package com.aidigital.reportconstructor.service.admin.services;
 
-import com.aidigital.reportconstructor.service.admin.dto.AdminEntry;
-
-import java.util.List;
+import com.aidigital.reportconstructor.service.admin.dto.AdminList;
 
 /**
  * Admin management: list, grant, and revoke admin access by email. Every operation
@@ -18,7 +16,7 @@ public interface AdminManagementService {
 	 * @throws com.aidigital.reportconstructor.service.common.error.AppException
 	 *         {@code C004} when the caller is not an admin
 	 */
-	List<AdminEntry> listAdmins(String callerEmail);
+	AdminList listAdmins(String callerEmail);
 
 	/**
 	 * Grants managed admin access to an email and returns the updated list.
@@ -30,7 +28,7 @@ public interface AdminManagementService {
 	 *         {@code C004} when the caller is not an admin, {@code C002} when the
 	 *         email is invalid
 	 */
-	List<AdminEntry> addAdmin(String callerEmail, String email);
+	AdminList addAdmin(String callerEmail, String email);
 
 	/**
 	 * Revokes a UI-managed admin grant and returns the updated list.
@@ -43,5 +41,5 @@ public interface AdminManagementService {
 	 *         trying to remove a config (root) admin, {@code C001} when no managed
 	 *         grant exists
 	 */
-	List<AdminEntry> removeAdmin(String callerEmail, String email);
+	AdminList removeAdmin(String callerEmail, String email);
 }

@@ -1,14 +1,17 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
 import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
-import com.aidigital.reportconstructor.domain.reports.repositories.ReportJobRepository;
+import com.aidigital.reportconstructor.service.reports.entity.ReportJobEntityService;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
+import com.aidigital.reportconstructor.service.mappers.reports.ReportJobEntityMapperImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
@@ -23,10 +26,16 @@ import static org.mockito.Mockito.when;
 class ReportJobProgressHelperImplTest {
 
 	@Mock
-	ReportJobRepository jobs;
+	private ReportJobEntityService jobs;
+
+	@Spy
+	private CurrentTimeImpl currentTime = new CurrentTimeImpl();
+
+	@Spy
+	private ReportJobEntityMapperImpl jobMapper = new ReportJobEntityMapperImpl();
 
 	@InjectMocks
-	ReportJobProgressHelperImpl helper;
+	private ReportJobProgressHelperImpl helper;
 
 	@Test
 	void shouldCreateQueuedJobWithSevenStepsTest() {

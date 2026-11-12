@@ -63,14 +63,4 @@ public enum NarrativeCopyLimits {
 
 	/** Cap on one line of the EOM "focus next month" slide. */
 	private final int focusItemLimit;
-
-	/**
-	 * Picks the profile for a run.
-	 *
-	 * @param mpoDeck whether the run builds its deck on an MPO template
-	 * @return {@link #COMPACT} for an MPO deck, {@link #STANDARD} otherwise
-	 */
-	public static NarrativeCopyLimits forDeck(boolean mpoDeck) {
-		return mpoDeck ? COMPACT : STANDARD;
-	}
 }

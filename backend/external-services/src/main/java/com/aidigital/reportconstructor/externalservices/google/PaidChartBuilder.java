@@ -1,7 +1,9 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.model.PaidSlideChart;
-import com.aidigital.reportconstructor.service.reports.ports.PaidChartRequest;
+import com.aidigital.reportconstructor.externalservices.google.drive.DriveCopier;
+import com.aidigital.reportconstructor.externalservices.google.drive.ChartFileSharer;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.PaidChart;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.PaidChartsRequest;
 import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest;
 import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetResponse;
 import com.google.api.services.sheets.v4.model.Response;
@@ -44,12 +46,16 @@ public class PaidChartBuilder {
 	private final PaidChartSheetRequests sheetRequests;
 	private final PaidChartSlideRequests slideRequests;
 
+	/** Times every direct Sheets/Slides call on the shared external-call timer. */
+	private final GoogleCallTimer googleCalls;
+	private final PaidChartStyleResolver styleResolver;
+
 	/**
 	 * @param clients authenticated Drive, Sheets and Slides clients
 	 * @param req     the deck and its paid charts
 	 * @return one message per chart that could not be linked; empty when all were
 	 */
-	public List<String> buildPaidCharts(ChartClients clients, PaidChartRequest req) {
+	public List<String> buildPaidCharts(ChartClients clients, PaidChartsRequest req) {
 		List<String> errors = new ArrayList<>();
 		if (req.charts() == null || req.charts().isEmpty()) {
 			return errors;
@@ -57,15 +63,15 @@ public class PaidChartBuilder {
 		Set<String> markers = req.charts().stream().map(c -> c.marker().marker()).collect(Collectors.toSet());
 		Map<String, PaidChartSlot> slots;
 		try {
-			Presentation deck = clients.slides().presentations().get(req.presentationId())
-					.setFields(SLOT_FIELDS).execute();
+			Presentation deck = googleCalls.execute(clients.slides().presentations().get(req.presentationId())
+					.setFields(SLOT_FIELDS));
 			slots = slideRequests.slots(deck.getSlides(), markers);
 		} catch (IOException ex) {
 			errors.add("Paid charts: could not read presentation layout — " + ex.getMessage());
 			return errors;
 		}
 		String folderId = null;
-		for (PaidSlideChart chart : req.charts()) {
+		for (PaidChart chart : req.charts()) {
 			PaidChartSlot slot = slots.get(chart.marker().marker());
 			if (slot == null) {
 				// The deck has no such chart: the EOM deck carries no overview slides.
@@ -100,16 +106,16 @@ public class PaidChartBuilder {
 	 * @param folderId the folder holding the deck's chart spreadsheets, or empty when it could not be created
 	 * @throws IOException if a Google call fails
 	 */
-	void linkChart(ChartClients clients, PaidChartRequest req, PaidSlideChart chart, PaidChartSlot slot,
+	void linkChart(ChartClients clients, PaidChartsRequest req, PaidChart chart, PaidChartSlot slot,
 			String folderId) throws IOException {
-		PaidChartStyle style = PaidChartStyle.of(chart.marker());
+		PaidChartStyle style = styleResolver.of(chart.marker());
 		String spreadsheetId = driveCopier.createSpreadsheet(clients.drive(),
 				chart.marker().marker() + " — " + req.campaignTitle(), folderId);
 		chartFileSharer.shareLooseCopy(clients.drive(), folderId, spreadsheetId);
 		double[] box = slideRequests.box(slot, style);
-		BatchUpdateSpreadsheetResponse reply = clients.sheets().spreadsheets().batchUpdate(spreadsheetId,
-				new BatchUpdateSpreadsheetRequest().setRequests(sheetRequests.requests(chart, style,
-						slideRequests.pixels(box[2]), slideRequests.pixels(box[3])))).execute();
+		BatchUpdateSpreadsheetResponse reply = googleCalls.execute(clients.sheets().spreadsheets().batchUpdate(
+				spreadsheetId, new BatchUpdateSpreadsheetRequest().setRequests(sheetRequests.requests(chart, style,
+						slideRequests.pixels(box[2]), slideRequests.pixels(box[3])))));
 		Integer chartId = chartId(reply);
 		if (chartId == null) {
 			throw new IllegalStateException("the chart spreadsheet " + spreadsheetId + " returned no chart id");
@@ -117,8 +123,8 @@ public class PaidChartBuilder {
 		String newObjectId = CHART_ID_PREFIX
 				+ UUID.randomUUID().toString().replace("-", "").substring(0, CHART_ID_RANDOM_LENGTH);
 		List<Request> swap = slideRequests.swap(slot, style, spreadsheetId, chartId, newObjectId, chart.centerValue());
-		clients.slides().presentations().batchUpdate(req.presentationId(),
-				new BatchUpdatePresentationRequest().setRequests(swap)).execute();
+		googleCalls.execute(clients.slides().presentations().batchUpdate(req.presentationId(),
+				new BatchUpdatePresentationRequest().setRequests(swap)));
 	}
 
 	/**
@@ -160,8 +166,8 @@ public class PaidChartBuilder {
 	 * @throws IOException if the Slides call fails
 	 */
 	void deleteImage(ChartClients clients, String presentationId, PaidChartSlot slot) throws IOException {
-		clients.slides().presentations().batchUpdate(presentationId, new BatchUpdatePresentationRequest()
-				.setRequests(List.of(new Request().setDeleteObject(
-						new DeleteObjectRequest().setObjectId(slot.objectId()))))).execute();
+		googleCalls.execute(clients.slides().presentations().batchUpdate(presentationId,
+				new BatchUpdatePresentationRequest().setRequests(List.of(new Request().setDeleteObject(
+						new DeleteObjectRequest().setObjectId(slot.objectId()))))));
 	}
 }

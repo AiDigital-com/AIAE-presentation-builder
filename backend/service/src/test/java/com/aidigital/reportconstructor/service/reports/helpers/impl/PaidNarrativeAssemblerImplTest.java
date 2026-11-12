@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
+import com.aidigital.reportconstructor.service.reports.enums.PaidCopySlotResolver;
 import com.aidigital.reportconstructor.service.reports.dto.PaidCopyField;
 import com.aidigital.reportconstructor.service.reports.dto.PaidNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.engine.PaidValueFormatter;
@@ -21,7 +22,7 @@ class PaidNarrativeAssemblerImplTest {
 	@Test
 	void shouldListEveryEocSearchCopyTokenTest() {
 		// Given: an EOC deck's Paid Search section
-		PaidNarrativeAssemblerImpl assembler = new PaidNarrativeAssemblerImpl(new PaidValueFormatter());
+		PaidNarrativeAssemblerImpl assembler = new PaidNarrativeAssemblerImpl(new PaidValueFormatter(), new PaidCopySlotResolver());
 
 		// When:
 		List<PaidCopyField> fields = assembler.fields(PaidChannelKind.SEARCH, false);
@@ -39,7 +40,7 @@ class PaidNarrativeAssemblerImplTest {
 	@Test
 	void shouldListTheEomSocialCopyTokensWithoutTheEocOnlySlidesTest() {
 		// Given: an EOM deck's Paid Social section
-		PaidNarrativeAssemblerImpl assembler = new PaidNarrativeAssemblerImpl(new PaidValueFormatter());
+		PaidNarrativeAssemblerImpl assembler = new PaidNarrativeAssemblerImpl(new PaidValueFormatter(), new PaidCopySlotResolver());
 
 		// When:
 		List<PaidCopyField> fields = assembler.fields(PaidChannelKind.SOCIAL, true);
@@ -53,7 +54,7 @@ class PaidNarrativeAssemblerImplTest {
 	@Test
 	void shouldRenderTheExportFiguresAsPromptLinesTest() {
 		// Given: a Search export with one campaign type, one keyword and a missing PMax tab
-		PaidNarrativeAssemblerImpl assembler = new PaidNarrativeAssemblerImpl(new PaidValueFormatter());
+		PaidNarrativeAssemblerImpl assembler = new PaidNarrativeAssemblerImpl(new PaidValueFormatter(), new PaidCopySlotResolver());
 		PaidChannelData data = new PaidChannelData(PaidChannelKind.SEARCH, new PaidMetrics(104_000, 1_200, 1_000, 100),
 				null, List.of(), List.of(new PaidRow("Brand", "", new PaidMetrics(1_000, 100, 500, 40))), List.of(),
 				List.of(), List.of(new PaidRow("velmora sale", "Brand", new PaidMetrics(500, 50, 100, 20))),
@@ -77,7 +78,7 @@ class PaidNarrativeAssemblerImplTest {
 	@Test
 	void shouldDashEveryCopyTokenTheReplyLeftOutTest() {
 		// Given: a reply with the verdict and one blank field
-		PaidNarrativeAssemblerImpl assembler = new PaidNarrativeAssemblerImpl(new PaidValueFormatter());
+		PaidNarrativeAssemblerImpl assembler = new PaidNarrativeAssemblerImpl(new PaidValueFormatter(), new PaidCopySlotResolver());
 		Map<String, String> flat = new HashMap<>();
 		Map<String, String> copy = Map.of("verdict", "Meta Ads delivered 300 conversions.", "pl_summary", " ");
 
@@ -96,7 +97,7 @@ class PaidNarrativeAssemblerImplTest {
 	@Test
 	void shouldDropTheSlideLabelAnEomTakeawayRepeatsTest() {
 		// Given: EOM replies that start with the label the metric slide already prints above each box
-		PaidNarrativeAssemblerImpl assembler = new PaidNarrativeAssemblerImpl(new PaidValueFormatter());
+		PaidNarrativeAssemblerImpl assembler = new PaidNarrativeAssemblerImpl(new PaidValueFormatter(), new PaidCopySlotResolver());
 		Map<String, String> flat = new HashMap<>();
 		Map<String, String> copy = Map.of(
 				"eom_worked", "What worked: August delivered 50 conversions at a $30.01 CPA.",
@@ -118,7 +119,7 @@ class PaidNarrativeAssemblerImplTest {
 	@Test
 	void shouldTellThePromptNotToRepeatTheSlideLabelTest() {
 		// Given:
-		PaidNarrativeAssemblerImpl assembler = new PaidNarrativeAssemblerImpl(new PaidValueFormatter());
+		PaidNarrativeAssemblerImpl assembler = new PaidNarrativeAssemblerImpl(new PaidValueFormatter(), new PaidCopySlotResolver());
 
 		// When:
 		List<PaidCopyField> fields = assembler.fields(PaidChannelKind.SEARCH, true);

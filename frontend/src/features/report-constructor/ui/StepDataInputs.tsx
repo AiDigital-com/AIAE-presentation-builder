@@ -1,55 +1,15 @@
-import { useState, type ReactNode } from "react";
-import { isGoogleSheetUrl, PAID_SEARCH_EXPORT_TABS, PAID_SOCIAL_EXPORT_TABS } from "@/shared/api/sheets";
-import { useWizard, type PaidChannel } from "@/shared/wizard/WizardContext";
+import { useState } from "react";
+
+import { isGoogleSheetUrl } from "@/shared/api/sheets";
+import { useWizard } from "@/shared/wizard/WizardContext";
+import type { PaidChannel } from "@/shared/wizard/model/wizardContext";
 import { pacingReadyCount } from "../lib/pacing";
 import { readPaidExport } from "../lib/paidExport";
 import { IconArrowLeft, IconArrowRight, IconCheck, IconSpinner } from "./icons";
 import { SheetFormatHint } from "./SheetFormatHint";
 import { useToast } from "./ToastContext";
-
-export interface InputErrors {
-    brief: boolean;
-    marketVolume: boolean;
-    sheet: boolean;
-    adj: boolean;
-    dates: boolean;
-}
-
-interface Props {
-    errors: InputErrors;
-    mediaPulling: boolean;
-    elevatePulling: boolean;
-    datesDetecting: boolean;
-    matchRunning: boolean;
-    onConnectMediaPlan(url: string): void;
-    onConnectElevate(url: string): void;
-    // Present when auto-detection found no "Proposal"/"Estimates" tab: the workbook's
-    // visible tabs, so the user can point us at the tab that holds the media plan.
-    mediaTabPicker: { url: string; tabs: string[] } | null;
-    onPickMediaTab(url: string, tab: string): void;
-    onDismissMediaTabPicker(): void;
-    onDisconnectMediaPlan(): void;
-    onDisconnectElevate(): void;
-    onOpenMatch(): void;
-    onOpenPacing(): void;
-    onConfirm(): void;
-    onBack(): void;
-    clearError(key: keyof InputErrors): void;
-    /** True while a user-supplied workbook is being read and registered. */
-    adopting: boolean;
-    onAdoptSheet(url: string): void;
-}
-
-interface ConnectRowProps {
-    label: string;
-    placeholder: string;
-    connected: string | null;
-    pulling: boolean;
-    onConnect(url: string): void;
-    onDisconnect(): void;
-    /** Shown under the link field, e.g. the expected sheet format. */
-    hint?: ReactNode;
-}
+import type { Props, ConnectRowProps, MediaTabPickerProps, PaidChannelSpec, AdoptSheetCardProps, StatusRowProps } from "../model/stepDataInputs";
+import { PAID_CHANNELS } from "../constants/stepDataInputs";
 
 function ConnectRow({ label, placeholder, connected, pulling, onConnect, onDisconnect, hint }: ConnectRowProps) {
     const [url, setUrl] = useState("");
@@ -98,15 +58,6 @@ function ConnectRow({ label, placeholder, connected, pulling, onConnect, onDisco
     );
 }
 
-interface MediaTabPickerProps {
-    picker: { url: string; tabs: string[] };
-    pulling: boolean;
-    onPick(url: string, tab: string): void;
-    onDismiss(): void;
-    /** What the user is choosing a tab for; defaults to the media-plan wording. */
-    message?: ReactNode;
-}
-
 /** Fallback tab chooser shown when no "Proposal"/"Estimates" tab was auto-detected. */
 function MediaTabPicker({ picker, pulling, onPick, onDismiss, message }: MediaTabPickerProps) {
     const [tab, setTab] = useState(picker.tabs[0] ?? "");
@@ -148,18 +99,6 @@ function MediaTabPicker({ picker, pulling, onPick, onDismiss, message }: MediaTa
         </div>
     );
 }
-
-interface PaidChannelSpec {
-    id: PaidChannel;
-    name: string;
-    label: string;
-    tabs: readonly string[];
-}
-
-const PAID_CHANNELS: PaidChannelSpec[] = [
-    { id: "search", name: "Paid Search", label: "Paid Search (Google Ads) export — Google Sheet link", tabs: PAID_SEARCH_EXPORT_TABS },
-    { id: "social", name: "Paid Social", label: "Paid Social (Meta) export — Google Sheet link", tabs: PAID_SOCIAL_EXPORT_TABS },
-];
 
 /** "Acme Search · 70 daily rows · 7 tabs" — what a connected export row shows. */
 function paidExportSummary(connected: { title: string; dataRows: number; tabs: Record<string, unknown> }): string {
@@ -223,11 +162,6 @@ function PaidChannelInputs() {
             })}
         </div>
     );
-}
-
-interface AdoptSheetCardProps {
-    adopting: boolean;
-    onAdopt(url: string): void;
 }
 
 /**
@@ -295,12 +229,6 @@ function AdoptSheetCard({ adopting, onAdopt }: AdoptSheetCardProps) {
             </button>
         </div>
     );
-}
-
-interface StatusRowProps {
-    label: string;
-    done: boolean;
-    value: string;
 }
 
 function StatusRow({ label, done, value }: StatusRowProps) {

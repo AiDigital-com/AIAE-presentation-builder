@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -9,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class SheetRowHelperImplTest {
 
-	private final SheetRowHelperImpl helper = new SheetRowHelperImpl();
+	private final SheetRowHelperImpl helper = new SheetRowHelperImpl(new CurrentTimeImpl());
 
 	@Test
 	void shouldCollectDistinctColumnValuesBelowHeaderSkippingSectionRowTest() {

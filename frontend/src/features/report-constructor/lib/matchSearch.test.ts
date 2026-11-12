@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { matchesSearch } from "./matchSearch";
 
 const NAMING = "GCVB_Grapevine Convention & Visitors Bureau_99_Main Street Fest 2026_CTV_Prospecting_CPM_-_650124_SYNTH-TEST";

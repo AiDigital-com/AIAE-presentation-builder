@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { formatTokens, formatUsd } from "./tokenFormat";
 
 describe("formatTokens", () => {

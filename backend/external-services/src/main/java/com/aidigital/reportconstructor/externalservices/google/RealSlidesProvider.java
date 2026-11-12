@@ -1,12 +1,11 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.common.error.AppException;
-import com.aidigital.reportconstructor.service.common.error.ErrorReason;
-import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
-import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
-import com.aidigital.reportconstructor.service.reports.helpers.BreakdownThoughtsGate;
-import com.aidigital.reportconstructor.service.reports.model.PaidSlidesFill;
-import com.aidigital.reportconstructor.service.reports.ports.SlidesProvider;
+import com.aidigital.reportconstructor.externalservices.google.drive.DriveSharer;
+import com.aidigital.reportconstructor.externalservices.google.drive.DriveShareRecipients;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckBreakdown;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckTemplate;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PaidDeckFill;
+import com.aidigital.reportconstructor.externalservices.google.slides.SlidesDeckClient;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
@@ -62,7 +61,7 @@ import java.util.regex.Pattern;
 @Component
 @Primary
 @ConditionalOnBean(GoogleCredentialsFactory.class)
-public class RealSlidesProvider implements SlidesProvider {
+public class RealSlidesProvider implements SlidesDeckClient {
 
 	private static final String APPLICATION_NAME = "Report Constructor — AI Digital";
 
@@ -235,7 +234,6 @@ public class RealSlidesProvider implements SlidesProvider {
 	private final DeviceTableCompactor deviceTableCompactor;
 	private final CreativeTableCompactor creativeTableCompactor;
 	private final BreakdownSlideNaming breakdownSlideNaming;
-	private final BreakdownThoughtsGate thoughtsGate;
 	private final SummaryTableRowTrimmer summaryTableRowTrimmer;
 	private final DeckMarkupRequestBuilder deckMarkup;
 	private final PaidSlidesWriter paidSlidesWriter;
@@ -243,7 +241,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	public RealSlidesProvider(
 			GoogleCredentialsFactory creds, GoogleProperties props, DriveSharer driveSharer,
 			DriveShareRecipients shareRecipients, GoogleRequestRetrier retrier,
-			BreakdownSlideNaming breakdownSlideNaming, BreakdownThoughtsGate thoughtsGate,
+			BreakdownSlideNaming breakdownSlideNaming,
 			SummaryTableRowTrimmer summaryTableRowTrimmer, EomDeckPolicy eomDeckPolicy,
 			MpoDeckPolicy mpoDeckPolicy, EomSlideFinder eomSlideFinder, DeckMarkupRequestBuilder deckMarkup,
 			SlideBlockLocator slideBlockLocator, TacticSlideRelayout tacticSlideRelayout,
@@ -276,7 +274,6 @@ public class RealSlidesProvider implements SlidesProvider {
 		this.deviceTableCompactor = deviceTableCompactor;
 		this.creativeTableCompactor = creativeTableCompactor;
 		this.breakdownSlideNaming = breakdownSlideNaming;
-		this.thoughtsGate = thoughtsGate;
 		this.summaryTableRowTrimmer = summaryTableRowTrimmer;
 		this.deckMarkup = deckMarkup;
 		this.driveSharer = driveSharer;
@@ -344,7 +341,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param templateVariant requested deck design, may be {@code null} (read as standard)
 	 * @return the slide model for that deck
 	 */
-	SlideModel slideModelFor(String reportType, TemplateVariant templateVariant) {
+	SlideModel slideModelFor(String reportType, DeckTemplate templateVariant) {
 		return mpoDeckPolicy.usesEocSlides(templateVariant, reportType) ? mpoEocModel : standardModel;
 	}
 
@@ -358,7 +355,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param templateVariant requested deck design, may be {@code null} (read as standard)
 	 * @return the template id to clone
 	 */
-	String templateIdFor(String reportType, TemplateVariant templateVariant) {
+	String templateIdFor(String reportType, DeckTemplate templateVariant) {
 		return mpoDeckPolicy.templateIdOr(
 				templateVariant, reportType, eomDeckPolicy.templateIdOr(reportType, slidesTemplateId));
 	}
@@ -369,20 +366,20 @@ public class RealSlidesProvider implements SlidesProvider {
 	}
 
 	@Override
-	public boolean carriesTacticThoughts(String reportType, TemplateVariant templateVariant) {
+	public boolean carriesTacticThoughts(String reportType, DeckTemplate templateVariant) {
 		return eomDeckPolicy.appliesTo(reportType)
 				|| !slideModelFor(reportType, templateVariant).thoughtsMasterId().isBlank();
 	}
 
 	@Override
-	public boolean carriesMpoNarrative(String reportType, TemplateVariant templateVariant) {
+	public boolean carriesMpoNarrative(String reportType, DeckTemplate templateVariant) {
 		return mpoDeckPolicy.usesMpoTemplate(templateVariant, reportType);
 	}
 
 	@Override
 	public String createDeck(
 			String jobId, String fileName, Map<String, String> placeholderMap, String reportType,
-			TemplateVariant templateVariant, String userGoogleAccessToken) {
+			DeckTemplate templateVariant, String userGoogleAccessToken) {
 		String templateId = templateIdFor(reportType, templateVariant);
 		// Which template a run cloned is otherwise invisible: the artifact looks plausible either way, and a
 		// stale-or-swapped id has already cost one debugging session. Logged before the copy, so a failed
@@ -433,14 +430,13 @@ public class RealSlidesProvider implements SlidesProvider {
 			return "https://docs.google.com/presentation/d/" + newId + "/edit";
 		} catch (IOException ex) {
 			log.error("[slides] createDeck failed for job {}", jobId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Slides deck creation failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Slides deck creation failed: " + ex.getMessage());
 		}
 	}
 
 	@Override
 	public void trimTactics(
-			String presentationId, int tacticCount, String reportType, TemplateVariant templateVariant,
+			String presentationId, int tacticCount, String reportType, DeckTemplate templateVariant,
 			String userGoogleAccessToken) {
 		if (eomDeck(reportType, templateVariant)) {
 			trimEomDashboardSlides(presentationId, tacticCount, userGoogleAccessToken);
@@ -464,8 +460,7 @@ public class RealSlidesProvider implements SlidesProvider {
 			executeInChunks(slidesClient, presentationId, requests, "trimTactics batchUpdate for " + presentationId);
 		} catch (IOException ex) {
 			log.error("[slides] trimTactics failed for {}", presentationId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Slides trimTactics failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Slides trimTactics failed: " + ex.getMessage());
 		}
 	}
 
@@ -582,7 +577,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	@Override
 	public void addTacticSlides(
 			String presentationId, int tacticCount, Map<String, String> placeholderMap, String reportType,
-			TemplateVariant templateVariant, String userGoogleAccessToken) {
+			DeckTemplate templateVariant, String userGoogleAccessToken) {
 		if (eomDeck(reportType, templateVariant)) {
 			addEomTacticSlides(presentationId, tacticCount, placeholderMap, userGoogleAccessToken);
 			return;
@@ -605,16 +600,15 @@ public class RealSlidesProvider implements SlidesProvider {
 			// Raised rather than returned quietly so the caller can turn it into a job warning: silence here is
 			// what made a whole run come back without tactic slides and still look successful.
 			if (requests.isEmpty()) {
-				throw new AppException(ErrorReason.C000,
-						"master tactic slide " + model.tacticMasterId() + " was not found in deck " + presentationId
-								+ "; no per-tactic slides were built");
+				throw new GoogleApiException("master tactic slide " + model.tacticMasterId()
+						+ " was not found in deck " + presentationId
+						+ "; no per-tactic slides were built");
 			}
 			executeInChunks(slidesClient, presentationId, requests,
 					"addTacticSlides batchUpdate for " + presentationId);
 		} catch (IOException ex) {
 			log.error("[slides] addTacticSlides failed for {}", presentationId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Slides addTacticSlides failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Slides addTacticSlides failed: " + ex.getMessage());
 		}
 	}
 
@@ -708,11 +702,12 @@ public class RealSlidesProvider implements SlidesProvider {
 
 	@Override
 	public void addBreakdownSlides(
-			String presentationId, Map<Integer, Set<BreakdownType>> enabledByTactic,
-			Map<String, String> breakdownValues, String reportType, TemplateVariant templateVariant,
-			String userGoogleAccessToken) {
+			String presentationId, Map<Integer, Set<DeckBreakdown>> enabledByTactic,
+			Map<String, String> breakdownValues, Set<Integer> thoughtsTactics, String reportType,
+			DeckTemplate templateVariant, String userGoogleAccessToken) {
 		if (eomDeck(reportType, templateVariant)) {
-			addEomBreakdownSlides(presentationId, enabledByTactic, breakdownValues, userGoogleAccessToken);
+			addEomBreakdownSlides(presentationId, enabledByTactic, breakdownValues, thoughtsTactics,
+					userGoogleAccessToken);
 			return;
 		}
 		SlideModel model = slideModelFor(reportType, templateVariant);
@@ -728,7 +723,8 @@ public class RealSlidesProvider implements SlidesProvider {
 					"addBreakdownSlides get " + presentationId);
 			List<Request> requests =
 					buildBreakdownRequests(
-							model, deck.getSlides(), model.breakdownMasterIds(), enabledByTactic, values);
+							model, deck.getSlides(), model.breakdownMasterIds(), enabledByTactic, values,
+							thoughtsTactics);
 			if (requests.isEmpty()) {
 				return;
 			}
@@ -737,8 +733,7 @@ public class RealSlidesProvider implements SlidesProvider {
 			compactDeviceTables(slidesClient, presentationId, enabledByTactic);
 		} catch (IOException ex) {
 			log.error("[slides] addBreakdownSlides failed for {}", presentationId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Slides addBreakdownSlides failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Slides addBreakdownSlides failed: " + ex.getMessage());
 		}
 	}
 
@@ -765,16 +760,20 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param enabledByTactic  1-based tactic number → the breakdown sections that tactic enabled
 	 * @param breakdownValues  renumbered token → final value; a token found here is written straight to
 	 *                         its value, one found nowhere is only renumbered
+	 * @param thoughtsTactics  tactics that get a "Thoughts on tactic performance" copy (those past the
+	 *                         service's gate)
 	 * @return the ordered batchUpdate requests, or an empty list when there is nothing to insert
 	 */
 	List<Request> buildBreakdownRequests(
-			SlideModel model, List<Page> slides, Map<BreakdownType, String> masterIds,
-			Map<Integer, Set<BreakdownType>> enabledByTactic, Map<String, String> breakdownValues) {
-		return buildBreakdownRequests(model, slides, masterIds, enabledByTactic, breakdownValues, Map.of());
+			SlideModel model, List<Page> slides, Map<DeckBreakdown, String> masterIds,
+			Map<Integer, Set<DeckBreakdown>> enabledByTactic, Map<String, String> breakdownValues,
+			Set<Integer> thoughtsTactics) {
+		return buildBreakdownRequests(model, slides, masterIds, enabledByTactic, breakdownValues, Map.of(),
+				thoughtsTactics);
 	}
 
 	/**
-	 * Same as {@link #buildBreakdownRequests(SlideModel, List, Map, Map, Map)}, with the anchor slide each
+	 * Same as {@link #buildBreakdownRequests(SlideModel, List, Map, Map, Map, Set)}, with the anchor slide each
 	 * tactic's copies are placed after supplied explicitly. An EOM deck builds two master slides per tactic,
 	 * so its anchor is the second of them rather than the single slide
 	 * {@link #mainTacticSlideId(SlideModel, int)} names.
@@ -786,18 +785,20 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param breakdownValues   renumbered token → final value; a token absent from the map is only renumbered
 	 * @param anchorSlideByTactic 1-based tactic number → the slide its copies follow; empty falls back to
 	 *                          {@link #mainTacticSlideId(SlideModel, int)}
+	 * @param thoughtsTactics     tactics that get a "Thoughts on tactic performance" copy (those past the
+	 *                            service's gate)
 	 * @return the ordered batchUpdate requests, or an empty list when there is nothing to insert
 	 */
 	List<Request> buildBreakdownRequests(
-			SlideModel model, List<Page> slides, Map<BreakdownType, String> masterIds,
-			Map<Integer, Set<BreakdownType>> enabledByTactic, Map<String, String> breakdownValues,
-			Map<Integer, String> anchorSlideByTactic) {
+			SlideModel model, List<Page> slides, Map<DeckBreakdown, String> masterIds,
+			Map<Integer, Set<DeckBreakdown>> enabledByTactic, Map<String, String> breakdownValues,
+			Map<Integer, String> anchorSlideByTactic, Set<Integer> thoughtsTactics) {
 		return buildBreakdownRequests(model, slides, masterIds, enabledByTactic, breakdownValues,
-				anchorSlideByTactic, model.thoughtsMasterId());
+				anchorSlideByTactic, model.thoughtsMasterId(), thoughtsTactics);
 	}
 
 	/**
-	 * Same as {@link #buildBreakdownRequests(SlideModel, List, Map, Map, Map, Map)}, with the thoughts master
+	 * Same as {@link #buildBreakdownRequests(SlideModel, List, Map, Map, Map, Map, Set)}, with the thoughts master
 	 * supplied explicitly. An EOC deck names that slide by configured object id, while an EOM deck discovers
 	 * it by the token it carries, so the id cannot come from the same place for both.
 	 *
@@ -810,12 +811,14 @@ public class RealSlidesProvider implements SlidesProvider {
 	 *                            {@link #mainTacticSlideId(SlideModel, int)}
 	 * @param thoughtsMaster      the "Thoughts on tactic performance" master slide id; blank or {@code null}
 	 *                            disables that slide as a no-op
+	 * @param thoughtsTactics     tactics that get a "Thoughts on tactic performance" copy (those past the
+	 *                            service's gate)
 	 * @return the ordered batchUpdate requests, or an empty list when there is nothing to insert
 	 */
 	List<Request> buildBreakdownRequests(
-			SlideModel model, List<Page> slides, Map<BreakdownType, String> masterIds,
-			Map<Integer, Set<BreakdownType>> enabledByTactic, Map<String, String> breakdownValues,
-			Map<Integer, String> anchorSlideByTactic, String thoughtsMaster) {
+			SlideModel model, List<Page> slides, Map<DeckBreakdown, String> masterIds,
+			Map<Integer, Set<DeckBreakdown>> enabledByTactic, Map<String, String> breakdownValues,
+			Map<Integer, String> anchorSlideByTactic, String thoughtsMaster, Set<Integer> thoughtsTactics) {
 		List<Request> requests = new ArrayList<>();
 		if (slides == null || slides.isEmpty() || masterIds.isEmpty() || enabledByTactic.isEmpty()) {
 			return requests;
@@ -833,9 +836,9 @@ public class RealSlidesProvider implements SlidesProvider {
 
 		// Qualifying tactics → their enabled breakdown types in declaration (priority) order, and the
 		// index of each tactic's main slide (used to order and place the copies).
-		Map<Integer, List<BreakdownType>> orderedByTactic = new LinkedHashMap<>();
+		Map<Integer, List<DeckBreakdown>> orderedByTactic = new LinkedHashMap<>();
 		TreeMap<Integer, Integer> tacticByMainSlideIndex = new TreeMap<>();
-		for (Map.Entry<Integer, Set<BreakdownType>> entry : enabledByTactic.entrySet()) {
+		for (Map.Entry<Integer, Set<DeckBreakdown>> entry : enabledByTactic.entrySet()) {
 			Integer tacticNum = entry.getKey();
 			if (tacticNum == null || entry.getValue() == null || entry.getValue().isEmpty()) {
 				continue;
@@ -845,8 +848,8 @@ public class RealSlidesProvider implements SlidesProvider {
 				log.warn("[slides] addBreakdownSlides: no main slide for tactic {} in deck — skipping", tacticNum);
 				continue;
 			}
-			List<BreakdownType> types = new ArrayList<>();
-			for (BreakdownType type : BreakdownType.values()) {
+			List<DeckBreakdown> types = new ArrayList<>();
+			for (DeckBreakdown type : DeckBreakdown.values()) {
 				String masterId = masterIds.get(type);
 				if (entry.getValue().contains(type) && masterId != null && indexById.containsKey(masterId)) {
 					types.add(type);
@@ -867,7 +870,7 @@ public class RealSlidesProvider implements SlidesProvider {
 		// what stops identical master tokens on different copies from overwriting each other. The deck's
 		// global placeholder pass has already run by now and will not run again, so a token left merely
 		// renumbered here stays raw in the delivered deck.
-		Map<BreakdownType, Set<String>> tokensByType = new EnumMap<>(BreakdownType.class);
+		Map<DeckBreakdown, Set<String>> tokensByType = new EnumMap<>(DeckBreakdown.class);
 		Map<Integer, List<String>> copyIdsByTactic = new LinkedHashMap<>();
 		// The "Thoughts on tactic performance" master is one generic slide (not a breakdown type): it is
 		// duplicated once per tactic that passes the shared ">2 breakdowns" gate and appended after that
@@ -876,15 +879,15 @@ public class RealSlidesProvider implements SlidesProvider {
 				&& indexById.containsKey(thoughtsMaster);
 		Set<String> thoughtsTokens = thoughtsEnabled
 				? extractRenumberableTokens(pageById.get(thoughtsMaster)) : Set.of();
-		for (Map.Entry<Integer, List<BreakdownType>> entry : orderedByTactic.entrySet()) {
+		for (Map.Entry<Integer, List<DeckBreakdown>> entry : orderedByTactic.entrySet()) {
 			int tacticNum = entry.getKey();
 			// Keyed by the master's own index in the deck, because a duplicate lands immediately after its
 			// master: the copies' order in the deck is their masters' order, whatever order they were created
 			// in. The position move below rejects a list that is not in deck order (400 "The slides should be
 			// in presentation order"), so the list is derived from the masters' positions rather than from the
-			// BreakdownType declaration order — which only happens to match the template today.
+			// DeckBreakdown declaration order — which only happens to match the template today.
 			TreeMap<Integer, String> copiesByMasterIndex = new TreeMap<>();
-			for (BreakdownType type : entry.getValue()) {
+			for (DeckBreakdown type : entry.getValue()) {
 				String masterId = masterIds.get(type);
 				String copyId = breakdownSlideId(type, tacticNum);
 				requests.add(new Request().setDuplicateObject(new DuplicateObjectRequest()
@@ -897,7 +900,7 @@ public class RealSlidesProvider implements SlidesProvider {
 			}
 			// The tactic's thoughts copy: its master sits after every breakdown master in the template, so
 			// keying it the same way lands it right after the tactic's final breakdown slide.
-			if (thoughtsEnabled && thoughtsGate.qualifies(enabledByTactic.get(tacticNum))) {
+			if (thoughtsEnabled && thoughtsTactics.contains(tacticNum)) {
 				String thoughtsCopyId = breakdownSlideNaming.thoughtsSlideId(tacticNum);
 				requests.add(new Request().setDuplicateObject(new DuplicateObjectRequest()
 						.setObjectId(thoughtsMaster)
@@ -930,7 +933,7 @@ public class RealSlidesProvider implements SlidesProvider {
 
 	@Override
 	public List<String> dashUnresolvedTokens(
-			String presentationId, String reportType, TemplateVariant templateVariant, String userGoogleAccessToken) {
+			String presentationId, String reportType, DeckTemplate templateVariant, String userGoogleAccessToken) {
 		if (!eomDeck(reportType, templateVariant)) {
 			return List.of();
 		}
@@ -984,7 +987,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	}
 
 	@Override
-	public void fillPaidSlides(String presentationId, PaidSlidesFill fill, String userGoogleAccessToken) {
+	public void fillPaidSlides(String presentationId, PaidDeckFill fill, String userGoogleAccessToken) {
 		if (fill == null || fill.isEmpty()) {
 			return;
 		}
@@ -1001,7 +1004,7 @@ public class RealSlidesProvider implements SlidesProvider {
 			}
 		} catch (IOException ex) {
 			log.error("[slides] fillPaidSlides failed for {}", presentationId, ex);
-			throw new AppException(ErrorReason.C000, "Google Slides fillPaidSlides failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Slides fillPaidSlides failed: " + ex.getMessage());
 		}
 	}
 
@@ -1078,7 +1081,7 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param templateVariant requested deck design, may be {@code null} (read as standard)
 	 * @return {@code true} when the EOM slide model applies
 	 */
-	boolean eomDeck(String reportType, TemplateVariant templateVariant) {
+	boolean eomDeck(String reportType, DeckTemplate templateVariant) {
 		return eomDeckPolicy.appliesTo(reportType)
 				&& (eomDeckPolicy.hasOwnTemplate() || mpoDeckPolicy.usesMpoTemplate(templateVariant, reportType));
 	}
@@ -1123,8 +1126,7 @@ public class RealSlidesProvider implements SlidesProvider {
 					"trimEomDashboardSlides batchUpdate for " + presentationId);
 		} catch (IOException ex) {
 			log.error("[slides] trimEomDashboardSlides failed for {}", presentationId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Slides trimEomDashboardSlides failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Slides trimEomDashboardSlides failed: " + ex.getMessage());
 		}
 	}
 
@@ -1179,16 +1181,14 @@ public class RealSlidesProvider implements SlidesProvider {
 			// Same reasoning as the EOC master model: a deck with no tactic slides at all must be reported,
 			// not returned quietly as a success.
 			if (requests.isEmpty()) {
-				throw new AppException(ErrorReason.C000,
-						"no EOM master tactic slide found in deck " + presentationId
+				throw new GoogleApiException("no EOM master tactic slide found in deck " + presentationId
 								+ "; no per-tactic slides were built");
 			}
 			executeInChunks(slidesClient, presentationId, requests,
 					"addEomTacticSlides batchUpdate for " + presentationId);
 		} catch (IOException ex) {
 			log.error("[slides] addEomTacticSlides failed for {}", presentationId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Slides addEomTacticSlides failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Slides addEomTacticSlides failed: " + ex.getMessage());
 		}
 	}
 
@@ -1270,11 +1270,13 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param presentationId        the already-built deck to insert into
 	 * @param enabledByTactic       1-based tactic number → the breakdown sections that tactic enabled
 	 * @param breakdownValues       renumbered token → value to write
+	 * @param thoughtsTactics       tactics that get a "Thoughts on tactic performance" copy (those past the
+	 *                              service's gate)
 	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token
 	 */
 	void addEomBreakdownSlides(
-			String presentationId, Map<Integer, Set<BreakdownType>> enabledByTactic,
-			Map<String, String> breakdownValues, String userGoogleAccessToken) {
+			String presentationId, Map<Integer, Set<DeckBreakdown>> enabledByTactic,
+			Map<String, String> breakdownValues, Set<Integer> thoughtsTactics, String userGoogleAccessToken) {
 		if (enabledByTactic == null || enabledByTactic.isEmpty()) {
 			return;
 		}
@@ -1285,7 +1287,8 @@ public class RealSlidesProvider implements SlidesProvider {
 			Presentation deck = retrier.execute(
 					slidesClient.presentations().get(presentationId).setFields(BREAKDOWN_FIELDS),
 					"addEomBreakdownSlides get " + presentationId);
-			List<Request> requests = buildEomBreakdownRequests(deck.getSlides(), enabledByTactic, values);
+			List<Request> requests =
+					buildEomBreakdownRequests(deck.getSlides(), enabledByTactic, values, thoughtsTactics);
 			if (requests.isEmpty()) {
 				return;
 			}
@@ -1294,8 +1297,7 @@ public class RealSlidesProvider implements SlidesProvider {
 			compactDeviceTables(slidesClient, presentationId, enabledByTactic);
 		} catch (IOException ex) {
 			log.error("[slides] addEomBreakdownSlides failed for {}", presentationId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Slides addEomBreakdownSlides failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Slides addEomBreakdownSlides failed: " + ex.getMessage());
 		}
 	}
 
@@ -1311,15 +1313,15 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param enabledByTactic 1-based tactic number → the breakdown sections that tactic enabled
 	 */
 	void compactDeviceTables(
-			Slides slidesClient, String presentationId, Map<Integer, Set<BreakdownType>> enabledByTactic) {
+			Slides slidesClient, String presentationId, Map<Integer, Set<DeckBreakdown>> enabledByTactic) {
 		Set<String> deviceSlideIds = new HashSet<>();
 		Set<String> creativeSlideIds = new HashSet<>();
 		enabledByTactic.forEach((tacticNum, types) -> {
-			if (tacticNum != null && types != null && types.contains(BreakdownType.DEVICE)) {
-				deviceSlideIds.add(breakdownSlideNaming.slideId(BreakdownType.DEVICE, tacticNum));
+			if (tacticNum != null && types != null && types.contains(DeckBreakdown.DEVICE)) {
+				deviceSlideIds.add(breakdownSlideNaming.slideId(DeckBreakdown.DEVICE, tacticNum));
 			}
-			if (tacticNum != null && types != null && types.contains(BreakdownType.CREATIVE)) {
-				creativeSlideIds.add(breakdownSlideNaming.slideId(BreakdownType.CREATIVE, tacticNum));
+			if (tacticNum != null && types != null && types.contains(DeckBreakdown.CREATIVE)) {
+				creativeSlideIds.add(breakdownSlideNaming.slideId(DeckBreakdown.CREATIVE, tacticNum));
 			}
 		});
 		if (deviceSlideIds.isEmpty() && creativeSlideIds.isEmpty()) {
@@ -1366,12 +1368,14 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param slides          the deck's slides in order, from {@code presentations.get}
 	 * @param enabledByTactic 1-based tactic number → the breakdown sections that tactic enabled
 	 * @param breakdownValues renumbered token → value to write
+	 * @param thoughtsTactics tactics that get a "Thoughts on tactic performance" copy (those past the
+	 *                        service's gate)
 	 * @return the ordered batchUpdate requests, or an empty list when there is nothing to insert
 	 */
 	List<Request> buildEomBreakdownRequests(
-			List<Page> slides, Map<Integer, Set<BreakdownType>> enabledByTactic,
-			Map<String, String> breakdownValues) {
-		Map<BreakdownType, String> masterIds = eomSlideFinder.breakdownMasterSlideIds(slides);
+			List<Page> slides, Map<Integer, Set<DeckBreakdown>> enabledByTactic,
+			Map<String, String> breakdownValues, Set<Integer> thoughtsTactics) {
+		Map<DeckBreakdown, String> masterIds = eomSlideFinder.breakdownMasterSlideIds(slides);
 		if (masterIds.isEmpty()) {
 			return new ArrayList<>();
 		}
@@ -1383,7 +1387,7 @@ public class RealSlidesProvider implements SlidesProvider {
 			}
 		}
 		return buildBreakdownRequests(standardModel, slides, masterIds, enabledByTactic, breakdownValues, anchors,
-				eomSlideFinder.thoughtsMasterSlideId(slides));
+				eomSlideFinder.thoughtsMasterSlideId(slides), thoughtsTactics);
 	}
 
 	/**
@@ -1408,8 +1412,7 @@ public class RealSlidesProvider implements SlidesProvider {
 					"deleteEomMasterSlides batchUpdate for " + presentationId);
 		} catch (IOException ex) {
 			log.error("[slides] deleteEomMasterSlides failed for {}", presentationId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Slides deleteEomMasterSlides failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Slides deleteEomMasterSlides failed: " + ex.getMessage());
 		}
 	}
 
@@ -1437,7 +1440,7 @@ public class RealSlidesProvider implements SlidesProvider {
 
 	@Override
 	public void deleteMasterSlides(
-			String presentationId, String reportType, TemplateVariant templateVariant, String userGoogleAccessToken) {
+			String presentationId, String reportType, DeckTemplate templateVariant, String userGoogleAccessToken) {
 		if (eomDeck(reportType, templateVariant)) {
 			deleteEomMasterSlides(presentationId, userGoogleAccessToken);
 			return;
@@ -1460,8 +1463,7 @@ public class RealSlidesProvider implements SlidesProvider {
 					"deleteMasterSlides batchUpdate for " + presentationId);
 		} catch (IOException ex) {
 			log.error("[slides] deleteMasterSlides failed for {}", presentationId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Slides deleteMasterSlides failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Slides deleteMasterSlides failed: " + ex.getMessage());
 		}
 	}
 
@@ -1499,8 +1501,7 @@ public class RealSlidesProvider implements SlidesProvider {
 					"deleteReportTypeSlides batchUpdate for " + presentationId);
 		} catch (IOException ex) {
 			log.error("[slides] deleteReportTypeSlides failed for {}", presentationId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Slides deleteReportTypeSlides failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Slides deleteReportTypeSlides failed: " + ex.getMessage());
 		}
 	}
 
@@ -1908,26 +1909,26 @@ public class RealSlidesProvider implements SlidesProvider {
 	 * @param tacticNum the 1-based tactic number
 	 * @return the copy's slide object id
 	 */
-	String breakdownSlideId(BreakdownType type, int tacticNum) {
+	String breakdownSlideId(DeckBreakdown type, int tacticNum) {
 		return breakdownSlideNaming.slideId(type, tacticNum);
 	}
 
 	/**
 	 * Resolves the configured {@code code → master slide object id} map into a typed map keyed by
-	 * {@link BreakdownType}, dropping unknown codes and blank ids so an unconfigured or partially
+	 * {@link DeckBreakdown}, dropping unknown codes and blank ids so an unconfigured or partially
 	 * configured deck degrades to a safe no-op.
 	 *
 	 * @param configured the raw wire-code → object-id map from configuration (may be null/empty)
 	 * @return the typed master ids, keyed by breakdown type
 	 */
-	Map<BreakdownType, String> resolveBreakdownMasterIds(Map<String, String> configured) {
-		Map<BreakdownType, String> resolved = new EnumMap<>(BreakdownType.class);
+	Map<DeckBreakdown, String> resolveBreakdownMasterIds(Map<String, String> configured) {
+		Map<DeckBreakdown, String> resolved = new EnumMap<>(DeckBreakdown.class);
 		if (configured == null) {
 			return resolved;
 		}
 		configured.forEach((code, id) -> {
 			if (id != null && !id.isBlank() && code != null && !code.isBlank()) {
-				BreakdownType type = BreakdownType.BY_CODE.get(code.trim().toLowerCase());
+				DeckBreakdown type = DeckBreakdown.BY_CODE.get(code.trim().toLowerCase());
 				if (type != null) {
 					resolved.put(type, id.trim());
 				}

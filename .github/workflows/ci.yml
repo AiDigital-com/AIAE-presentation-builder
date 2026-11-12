@@ -13,6 +13,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # AIAE gates (scripts/verify-gates.sh, structure-lint.sh and every checker in
+  # scripts/lib/). REPORT-ONLY during the AIAE convergence: gates-report.sh always
+  # exits 0 and the job is continue-on-error, so it publishes the counts without
+  # blocking a merge. See docs/aiae-migration-plan.md for when this becomes blocking.
+  static-checks:
+    name: AIAE static checks (report-only)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run AIAE gates
+        run: |
+          bash scripts/gates-report.sh | tee gates-report.txt
+          {
+            echo "## AIAE gates (report-only)"
+            echo
+            echo '```'
+            sed -n '/==> AIAE gates/,$p' gates-report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
   backend:
     name: Backend build, test, coverage gate
     runs-on: ubuntu-latest

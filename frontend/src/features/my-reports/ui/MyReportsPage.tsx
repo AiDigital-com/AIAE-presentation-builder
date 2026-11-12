@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router-dom";
+
 import { EmptyState } from "@/shared/ui/EmptyState";
 import { ErrorAlert } from "@/shared/ui/ErrorAlert";
 import { LoadingBlock } from "@/shared/ui/LoadingBlock";
 import type { ReportSummary } from "@/shared/api/types";
 import { useDismissReport, useMyReports } from "../api/useMyReports";
+import { dateFmt } from "../constants/myReportsPage";
 import "./my-reports.css";
-
-const dateFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 /** Maps a report-type code to its BEM modifier class for badge coloring. */
 function typeModifier(type: string | undefined): string {

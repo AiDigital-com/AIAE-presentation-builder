@@ -39,20 +39,20 @@ import static org.mockito.Mockito.when;
 class ReportSheetHelperImplTest {
 
 	@Mock
-	SheetDeckProvider sheets;
+	private SheetDeckProvider sheets;
 	@Mock
-	TacticExtractionHelper tacticExtraction;
+	private TacticExtractionHelper tacticExtraction;
 	@Mock
-	EffectiveTacticsHelper effectiveTactics;
+	private EffectiveTacticsHelper effectiveTactics;
 	@Mock
-	ReportNumberParser reportNumbers;
+	private ReportNumberParser reportNumbers;
 	@Mock
-	BreakdownSelectionResolver breakdownResolver;
+	private BreakdownSelectionResolver breakdownResolver;
 	@Mock
-	SheetRowHelper sheetRows;
+	private SheetRowHelper sheetRows;
 
 	@InjectMocks
-	ReportSheetHelperImpl helper;
+	private ReportSheetHelperImpl helper;
 
 	@Test
 	void shouldExtractSpreadsheetIdFromSheetUrlTest() {

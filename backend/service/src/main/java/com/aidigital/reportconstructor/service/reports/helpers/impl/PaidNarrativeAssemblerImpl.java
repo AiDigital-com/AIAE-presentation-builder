@@ -5,6 +5,7 @@ import com.aidigital.reportconstructor.service.reports.dto.PaidNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.engine.PaidValueFormatter;
 import com.aidigital.reportconstructor.service.reports.enums.PaidChannelKind;
 import com.aidigital.reportconstructor.service.reports.enums.PaidCopySlot;
+import com.aidigital.reportconstructor.service.reports.enums.PaidCopySlotResolver;
 import com.aidigital.reportconstructor.service.reports.enums.PaidExportTab;
 import com.aidigital.reportconstructor.service.reports.helpers.PaidNarrativeAssembler;
 import com.aidigital.reportconstructor.service.reports.model.PaidAd;
@@ -46,11 +47,12 @@ public class PaidNarrativeAssemblerImpl implements PaidNarrativeAssembler {
 			+ "so start with the finding itself, never with that label";
 
 	private final PaidValueFormatter fmt;
+	private final PaidCopySlotResolver slotResolver;
 
 	@Override
 	public List<PaidCopyField> fields(PaidChannelKind kind, boolean eom) {
 		List<PaidCopyField> fields = new ArrayList<>();
-		for (PaidCopySlot slot : PaidCopySlot.forChannel(kind, eom)) {
+		for (PaidCopySlot slot : slotResolver.forChannel(kind, eom)) {
 			if (!slot.numbered()) {
 				String guidance = slot.slideLabel().isEmpty()
 						? slot.guidance() : slot.guidance() + String.format(LABEL_RULE, slot.slideLabel());
@@ -100,7 +102,7 @@ public class PaidNarrativeAssemblerImpl implements PaidNarrativeAssembler {
 	@Override
 	public void write(Map<String, String> flat, PaidChannelKind kind, boolean eom, Map<String, String> copy) {
 		Map<String, String> labels = new HashMap<>();
-		for (PaidCopySlot slot : PaidCopySlot.forChannel(kind, eom)) {
+		for (PaidCopySlot slot : slotResolver.forChannel(kind, eom)) {
 			if (!slot.numbered() && !slot.slideLabel().isEmpty()) {
 				labels.put(slot.key(), slot.slideLabel());
 			}

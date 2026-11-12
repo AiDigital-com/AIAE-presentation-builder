@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+
 import { apiClient } from "@/shared/api/client";
 
 /** Columns the server can order the team-wide report history by. */
@@ -25,8 +26,9 @@ export interface ReportQuery {
 export function useAllReports(query: ReportQuery, enabled = true) {
     return useQuery({
         queryKey: ["admin", "reports", query],
-        queryFn: async () => {
+        queryFn: async ({ signal }) => {
             const { data, error } = await apiClient.GET("/api/v1/admin/reports", {
+                signal,
                 params: { query },
             });
             if (error) throw error;

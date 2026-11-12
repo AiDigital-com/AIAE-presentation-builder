@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckBreakdown;
 
 import java.util.Map;
 
@@ -25,7 +25,7 @@ public record SlideModel(
 		Map<Integer, String> summarySlideObjectIds,
 		Map<Integer, String> resultsSlideObjectIds,
 		Map<Integer, String> tacticSlideObjectIds,
-		Map<BreakdownType, String> breakdownMasterIds,
+		Map<DeckBreakdown, String> breakdownMasterIds,
 		String thoughtsMasterId,
 		String tacticMasterId) {
 

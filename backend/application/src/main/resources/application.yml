@@ -162,6 +162,10 @@ app:
   # in LogbookProperties mirror the canonical rules; override here per-app.
   # See observability/logbook-http-logging-rules.md.
   logbook:
+    # Metadata-only by default: method, URI, status, duration and masked headers, no request/response
+    # bodies — outbound bodies carry Claude prompts/replies, sheet contents and Clerk OAuth tokens. Set
+    # LOGBOOK_INCLUDE_BODIES=true only for a local debugging session (JSON masking still applies).
+    include-bodies: ${LOGBOOK_INCLUDE_BODIES:false}
     censored-replacement: XXX
     headers-to-censor: [ Authorization, Cookie, Set-Cookie, X-API-Key, AccessKey, Proxy-Authorization ]
     json-fields-to-censor: [ ".*password.*", ".*token.*", ".*secret.*", ".*key.*", ".*credential.*", ".*authorization.*", privateKey, clientSecret, serviceAccount ]
@@ -171,6 +175,23 @@ app:
       "/**/specs/**": [ GET ]
       "/health": [ GET ]
       "/**": [ OPTIONS ]
+  # Shared pooled HTTP client foundation (PooledHttpClientProperties). Every third-party Spring HTTP client
+  # (Anthropic, Clerk) is built by PooledRestClientFactory with its own bounded pool sized by these values.
+  external:
+    http:
+      # Max time to open a TCP connection.
+      connect-timeout: ${EXTERNAL_HTTP_CONNECT_TIMEOUT:5s}
+      # Default max wait for response data; a client may override it (Anthropic uses its per-call timeouts).
+      response-timeout: ${EXTERNAL_HTTP_RESPONSE_TIMEOUT:30s}
+      # Max wait for a free pooled connection before the call fails.
+      connection-request-timeout: ${EXTERNAL_HTTP_CONNECTION_REQUEST_TIMEOUT:5s}
+      # Pool bounds per client. Anthropic concurrency is additionally capped by external.anthropic.max-concurrent-calls.
+      max-total-connections: ${EXTERNAL_HTTP_MAX_TOTAL_CONNECTIONS:50}
+      max-connections-per-route: ${EXTERNAL_HTTP_MAX_CONNECTIONS_PER_ROUTE:10}
+      # Max lifetime of a pooled connection.
+      keep-alive-duration: ${EXTERNAL_HTTP_KEEP_ALIVE_DURATION:60s}
+      # Idle connections older than this are evicted and re-validated before reuse.
+      idle-eviction-duration: ${EXTERNAL_HTTP_IDLE_EVICTION_DURATION:30s}
   usage-logging:
     enabled: ${USAGE_LOGGING_ENABLED:true}
     # service-name MUST be non-empty when enabled=true. Default falls back

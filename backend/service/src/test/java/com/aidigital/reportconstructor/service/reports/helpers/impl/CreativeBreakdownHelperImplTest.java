@@ -29,12 +29,12 @@ import static org.mockito.Mockito.when;
 class CreativeBreakdownHelperImplTest {
 
 	@Mock
-	ReportSheetHelper sheetHelper;
+	private ReportSheetHelper sheetHelper;
 	@Mock
-	BreakdownSelectionResolver breakdownResolver;
+	private BreakdownSelectionResolver breakdownResolver;
 
 	@InjectMocks
-	CreativeBreakdownHelperImpl helper;
+	private CreativeBreakdownHelperImpl helper;
 
 	@Test
 	void shouldCopySheetValuesVerbatimAndDashTheSlotsTheUserLeftBlankTest() {

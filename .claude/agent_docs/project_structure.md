@@ -4,7 +4,7 @@
 
 Claude entrypoint files live at the repository root.
 
-Current top-level directories:
+Common top-level directories in the generated architecture:
 
 - `backend/` — Java 21 Spring Boot backend covered by backend architecture, database, OpenAPI, and test rules
 - `frontend/` — React + TypeScript frontend covered by frontend architecture, style, API, auth, and test rules
@@ -13,13 +13,10 @@ Current top-level directories:
 
 ## Backend package root
 
-All backend production Java code lives under:
-
-```text
-com.aidigital.operationalhub.*
-```
-
-Do not introduce `com.example`, `org.example`, `io.replit`, or a second package root.
+Discover the backend production package root from existing source files and
+build configuration. Preserve that single root consistently across modules. Do
+not introduce `com.example`, `org.example`, `io.replit`, or a second package
+root.
 
 ## Backend Maven modules
 
@@ -34,27 +31,40 @@ Do not introduce `com.example`, `org.example`, `io.replit`, or a second package 
 - Owns Liquibase changelogs and SQL resources only.
 - No services, controllers, or repositories.
 
+### `backend/observability`
+
+- Reusable, attachable outbound-client metrics only:
+  `ExternalClientMetricsInterceptor`, `ExternalCallTimer`, and their shared
+  low-cardinality metric schema.
+- No product/domain behavior and no dependency on application, service,
+  domain, migrations, or external-services.
+- Product usage analytics is a separate persistence-backed feature module.
+
 ### `backend/external-services`
 
 - Owns outbound integrations and integration-specific configuration.
-- Current example: NetSuite auth, token, and SuiteQL clients.
+- Examples include provider auth, token, storage, messaging, and AI clients.
 - No controller code and no core business orchestration.
 
 ### `backend/service`
 
-- Owns business orchestration, per-entity services, RBAC services, validators, mappers, and exception model.
+- Owns business orchestration, per-entity services, authorization services, validators, mappers, and exception model.
 - `service/entity` contains the paired service for each entity/repository.
-- `service/rbac` contains cross-entity orchestration that must depend on entity services, not repositories.
+- Cross-entity orchestration packages must depend on entity services, not repositories.
 
 ### `backend/application`
 
-- Owns Spring Boot runtime configuration, security, controllers, OpenAPI contract implementations, application-level mappers, and exception translation.
+- Owns Spring Boot runtime composition, security, controllers, OpenAPI contract implementations, application-level mappers, and exception translation.
+- Attaches `backend/observability` for reusable external-client timing and owns
+  Logbook configuration, inbound correlation, structured logging, Actuator,
+  Prometheus, and application metric publication.
 - Controllers implement generated `*Api` interfaces.
 - Generated OpenAPI sources under `backend/application/target/generated-sources/openapi` are build output and must not be edited manually.
 
 ## Backend layering rules
 
 - `application` may call `service` contracts and application-level mappers.
+- `application` attaches the reusable `observability` module.
 - `service` may call `domain` through the paired entity services and may call `external-services` clients.
 - `domain` does not depend on `service`, `application`, or `external-services`.
 - Controllers never inject repositories.

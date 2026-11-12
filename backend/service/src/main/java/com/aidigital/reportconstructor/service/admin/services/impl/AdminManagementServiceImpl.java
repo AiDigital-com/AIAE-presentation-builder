@@ -4,6 +4,7 @@ import com.aidigital.reportconstructor.domain.admin.entities.AdminUserEntity;
 import com.aidigital.reportconstructor.service.admin.AdminAccessPolicy;
 import com.aidigital.reportconstructor.service.admin.AdminUserService;
 import com.aidigital.reportconstructor.service.admin.dto.AdminEntry;
+import com.aidigital.reportconstructor.service.admin.dto.AdminList;
 import com.aidigital.reportconstructor.service.admin.services.AdminManagementService;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
@@ -29,21 +30,21 @@ public class AdminManagementServiceImpl implements AdminManagementService {
 	private final AdminUserService adminUserService;
 
 	@Override
-	public List<AdminEntry> listAdmins(String callerEmail) {
+	public AdminList listAdmins(String callerEmail) {
 		requireAdmin(callerEmail);
-		return currentAdmins();
+		return new AdminList(currentAdmins());
 	}
 
 	@Override
-	public List<AdminEntry> addAdmin(String callerEmail, String email) {
+	public AdminList addAdmin(String callerEmail, String email) {
 		requireAdmin(callerEmail);
 		String normalized = normalizeValidEmail(email);
 		adminUserService.add(normalized, callerEmail);
-		return currentAdmins();
+		return new AdminList(currentAdmins());
 	}
 
 	@Override
-	public List<AdminEntry> removeAdmin(String callerEmail, String email) {
+	public AdminList removeAdmin(String callerEmail, String email) {
 		requireAdmin(callerEmail);
 		if (email == null || email.isBlank()) {
 			throw new AppException(ErrorReason.C002, "Email is required");
@@ -55,7 +56,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
 		if (!adminUserService.removeByEmail(normalized)) {
 			throw new AppException(ErrorReason.C001, "No managed admin for " + normalized);
 		}
-		return currentAdmins();
+		return new AdminList(currentAdmins());
 	}
 
 	/**

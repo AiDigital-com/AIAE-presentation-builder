@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckBreakdown;
 import org.springframework.stereotype.Component;
 
 import java.util.regex.Matcher;
@@ -27,13 +27,13 @@ public class BreakdownSlideNaming {
 	 * @param tacticNum the 1-based tactic number
 	 * @return the copy's slide object id
 	 */
-	public String slideId(BreakdownType type, int tacticNum) {
+	public String slideId(DeckBreakdown type, int tacticNum) {
 		return "bd_" + type.code() + "_" + tacticNum;
 	}
 
 	/**
 	 * Builds the deterministic object id for a duplicated "Thoughts on tactic performance" slide, unique per
-	 * tactic, e.g. {@code thoughts_3}. Kept alongside {@link #slideId(BreakdownType, int)} so all duplicated
+	 * tactic, e.g. {@code thoughts_3}. Kept alongside {@link #slideId(DeckBreakdown, int)} so all duplicated
 	 * per-tactic slide ids are minted in one place.
 	 *
 	 * @param tacticNum the 1-based tactic number

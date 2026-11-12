@@ -1,11 +1,7 @@
-import { ReactNode } from "react";
-import { AppHeader } from "../shared/ui/AppHeader";
-import "../shared/ui/app-shell.css";
 
-interface Props {
-    children: ReactNode;
-    appName?: string;
-}
+import { AppHeader } from "../shared/ui/AppHeader";
+import type { Props } from "./model/appShell";
+import "../shared/ui/app-shell.css";
 
 /** Content shell below the top header — max-width centered product surface. */
 export function AppShell({ children, appName = "Replit MVP" }: Props) {

@@ -1,18 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import type { LineItemMatchResult, MappingEntry } from "@/shared/api/types";
+
+import type { MappingEntry } from "@/shared/api/types";
 import { useWizard } from "@/shared/wizard/WizardContext";
 import { extractTacticBudgets, namingTail, type TacticBudget } from "../lib/mediaPlanBudget";
 import { matchesSearch } from "../lib/matchSearch";
 import { IconCheck, IconInfo, IconLink2, IconRefresh, IconSpinner } from "./icons";
-
-interface Props {
-    open: boolean;
-    matchData: LineItemMatchResult | null;
-    running: boolean;
-    onClose(): void;
-    onRun(): void;
-    onConfirm(): void;
-}
+import type { Props, SearchProps } from "../model/matchModal";
+import { usd } from "../constants/matchModal";
 
 function abbreviateNaming(naming: string): string {
     if (!naming) return "";
@@ -20,8 +14,6 @@ function abbreviateNaming(naming: string): string {
     if (parts.length >= 5) return parts.slice(2, 5).join(" · ");
     return naming.substring(0, 55) + (naming.length > 55 ? "…" : "");
 }
-
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 function compactUnits(n: number): string {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}M`;
@@ -63,13 +55,6 @@ function PlanTags({ plan }: { plan: TacticBudget }) {
             )}
         </div>
     );
-}
-
-interface SearchProps {
-    label: string;
-    placeholder: string;
-    value: string;
-    onChange(value: string): void;
 }
 
 /** Search box above one of the matching lists; Escape or ✕ clears it. */

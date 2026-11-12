@@ -3,6 +3,7 @@ package com.aidigital.reportconstructor.service.reports.services.impl;
 import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.reports.dto.GenerationTarget;
+import com.aidigital.reportconstructor.service.reports.dto.ReportHistory;
 import com.aidigital.reportconstructor.service.reports.dto.ReportResume;
 import com.aidigital.reportconstructor.service.reports.dto.ReportResumeState;
 import com.aidigital.reportconstructor.service.reports.dto.ReportSummary;
@@ -76,9 +77,11 @@ class ReportHistoryServiceImplTest {
 				jobs, assembler, new ReportDraftPolicyImpl(), mock(ReportResumeStateHelper.class));
 
 		// When: the owner's history is assembled
-		List<ReportSummary> rows = service.historyForOwner("user-1");
+		ReportHistory history = service.historyForOwner("user-1");
 
 		// Then: the consumed sheet build is dropped and the unused one is flagged as a draft
+		List<ReportSummary> rows = history.reports();
+		assertThat(history.total()).isEqualTo(2);
 		assertThat(rows).extracting(ReportSummary::jobId).containsExactly(3L, 1L);
 		assertThat(rows).extracting(ReportSummary::draft).containsExactly(false, true);
 		verify(assembler, never()).toSummary(eq(usedSheet), eq(true));

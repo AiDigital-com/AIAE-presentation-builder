@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.auth.controllers;
 
-import com.aidigital.reportconstructor.auth.mappers.UserMapperImpl;
+import com.aidigital.reportconstructor.mappers.auth.UserMapperImpl;
 import com.aidigital.reportconstructor.security.AppUserFactory;
 import com.aidigital.reportconstructor.security.AuthProperties;
 import com.aidigital.reportconstructor.security.AuthorizedPartyMatcher;
@@ -22,6 +22,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
+
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -39,7 +41,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		ClerkJwtClaimsValidator.class,
 		ClerkPublishableKeyDecoder.class,
 		CompanyEmailDomainAuthorizationManager.class,
-		CorsOriginPatternNormalizer.class
+		CorsOriginPatternNormalizer.class,
+		// GlobalExceptionHandler (a @RestControllerAdvice the slice loads) needs the application clock.
+		CurrentTimeImpl.class
 })
 class AuthControllerTest {
 

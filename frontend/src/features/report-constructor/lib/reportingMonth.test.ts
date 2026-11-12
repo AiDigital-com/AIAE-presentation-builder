@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { eomWindow, previousMonthWindow, toIsoDate } from "./reportingMonth";
 
 describe("toIsoDate", () => {

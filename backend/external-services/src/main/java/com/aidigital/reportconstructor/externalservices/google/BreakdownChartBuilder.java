@@ -1,10 +1,12 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.dto.BreakdownChartSeries;
-import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
-import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartJob;
-import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartRequest;
-import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartSlice;
+import com.aidigital.reportconstructor.externalservices.google.drive.DriveCopier;
+import com.aidigital.reportconstructor.externalservices.google.drive.ChartFileSharer;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckBreakdown;
+import com.aidigital.reportconstructor.externalservices.google.charts.DeckBreakdownSeries;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.BreakdownChart;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.BreakdownChartsRequest;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.ChartSlice;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.EmbeddedChart;
 import com.google.api.services.sheets.v4.model.Sheet;
@@ -47,7 +49,21 @@ public class BreakdownChartBuilder {
 	private final BreakdownChartCatalog catalog;
 	private final BreakdownSlideNaming naming;
 	private final ChartFileSharer chartFileSharer;
+	private final GoogleCallTimer googleCalls;
 
+	/**
+	 * Creates the builder over its Drive, Sheets and Slides collaborators.
+	 *
+	 * @param driveCopier       copies chart-template workbooks
+	 * @param chartSheetWriter  writes breakdown values into the copied workbooks
+	 * @param chartSpecBuilder  reads and restyles the workbook chart specs
+	 * @param slideChartSwapper swaps placeholder charts for linked Sheets charts
+	 * @param chartErrors       turns API failures into readable per-chart errors
+	 * @param catalog           breakdown chart template catalog
+	 * @param naming            reads tactic numbers from duplicated slide ids
+	 * @param chartFileSharer   shares loose chart workbooks
+	 * @param googleCalls       times every direct Sheets/Slides call on the shared external-call timer
+	 */
 	public BreakdownChartBuilder(
 			DriveCopier driveCopier,
 			ChartSheetWriter chartSheetWriter,
@@ -56,7 +72,9 @@ public class BreakdownChartBuilder {
 			ChartErrorTranslator chartErrors,
 			BreakdownChartCatalog catalog,
 			BreakdownSlideNaming naming,
-			ChartFileSharer chartFileSharer) {
+			ChartFileSharer chartFileSharer,
+			GoogleCallTimer googleCalls) {
+		this.googleCalls = googleCalls;
 		this.driveCopier = driveCopier;
 		this.chartSheetWriter = chartSheetWriter;
 		this.chartSpecBuilder = chartSpecBuilder;
@@ -74,7 +92,7 @@ public class BreakdownChartBuilder {
 	 * @param req     the breakdown chart request describing the deck and per-tactic slices
 	 * @return human-readable error strings for any per-chart failures (empty on full success)
 	 */
-	List<String> buildBreakdownCharts(ChartClients clients, BreakdownChartRequest req) {
+	List<String> buildBreakdownCharts(ChartClients clients, BreakdownChartsRequest req) {
 		List<String> errors = new ArrayList<>();
 		if (req.jobs() == null || req.jobs().isEmpty()) {
 			return errors;
@@ -90,7 +108,7 @@ public class BreakdownChartBuilder {
 		}
 		chartFileSharer.shareFolder(clients.drive(), folderId);
 
-		for (BreakdownChartJob job : req.jobs()) {
+		for (BreakdownChart job : req.jobs()) {
 			try {
 				renderBreakdownChart(clients, req, job, chartsBySlide, folderId, errors);
 			} catch (IOException | RuntimeException ex) {
@@ -116,16 +134,16 @@ public class BreakdownChartBuilder {
 	 * @throws IOException when a Google API call fails irrecoverably
 	 */
 	void renderBreakdownChart(
-			ChartClients clients, BreakdownChartRequest req, BreakdownChartJob job,
+			ChartClients clients, BreakdownChartsRequest req, BreakdownChart job,
 			Map<String, Map<String, ChartElementRef>> chartsBySlide, String folderId, List<String> errors)
 			throws IOException {
 		String seriesCode = job.seriesCode();
-		BreakdownChartSeries series = seriesCode == null || seriesCode.isBlank()
-				? null : BreakdownChartSeries.BY_CODE.get(seriesCode.trim().toLowerCase());
+		DeckBreakdownSeries series = seriesCode == null || seriesCode.isBlank()
+				? null : DeckBreakdownSeries.BY_CODE.get(seriesCode.trim().toLowerCase());
 		if (series == null) {
 			return;
 		}
-		BreakdownType type = series.section();
+		DeckBreakdown type = series.section();
 		String tag = "Breakdown " + series.code() + " tactic " + job.tacticNum();
 		String sourceSheetId = catalog.getSourceSheetIds().get(series.code());
 		Integer chartIdInSheet = parseChartId(catalog.getChartIdInSheet().get(series.code()));
@@ -193,10 +211,9 @@ public class BreakdownChartBuilder {
 	 */
 	Integer copyChartId(Sheets sheets, String copyId, String dataTab,
 			int configured) throws IOException {
-		Spreadsheet copy = sheets.spreadsheets().get(copyId)
+		Spreadsheet copy = googleCalls.execute(sheets.spreadsheets().get(copyId)
 				.setIncludeGridData(false)
-				.setFields("sheets(properties(title),charts(chartId))")
-				.execute();
+				.setFields("sheets(properties(title),charts(chartId))"));
 		return pickChartId(copy.getSheets(), dataTab, configured);
 	}
 
@@ -278,12 +295,12 @@ public class BreakdownChartBuilder {
 	 * @param labelsFromData whether the labels are written into the workbook rather than matched against it
 	 * @return label &rarr; value (positive only), in slice order
 	 */
-	Map<String, Double> valuesByLabel(List<BreakdownChartSlice> slices, boolean labelsFromData) {
+	Map<String, Double> valuesByLabel(List<ChartSlice> slices, boolean labelsFromData) {
 		Map<String, Double> byLabel = new LinkedHashMap<>();
 		if (slices == null) {
 			return byLabel;
 		}
-		for (BreakdownChartSlice slice : slices) {
+		for (ChartSlice slice : slices) {
 			if (slice == null || slice.value() <= 0 || slice.label() == null || slice.label().isBlank()) {
 				continue;
 			}
@@ -314,10 +331,9 @@ public class BreakdownChartBuilder {
 			Slides slides, String presentationId, List<String> errors) {
 		Map<String, Map<String, ChartElementRef>> out = new LinkedHashMap<>();
 		try {
-			Presentation pres = slides.presentations().get(presentationId)
+			Presentation pres = googleCalls.execute(slides.presentations().get(presentationId)
 					.setFields("slides.objectId,"
-							+ "slides.pageElements(objectId,size,transform,sheetsChart)")
-					.execute();
+							+ "slides.pageElements(objectId,size,transform,sheetsChart)"));
 			if (pres.getSlides() == null) {
 				return out;
 			}

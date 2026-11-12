@@ -1,5 +1,4 @@
 import {
-    createContext,
     useCallback,
     useContext,
     useRef,
@@ -7,11 +6,8 @@ import {
     type ReactNode,
 } from "react";
 
-interface ToastApi {
-    showToast(msg: string, error?: boolean): void;
-}
-
-const Ctx = createContext<ToastApi | null>(null);
+import { ToastCtx } from "../context/toastContext";
+import type { ToastApi } from "../model/toastContext";
 
 /** Bottom-right toast, matching the original .toast element + showToast(). */
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -25,18 +21,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }, []);
 
     return (
-        <Ctx.Provider value={{ showToast }}>
+        <ToastCtx.Provider value={{ showToast }}>
             {children}
             <div className={`toast${toast.show ? " show" : ""}${toast.error ? " error" : ""}`}>
                 <div className="toast-dot" />
                 <span>{toast.msg}</span>
             </div>
-        </Ctx.Provider>
+        </ToastCtx.Provider>
     );
 }
 
 export function useToast(): ToastApi {
-    const c = useContext(Ctx);
+    const c = useContext(ToastCtx);
     if (!c) throw new Error("useToast must be used within a ToastProvider");
     return c;
 }

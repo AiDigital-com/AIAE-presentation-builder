@@ -1,10 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.dto.FlightDates;
-import com.aidigital.reportconstructor.service.reports.engine.ChartPivot;
-import com.aidigital.reportconstructor.service.reports.engine.Headers;
-import com.aidigital.reportconstructor.service.reports.engine.Pivot;
-import com.aidigital.reportconstructor.service.reports.ports.PacingTablesRequest;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PacingPivot;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookPacingRequest;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.BatchUpdateValuesRequest;
 import com.google.api.services.sheets.v4.model.ValueRange;
@@ -60,23 +57,23 @@ public class SheetPacingTableWriter {
 	 * every token pattern carries the exact tactic number, so a neighbour's tokens never match.
 	 */
 	private static final int SEARCH_COLS_LEFT = 8;
+	/**
+	 * Stands in for a tactic the request carries no pivot for; reported as "no BQ data".
+	 */
+	private static final PacingPivot EMPTY_PIVOT = new PacingPivot(new LinkedHashMap<>(), false, false);
 
-	private final ChartPivot chartPivot;
-	private final TacticLineItemGrouper lineItemGrouper;
 	private final ChartSheetWriter chartSheetWriter;
+	private final GoogleCallTimer googleCalls;
 
 	/**
-	 * Creates the writer over its pure-data and cell-utility collaborators.
+	 * Creates the writer over its cell-utility collaborators.
 	 *
-	 * @param chartPivot        BQ header parsing and daily/monthly/multi-year pivot logic
-	 * @param lineItemGrouper   groups the flat tactic-to-line-item mapping by tactic number
 	 * @param chartSheetWriter  reused for its {@code readValues}/{@code colLetter}/{@code sheetIdForTab} utilities
+	 * @param googleCalls       times every Sheets call on the shared external-call timer
 	 */
-	public SheetPacingTableWriter(
-			ChartPivot chartPivot, TacticLineItemGrouper lineItemGrouper, ChartSheetWriter chartSheetWriter) {
-		this.chartPivot = chartPivot;
-		this.lineItemGrouper = lineItemGrouper;
+	public SheetPacingTableWriter(ChartSheetWriter chartSheetWriter, GoogleCallTimer googleCalls) {
 		this.chartSheetWriter = chartSheetWriter;
+		this.googleCalls = googleCalls;
 	}
 
 	/**
@@ -86,15 +83,14 @@ public class SheetPacingTableWriter {
 	 * @param sheets        authenticated Sheets client
 	 * @param spreadsheetId the workbook to write into
 	 * @param tabName       the tab carrying the pacing/distribution blocks
-	 * @param req           the pacing-table inputs
+	 * @param req           the pacing-table inputs, with every tactic's pivots already computed
 	 * @return human-readable error strings for any per-tactic/block failures (empty on full success)
 	 * @throws IOException when a Sheets API call fails
 	 */
-	public List<String> writeAll(Sheets sheets, String spreadsheetId, String tabName, PacingTablesRequest req)
+	public List<String> writeAll(Sheets sheets, String spreadsheetId, String tabName, WorkbookPacingRequest req)
 			throws IOException {
 		List<String> errors = new ArrayList<>();
-		Headers headers = chartPivot.parseBqHeaders(req.bqRows());
-		if (!headers.valid()) {
+		if (!req.pacing().bqColumnsFound()) {
 			errors.add("Pacing tables skipped — BQ sheet Date or Impressions column not found");
 			return errors;
 		}
@@ -104,22 +100,16 @@ public class SheetPacingTableWriter {
 		Map<Integer, int[]> monthlyAnchors = findNumberedAnchors(grid, MONTHLY_ANCHOR);
 		Map<Integer, int[]> distAnchors = findNumberedAnchors(grid, DISTRIBUTION_ANCHOR);
 
-		Map<Integer, List<String>> tacticLineItems = lineItemGrouper.groupByTactic(req.lineItemMapping());
-		// The monthly blocks may span a wider window than the daily ones (EOM reports on a single month but
-		// charts every month since campaign start), so their multi-year labelling is decided separately.
-		FlightDates monthlyTs = req.monthlyTs() != null ? req.monthlyTs() : req.flightTs();
-		boolean monthlyMultiYear = chartPivot.isMultiYear(req.bqRows(), headers, monthlyTs);
-
 		List<ValueRange> data = new ArrayList<>();
 		for (int n = 1; n <= req.tacticCount(); n++) {
-			List<String> liIds = tacticLineItems.getOrDefault(n, List.of());
+			int tactic = n;
 			String kpiType = req.tacticKpiTypes() == null ? null : req.tacticKpiTypes().get(n);
 
 			collectPacingBlock(data, grid, dailyAnchors.get(n), tabName, n, false,
-					() -> chartPivot.buildDailyPivot(req.bqRows(), liIds, headers, req.flightTs()),
+					() -> req.pacing().daily().byTactic().getOrDefault(tactic, EMPTY_PIVOT),
 					kpiType, "Daily pacing " + n, errors);
 			collectPacingBlock(data, grid, monthlyAnchors.get(n), tabName, n, true,
-					() -> chartPivot.buildMonthlyPivot(req.bqRows(), liIds, headers, monthlyTs, monthlyMultiYear),
+					() -> req.pacing().monthly().byTactic().getOrDefault(tactic, EMPTY_PIVOT),
 					kpiType, "Monthly pacing " + n, errors);
 			collectDistributionBlock(data, grid, distAnchors.get(n), tabName, n,
 					req.distTacticNames().getOrDefault(n, "Tactic " + n),
@@ -129,8 +119,8 @@ public class SheetPacingTableWriter {
 		}
 
 		if (!data.isEmpty()) {
-			sheets.spreadsheets().values().batchUpdate(spreadsheetId,
-					new BatchUpdateValuesRequest().setValueInputOption("RAW").setData(data)).execute();
+			googleCalls.execute(sheets.spreadsheets().values().batchUpdate(spreadsheetId,
+					new BatchUpdateValuesRequest().setValueInputOption("RAW").setData(data)));
 		}
 		return errors;
 	}
@@ -153,13 +143,13 @@ public class SheetPacingTableWriter {
 	 */
 	void collectPacingBlock(
 			List<ValueRange> data, List<List<Object>> grid, int[] anchor, String tabName,
-			int tacticNum, boolean monthly, Supplier<Pivot> pivotOf,
+			int tacticNum, boolean monthly, Supplier<PacingPivot> pivotOf,
 			String kpiType, String blockTag, List<String> errors) {
 		if (anchor == null) {
 			errors.add(blockTag + ": anchor not found");
 			return;
 		}
-		Pivot pivot = pivotOf.get();
+		PacingPivot pivot = pivotOf.get();
 		if (pivot.isEmpty()) {
 			errors.add(blockTag + ": no BQ data for tactic " + tacticNum);
 			return;

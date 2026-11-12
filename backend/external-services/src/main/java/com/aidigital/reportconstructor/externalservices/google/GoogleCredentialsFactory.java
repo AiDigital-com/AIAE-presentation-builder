@@ -15,7 +15,7 @@ import java.util.List;
 
 /**
  * Builds the shared {@link GoogleCredentials} + {@link HttpTransport} used by
- * {@link RealGoogleSheetsProvider} and {@link RealSlidesProvider}. Registered
+ * {@code google.sheets.impl.SheetsClientImpl} and {@link RealSlidesProvider}. Registered
  * only when {@code GOOGLE_SERVICE_ACCOUNT_JSON} is a non-blank env var; all
  * Google-backed beans inherit the same conditional through their constructor
  * dependency, so they auto-disappear together when creds are removed.

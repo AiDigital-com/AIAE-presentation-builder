@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+
 import { apiClient } from "@/shared/api/client";
 
 /**
@@ -15,8 +16,9 @@ export function useReportResume(jobId: number | null) {
         enabled: jobId !== null,
         retry: false,
         staleTime: Infinity,
-        queryFn: async () => {
+        queryFn: async ({ signal }) => {
             const { data, error } = await apiClient.GET("/api/v1/reports/{jobId}/resume", {
+                signal,
                 params: { path: { jobId: jobId as number } },
             });
             if (error || !data) throw new Error("This draft is no longer available.");

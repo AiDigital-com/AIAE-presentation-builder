@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.engine;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.EffectiveTacticsHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.LineItemNamingHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.MediaPlanTacticExtractor;
@@ -40,7 +41,7 @@ public final class ReportsEngineTestSupport {
 	}
 
 	static SheetRowHelper sheetRowHelper() {
-		return new SheetRowHelperImpl();
+		return new SheetRowHelperImpl(new CurrentTimeImpl());
 	}
 
 	static LineItemNamingHelper lineItemNamingHelper() {

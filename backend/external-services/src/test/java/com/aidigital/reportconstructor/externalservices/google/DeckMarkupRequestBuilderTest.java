@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.ports.DeckMarkup;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckMarkers;
 import com.google.api.services.slides.v1.model.AffineTransform;
 import com.google.api.services.slides.v1.model.Dimension;
 import com.google.api.services.slides.v1.model.OpaqueColor;
@@ -153,7 +153,7 @@ class DeckMarkupRequestBuilderTest {
 		Page page = new Page().setPageElements(List.of(new PageElement().setObjectId("chip3").setShape(new Shape()
 				.setText(new TextContent().setTextElements(List.of(
 						new TextElement().setStartIndex(0).setTextRun(new TextRun()
-								.setContent(DeckMarkup.HIDE_SHAPE + "\n"))))))));
+								.setContent(DeckMarkers.HIDE_SHAPE + "\n"))))))));
 
 		// When:
 		List<Request> requests = builder.deckMarkupRequests(List.of(page));

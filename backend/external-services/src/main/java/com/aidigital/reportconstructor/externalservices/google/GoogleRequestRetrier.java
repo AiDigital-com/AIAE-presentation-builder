@@ -1,9 +1,8 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.common.error.AppException;
-import com.aidigital.reportconstructor.service.common.error.ErrorReason;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.googleapis.services.AbstractGoogleClientRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -15,10 +14,12 @@ import java.io.IOException;
  * limit) and 500/503 (transient server errors) as retryable; large workbook copies and deck/sheet
  * {@code batchUpdate}s intermittently return these under load. Drive {@code files.copy} and Sheets/Slides
  * {@code batchUpdate} are each idempotent-enough for a retry: a copy that failed produced no file, and a
- * {@code batchUpdate} is atomic so a retried one never double-applies.
+ * {@code batchUpdate} is atomic so a retried one never double-applies. Each attempt is timed through
+ * {@link GoogleCallTimer}.
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class GoogleRequestRetrier {
 
 	/**
@@ -34,6 +35,9 @@ public class GoogleRequestRetrier {
 	/** Ceiling for the exponential backoff between retries. */
 	private static final long MAX_BACKOFF_MILLIS = 8_000L;
 
+	/** Times every attempt on the shared external-call timer. */
+	private final GoogleCallTimer googleCalls;
+
 	/**
 	 * Executes the request, retrying on transient statuses (409/429/500/503) with capped exponential
 	 * backoff. Non-retryable errors and the final attempt's error propagate unchanged.
@@ -48,7 +52,7 @@ public class GoogleRequestRetrier {
 		long backoff = INITIAL_BACKOFF_MILLIS;
 		for (int attempt = 1; ; attempt++) {
 			try {
-				return request.execute();
+				return googleCalls.execute(request);
 			} catch (GoogleJsonResponseException ex) {
 				if (!isRetryable(ex.getStatusCode()) || attempt >= MAX_ATTEMPTS) {
 					throw ex;
@@ -91,7 +95,7 @@ public class GoogleRequestRetrier {
 			Thread.sleep(millis);
 		} catch (InterruptedException ie) {
 			Thread.currentThread().interrupt();
-			throw new AppException(ErrorReason.C000, "Interrupted while retrying a Google API request");
+			throw new GoogleApiException("Interrupted while retrying a Google API request");
 		}
 	}
 }

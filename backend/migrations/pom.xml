@@ -20,9 +20,16 @@
 	<packaging>jar</packaging>
 
 	<dependencies>
+		<!-- Liquibase runs inside application; this module only ships the changelogs. -->
 		<dependency>
 			<groupId>org.liquibase</groupId>
 			<artifactId>liquibase-core</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<!-- Declared in every backend module per the backend hard rules. -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
 		</dependency>
 	</dependencies>
 

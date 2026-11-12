@@ -1,8 +1,5 @@
-import { SHEET_FORMATS, type SheetFormatKey } from "../lib/sheetFormats";
-
-interface Props {
-    format: SheetFormatKey;
-}
+import { SHEET_FORMATS } from "../lib/sheetFormats";
+import type { Props } from "../model/sheetFormatHint";
 
 /**
  * Collapsible "expected format" note under a sheet-link field: the rules the workbook has to follow

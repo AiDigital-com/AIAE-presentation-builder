@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.error;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.api.v1.model.ApiErrorV1;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
@@ -14,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class GlobalExceptionHandlerTest {
 
-	private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+	private final GlobalExceptionHandler handler = new GlobalExceptionHandler(new CurrentTimeImpl());
 
 	@Test
 	void shouldMapAppExceptionCodesToHttpStatusesTest() {

@@ -34,24 +34,24 @@ import static org.mockito.Mockito.when;
 class PlaceholderResolverServiceImplTest {
 
 	@Mock
-	CampaignDataCollector campaignDataCollector;
+	private CampaignDataCollector campaignDataCollector;
 	@Mock
-	CampaignResolvers campaignResolvers;
+	private CampaignResolvers campaignResolvers;
 	@Mock
-	PlaceholderSectionBuilder sectionBuilder;
+	private PlaceholderSectionBuilder sectionBuilder;
 	@Mock
-	PlaceholderClaudeGate claudeGate;
+	private PlaceholderClaudeGate claudeGate;
 	@Mock
-	PlaceholderLabelCollector labelCollector;
+	private PlaceholderLabelCollector labelCollector;
 	@Mock
-	PlaceholderValueFlattener valueFlattener;
+	private PlaceholderValueFlattener valueFlattener;
 	@Mock
-	ReportClaudeDefaults claudeDefaults;
+	private ReportClaudeDefaults claudeDefaults;
 	@Mock
-	SheetRowHelper sheetUtils;
+	private SheetRowHelper sheetUtils;
 
 	@InjectMocks
-	PlaceholderResolverServiceImpl service;
+	private PlaceholderResolverServiceImpl service;
 
 	private static GeneratePayload payload(List<List<String>> sheetRows, List<List<String>> adjRows) {
 		return new GeneratePayload(

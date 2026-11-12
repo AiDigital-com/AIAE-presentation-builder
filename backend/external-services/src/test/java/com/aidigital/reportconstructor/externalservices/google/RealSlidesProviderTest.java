@@ -1,13 +1,14 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
+import com.aidigital.reportconstructor.externalservices.google.drive.DriveSharer;
+import com.aidigital.reportconstructor.externalservices.google.drive.DriveShareRecipients;
 import com.aidigital.reportconstructor.service.reports.dto.BreakdownSelection;
-import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckBreakdown;
 import com.aidigital.reportconstructor.service.reports.dto.CreativeRow;
 import com.aidigital.reportconstructor.service.reports.dto.CreativeTable;
-import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckTemplate;
 import com.aidigital.reportconstructor.service.reports.helpers.BreakdownSelectionResolver;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportSheetHelper;
-import com.aidigital.reportconstructor.service.reports.helpers.impl.BreakdownThoughtsGateImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.CreativeBreakdownHelperImpl;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
@@ -71,7 +72,7 @@ class RealSlidesProviderTest {
 		DriveShareRecipients shareRecipients = Mockito.mock(DriveShareRecipients.class);
 		return new RealSlidesProvider(
 				creds, props, driveSharer, shareRecipients, retrier,
-				new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(), new SummaryTableRowTrimmer(),
+				new BreakdownSlideNaming(), new SummaryTableRowTrimmer(),
 				new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
@@ -100,7 +101,7 @@ class RealSlidesProviderTest {
 		when(props.getResultsSlideObjectIds()).thenReturn(Map.of());
 		return new RealSlidesProvider(
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
-				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
+				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
@@ -131,7 +132,7 @@ class RealSlidesProviderTest {
 		eomDeckProps.setDropSlideTitles(eomDropSlideTitles);
 		return new RealSlidesProvider(
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
-				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
+				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
@@ -189,7 +190,7 @@ class RealSlidesProviderTest {
 		RealSlidesProvider provider = newProvider(Map.of(), "thoughts-master");
 
 		// When:
-		boolean carries = provider.carriesTacticThoughts("EOC", TemplateVariant.STANDARD);
+		boolean carries = provider.carriesTacticThoughts("EOC", DeckTemplate.STANDARD);
 
 		// Then:
 		assertThat(carries).isTrue();
@@ -201,7 +202,7 @@ class RealSlidesProviderTest {
 		RealSlidesProvider provider = newProvider(Map.of(), "");
 
 		// When:
-		boolean carries = provider.carriesTacticThoughts("EOC", TemplateVariant.STANDARD);
+		boolean carries = provider.carriesTacticThoughts("EOC", DeckTemplate.STANDARD);
 
 		// Then:
 		assertThat(carries).isFalse();
@@ -213,7 +214,7 @@ class RealSlidesProviderTest {
 		RealSlidesProvider provider = newProvider(Map.of(), "");
 
 		// When:
-		boolean carries = provider.carriesTacticThoughts("EOM", TemplateVariant.STANDARD);
+		boolean carries = provider.carriesTacticThoughts("EOM", DeckTemplate.STANDARD);
 
 		// Then:
 		assertThat(carries).isTrue();
@@ -240,7 +241,7 @@ class RealSlidesProviderTest {
 		GoogleRequestRetrier retrier = Mockito.mock(GoogleRequestRetrier.class);
 		RealSlidesProvider provider = new RealSlidesProvider(
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
-				retrier, new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
+				retrier, new BreakdownSlideNaming(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
@@ -292,9 +293,9 @@ class RealSlidesProviderTest {
 		RealSlidesProvider provider = newProvider(Map.of());
 
 		// When-Then: only "EOM" selects the EOM template; anything else (including EOC and unset) keeps the default
-		assertThat(provider.templateIdFor("EOM", TemplateVariant.STANDARD)).isEqualTo("eom-template");
-		assertThat(provider.templateIdFor("EOC", TemplateVariant.STANDARD)).isEqualTo("template");
-		assertThat(provider.templateIdFor(null, TemplateVariant.STANDARD)).isEqualTo("template");
+		assertThat(provider.templateIdFor("EOM", DeckTemplate.STANDARD)).isEqualTo("eom-template");
+		assertThat(provider.templateIdFor("EOC", DeckTemplate.STANDARD)).isEqualTo("template");
+		assertThat(provider.templateIdFor(null, DeckTemplate.STANDARD)).isEqualTo("template");
 	}
 
 	@Test
@@ -303,7 +304,7 @@ class RealSlidesProviderTest {
 		RealSlidesProvider provider = newProvider(Map.of());
 
 		// When
-		String templateId = provider.templateIdFor("EOC", TemplateVariant.MPO);
+		String templateId = provider.templateIdFor("EOC", DeckTemplate.MPO);
 
 		// Then
 		assertThat(templateId).isEqualTo("mpo-eoc-template");
@@ -315,7 +316,7 @@ class RealSlidesProviderTest {
 		RealSlidesProvider provider = newProvider(Map.of());
 
 		// When
-		String templateId = provider.templateIdFor("EOM", TemplateVariant.MPO);
+		String templateId = provider.templateIdFor("EOM", DeckTemplate.MPO);
 
 		// Then: the EOM report keeps its standard template rather than failing on a blank id
 		assertThat(templateId).isEqualTo("eom-template");
@@ -350,7 +351,7 @@ class RealSlidesProviderTest {
 	}
 
 	private SlideModel standard(RealSlidesProvider provider) {
-		return provider.slideModelFor("EOC", TemplateVariant.STANDARD);
+		return provider.slideModelFor("EOC", DeckTemplate.STANDARD);
 	}
 
 	@Test
@@ -359,12 +360,12 @@ class RealSlidesProviderTest {
 		RealSlidesProvider provider = newMasterTacticProvider("m_tactic", "");
 
 		// When
-		SlideModel mpo = provider.slideModelFor("EOC", TemplateVariant.MPO);
-		SlideModel standard = provider.slideModelFor("EOC", TemplateVariant.STANDARD);
+		SlideModel mpo = provider.slideModelFor("EOC", DeckTemplate.MPO);
+		SlideModel standard = provider.slideModelFor("EOC", DeckTemplate.STANDARD);
 
 		// Then: each deck is worked with the ids of the template it was cloned from
 		assertThat(mpo.tacticMasterId()).isEqualTo("mpo_tactic");
-		assertThat(mpo.breakdownMasterIds()).containsExactly(Map.entry(BreakdownType.DEVICE, "mpo_dev"));
+		assertThat(mpo.breakdownMasterIds()).containsExactly(Map.entry(DeckBreakdown.DEVICE, "mpo_dev"));
 		assertThat(standard.tacticMasterId()).isEqualTo("m_tactic");
 	}
 
@@ -374,7 +375,7 @@ class RealSlidesProviderTest {
 		RealSlidesProvider provider = newMasterTacticProvider("m_tactic", "");
 
 		// When
-		SlideModel model = provider.slideModelFor("EOM", TemplateVariant.MPO);
+		SlideModel model = provider.slideModelFor("EOM", DeckTemplate.MPO);
 
 		// Then: the standard ids, the ones that exist in the deck that was actually cloned
 		assertThat(model.tacticMasterId()).isEqualTo("m_tactic");
@@ -386,15 +387,15 @@ class RealSlidesProviderTest {
 		RealSlidesProvider provider = newProvider(Map.of(), "thoughts-master");
 
 		// When-Then: the per-tactic thoughts are only paid for on the deck that can show them
-		assertThat(provider.carriesTacticThoughts("EOC", TemplateVariant.MPO)).isFalse();
-		assertThat(provider.carriesTacticThoughts("EOC", TemplateVariant.STANDARD)).isTrue();
+		assertThat(provider.carriesTacticThoughts("EOC", DeckTemplate.MPO)).isFalse();
+		assertThat(provider.carriesTacticThoughts("EOC", DeckTemplate.STANDARD)).isTrue();
 	}
 
 	@Test
 	void shouldTrimAndDeleteTheMpoTemplateSlidesOnAnMpoDeckTest() {
 		// Given: an MPO deck still carrying its masters and both results slides
 		RealSlidesProvider provider = newMasterTacticProvider("m_tactic", "m_thoughts");
-		SlideModel mpo = provider.slideModelFor("EOC", TemplateVariant.MPO);
+		SlideModel mpo = provider.slideModelFor("EOC", DeckTemplate.MPO);
 		List<Page> deck = List.of(slide("tct_1"), slide("mpo_tactic"), slide("mpo_dev"), slide("m_tactic"));
 
 		// When
@@ -453,10 +454,10 @@ class RealSlidesProviderTest {
 		configured.put("bogus", "x");
 
 		// When:
-		Map<BreakdownType, String> resolved = provider.resolveBreakdownMasterIds(configured);
+		Map<DeckBreakdown, String> resolved = provider.resolveBreakdownMasterIds(configured);
 
 		// Then: only the valid, non-blank entry survives
-		assertThat(resolved).containsExactly(Map.entry(BreakdownType.TOP_PUBLISHERS, "m_tp"));
+		assertThat(resolved).containsExactly(Map.entry(DeckBreakdown.TOP_PUBLISHERS, "m_tp"));
 	}
 
 	@Test
@@ -475,20 +476,20 @@ class RealSlidesProviderTest {
 				slide("m_ca"),
 				shapeSlide("m_dev", List.of(List.of("{{top_dev_n}}"))));
 
-		Map<BreakdownType, String> masterIds = new LinkedHashMap<>();
-		masterIds.put(BreakdownType.TOP_PUBLISHERS, "m_tp");
-		masterIds.put(BreakdownType.CREATIVE, "m_ca");
-		masterIds.put(BreakdownType.GEO, "m_geo"); // configured but absent from the deck
-		masterIds.put(BreakdownType.DEVICE, "m_dev");
+		Map<DeckBreakdown, String> masterIds = new LinkedHashMap<>();
+		masterIds.put(DeckBreakdown.TOP_PUBLISHERS, "m_tp");
+		masterIds.put(DeckBreakdown.CREATIVE, "m_ca");
+		masterIds.put(DeckBreakdown.GEO, "m_geo"); // configured but absent from the deck
+		masterIds.put(DeckBreakdown.DEVICE, "m_dev");
 
-		Map<Integer, Set<BreakdownType>> enabledByTactic = new LinkedHashMap<>();
-		enabledByTactic.put(1, EnumSet.of(BreakdownType.TOP_PUBLISHERS, BreakdownType.DEVICE));
-		enabledByTactic.put(2, EnumSet.noneOf(BreakdownType.class));
-		enabledByTactic.put(3, EnumSet.of(BreakdownType.TOP_PUBLISHERS));
+		Map<Integer, Set<DeckBreakdown>> enabledByTactic = new LinkedHashMap<>();
+		enabledByTactic.put(1, EnumSet.of(DeckBreakdown.TOP_PUBLISHERS, DeckBreakdown.DEVICE));
+		enabledByTactic.put(2, EnumSet.noneOf(DeckBreakdown.class));
+		enabledByTactic.put(3, EnumSet.of(DeckBreakdown.TOP_PUBLISHERS));
 
 		// When:
 		List<Request> requests = provider.buildBreakdownRequests(
-				standard(provider), deck, masterIds, enabledByTactic, Map.of());
+				standard(provider), deck, masterIds, enabledByTactic, Map.of(), Set.of());
 
 		// Then: three duplicates — tp+dev for tactic 1 (enum order), tp for tactic 3
 		List<Request> dups = requests.stream().filter(r -> r.getDuplicateObject() != null).toList();
@@ -529,7 +530,7 @@ class RealSlidesProviderTest {
 	@Test
 	void buildBreakdownRequests_ordersACopyRunByItsMastersPositionNotByTheEnumOrderTest() {
 		// Given: a template whose device master is drawn before its Top Publishers master — the reverse of the
-		// BreakdownType declaration order
+		// DeckBreakdown declaration order
 		Map<Integer, String> tacticSlideObjectIds = new LinkedHashMap<>();
 		tacticSlideObjectIds.put(1, "tactic1");
 		RealSlidesProvider provider = newProvider(tacticSlideObjectIds);
@@ -539,15 +540,15 @@ class RealSlidesProviderTest {
 				shapeSlide("m_dev", List.of(List.of("{{top_dev_n}}"))),
 				shapeSlide("m_tp", List.of(List.of("{{publisher_", "n", ".1}}"))));
 
-		Map<BreakdownType, String> masterIds = new LinkedHashMap<>();
-		masterIds.put(BreakdownType.TOP_PUBLISHERS, "m_tp");
-		masterIds.put(BreakdownType.DEVICE, "m_dev");
+		Map<DeckBreakdown, String> masterIds = new LinkedHashMap<>();
+		masterIds.put(DeckBreakdown.TOP_PUBLISHERS, "m_tp");
+		masterIds.put(DeckBreakdown.DEVICE, "m_dev");
 
 		// When: one tactic enables both
 		List<Request> requests = provider.buildBreakdownRequests(
 				standard(provider), deck,
-				masterIds, Map.of(1, EnumSet.of(BreakdownType.TOP_PUBLISHERS, BreakdownType.DEVICE)),
-				Map.of());
+				masterIds, Map.of(1, EnumSet.of(DeckBreakdown.TOP_PUBLISHERS, DeckBreakdown.DEVICE)),
+				Map.of(), Set.of());
 
 		// Then: the move lists the copies in their masters' order, because that is the order they occupy in the
 		// deck — a duplicate lands right after its own master. Listing them in enum order instead would fail
@@ -559,7 +560,7 @@ class RealSlidesProviderTest {
 	}
 
 	@Test
-	void buildBreakdownRequests_appendsThoughtsSlideOnlyForTacticsWithMoreThanTwoBreakdownsTest() {
+	void buildBreakdownRequests_appendsThoughtsSlideOnlyForTheQualifyingTacticsTest() {
 		// Given: a deck with tactic slides 1..2, the breakdown masters and the thoughts master; tactic 1
 		// enables three breakdowns (qualifies for thoughts), tactic 2 enables two (does not)
 		Map<Integer, String> tacticSlideObjectIds = new LinkedHashMap<>();
@@ -572,20 +573,20 @@ class RealSlidesProviderTest {
 				slide("m_tp"), slide("m_geo"), slide("m_dev"),
 				shapeSlide("m_thoughts", List.of(List.of("{{thoughts on tactic n performance 1}}"))));
 
-		Map<BreakdownType, String> masterIds = new LinkedHashMap<>();
-		masterIds.put(BreakdownType.TOP_PUBLISHERS, "m_tp");
-		masterIds.put(BreakdownType.GEO, "m_geo");
-		masterIds.put(BreakdownType.DEVICE, "m_dev");
+		Map<DeckBreakdown, String> masterIds = new LinkedHashMap<>();
+		masterIds.put(DeckBreakdown.TOP_PUBLISHERS, "m_tp");
+		masterIds.put(DeckBreakdown.GEO, "m_geo");
+		masterIds.put(DeckBreakdown.DEVICE, "m_dev");
 
-		Map<Integer, Set<BreakdownType>> enabledByTactic = new LinkedHashMap<>();
-		enabledByTactic.put(1, EnumSet.of(BreakdownType.TOP_PUBLISHERS, BreakdownType.GEO, BreakdownType.DEVICE));
-		enabledByTactic.put(2, EnumSet.of(BreakdownType.TOP_PUBLISHERS, BreakdownType.GEO));
+		Map<Integer, Set<DeckBreakdown>> enabledByTactic = new LinkedHashMap<>();
+		enabledByTactic.put(1, EnumSet.of(DeckBreakdown.TOP_PUBLISHERS, DeckBreakdown.GEO, DeckBreakdown.DEVICE));
+		enabledByTactic.put(2, EnumSet.of(DeckBreakdown.TOP_PUBLISHERS, DeckBreakdown.GEO));
 
 		Map<String, String> values = Map.of("{{thoughts on tactic 1 performance 1}}", "Great CTV pacing.");
 
-		// When:
+		// When: only tactic 1 passed the service's breakdown-thoughts gate
 		List<Request> requests = provider.buildBreakdownRequests(
-				standard(provider), deck, masterIds, enabledByTactic, values);
+				standard(provider), deck, masterIds, enabledByTactic, values, Set.of(1));
 
 		// Then: exactly one thoughts duplicate — for tactic 1 only — with the per-tactic id
 		List<Map<String, String>> thoughtsDups = requests.stream()
@@ -711,8 +712,8 @@ class RealSlidesProviderTest {
 
 		// When:
 		List<Request> requests = provider.buildBreakdownRequests(
-				standard(provider), deck, Map.of(BreakdownType.DEVICE, "m_dev"),
-				Map.of(2, EnumSet.of(BreakdownType.DEVICE)), Map.of());
+				standard(provider), deck, Map.of(DeckBreakdown.DEVICE, "m_dev"),
+				Map.of(2, EnumSet.of(DeckBreakdown.DEVICE)), Map.of(), Set.of());
 
 		// Then: the copy is placed after tct_2 — the tactic's main slide is found by its minted id, not by
 		// the legacy per-slot configuration (which still points at "legacy2")
@@ -800,7 +801,7 @@ class RealSlidesProviderTest {
 				.thenReturn(List.of("card", "heading", "chart"));
 		RealSlidesProvider provider = new RealSlidesProvider(
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
-				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
+				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()), locator, new TacticSlideRelayout(locator),
 				new DeviceTableCompactor(locator, new LooseTableColumnRemover(locator)),
@@ -846,7 +847,7 @@ class RealSlidesProviderTest {
 				"DAILYPACINGDYNAMIC")).thenReturn(List.of(move));
 		RealSlidesProvider provider = new RealSlidesProvider(
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
-				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
+				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()), new SlideBlockLocator(), relayout,
 				new DeviceTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
@@ -854,7 +855,7 @@ class RealSlidesProviderTest {
 				new PaidSlidesWriter());
 		RealSlidesProvider noAnchorProvider = new RealSlidesProvider(
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
-				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
+				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(noAnchorProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()), new SlideBlockLocator(), relayout,
 				new DeviceTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
@@ -949,13 +950,13 @@ class RealSlidesProviderTest {
 		List<Page> deck = List.of(
 				slide("tactic1"),
 				shapeSlide("m_tp", List.of(List.of("{{publisher_", "n", ".1}}"), List.of("{{pub_sov_n.1}}"))));
-		Map<BreakdownType, String> masterIds = Map.of(BreakdownType.TOP_PUBLISHERS, "m_tp");
-		Map<Integer, Set<BreakdownType>> enabledByTactic = Map.of(1, EnumSet.of(BreakdownType.TOP_PUBLISHERS));
+		Map<DeckBreakdown, String> masterIds = Map.of(DeckBreakdown.TOP_PUBLISHERS, "m_tp");
+		Map<Integer, Set<DeckBreakdown>> enabledByTactic = Map.of(1, EnumSet.of(DeckBreakdown.TOP_PUBLISHERS));
 		Map<String, String> values = Map.of("{{publisher_1.1}}", "YouTube");
 
 		// When:
 		List<Request> requests = provider.buildBreakdownRequests(
-				standard(provider), deck, masterIds, enabledByTactic, values);
+				standard(provider), deck, masterIds, enabledByTactic, values, Set.of());
 
 		// Then: the known token goes straight from its generic form to the final value, scoped to the copy
 		assertThat(requests).anyMatch(r -> r.getReplaceAllText() != null
@@ -980,13 +981,13 @@ class RealSlidesProviderTest {
 		List<Page> deck = List.of(
 				slide("tactic1"),
 				shapeSlide("m_tp", List.of(List.of("{{publishers_observation_", "n", "_1}}"))));
-		Map<BreakdownType, String> masterIds = Map.of(BreakdownType.TOP_PUBLISHERS, "m_tp");
-		Map<Integer, Set<BreakdownType>> enabledByTactic = Map.of(1, EnumSet.of(BreakdownType.TOP_PUBLISHERS));
+		Map<DeckBreakdown, String> masterIds = Map.of(DeckBreakdown.TOP_PUBLISHERS, "m_tp");
+		Map<Integer, Set<DeckBreakdown>> enabledByTactic = Map.of(1, EnumSet.of(DeckBreakdown.TOP_PUBLISHERS));
 		Map<String, String> values = Map.of("{{publishers_observation_1_1}}", "");
 
 		// When:
 		List<Request> requests = provider.buildBreakdownRequests(
-				standard(provider), deck, masterIds, enabledByTactic, values);
+				standard(provider), deck, masterIds, enabledByTactic, values, Set.of());
 
 		// Then: the token is replaced with nothing rather than left on the slide
 		assertThat(requests).anyMatch(r -> r.getReplaceAllText() != null
@@ -999,13 +1000,13 @@ class RealSlidesProviderTest {
 		// Given: a tactic enables a breakdown, but its main slide is not present in the deck
 		RealSlidesProvider provider = newProvider(Map.of(1, "tactic1"));
 		List<Page> deck = List.of(shapeSlide("m_tp", List.of(List.of("{{tactic n}}"))));
-		Map<BreakdownType, String> masterIds = Map.of(BreakdownType.TOP_PUBLISHERS, "m_tp");
-		Map<Integer, Set<BreakdownType>> enabledByTactic =
-				Map.of(1, EnumSet.of(BreakdownType.TOP_PUBLISHERS));
+		Map<DeckBreakdown, String> masterIds = Map.of(DeckBreakdown.TOP_PUBLISHERS, "m_tp");
+		Map<Integer, Set<DeckBreakdown>> enabledByTactic =
+				Map.of(1, EnumSet.of(DeckBreakdown.TOP_PUBLISHERS));
 
 		// When:
 		List<Request> requests = provider.buildBreakdownRequests(
-				standard(provider), deck, masterIds, enabledByTactic, Map.of());
+				standard(provider), deck, masterIds, enabledByTactic, Map.of(), Set.of());
 
 		// Then: nothing is emitted because tactic 1's main slide is absent
 		assertThat(requests).isEmpty();
@@ -1042,7 +1043,8 @@ class RealSlidesProviderTest {
 
 		List<BreakdownSelection> selections = List.of(new BreakdownSelection(1, List.of("ca")));
 		Map<String, String> flatReplacements = Map.of("{{tactic 1}}", "Display", "{{tactic 1 KPI type}}", "CTR");
-		when(resolver.resolve(selections)).thenReturn(Map.of(1, EnumSet.of(BreakdownType.CREATIVE)));
+		when(resolver.resolve(selections)).thenReturn(Map.of(1,
+				EnumSet.of(com.aidigital.reportconstructor.service.reports.dto.BreakdownType.CREATIVE)));
 		when(sheetHelper.readCreativeTables("sheet", Set.of(1), "token")).thenReturn(Map.of(
 				1, new CreativeTable("6", "11.04", "2.09", "CH-Ad-320-50-1B", List.of(
 						new CreativeRow("CH-Ad-320-50-1B", "144,070", "1.77%", "", "$861.81")))));
@@ -1102,7 +1104,7 @@ class RealSlidesProviderTest {
 		when(props.getBreakdownMasterSlideObjectIds()).thenReturn(Map.of());
 		return new RealSlidesProvider(
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
-				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
+				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
@@ -1173,7 +1175,7 @@ class RealSlidesProviderTest {
 
 		// When: tactic 1 enables Top Publishers
 		List<Request> requests = provider.buildEomBreakdownRequests(
-				deck, Map.of(1, Set.of(BreakdownType.TOP_PUBLISHERS)), Map.of());
+				deck, Map.of(1, Set.of(DeckBreakdown.TOP_PUBLISHERS)), Map.of(), Set.of());
 
 		// Then: the copy is placed right after the tactic's SECOND master copy, never between the two
 		UpdateSlidesPositionRequest move = requests.stream()
@@ -1229,7 +1231,7 @@ class RealSlidesProviderTest {
 	void dashUnresolvedTokens_isANoopForAnEocDeckTest() {
 		RealSlidesProvider provider = newEomProvider();
 
-		assertThat(provider.dashUnresolvedTokens("deck-id", "EOC", TemplateVariant.STANDARD, null)).isEmpty();
+		assertThat(provider.dashUnresolvedTokens("deck-id", "EOC", DeckTemplate.STANDARD, null)).isEmpty();
 	}
 
 	@Test
@@ -1250,7 +1252,7 @@ class RealSlidesProviderTest {
 		mpoDeckProps.setEomSlidesTemplateId("mpo-eom-template");
 		RealSlidesProvider provider = new RealSlidesProvider(
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
-				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
+				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(new EomDeckProperties()),
 				new MpoDeckPolicy(mpoDeckProps), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
@@ -1260,9 +1262,9 @@ class RealSlidesProviderTest {
 				new PaidSlidesWriter());
 
 		// When-Then: only the MPO EOM deck takes the EOM model; a standard EOM deck and any EOC deck do not
-		assertThat(provider.eomDeck("EOM", TemplateVariant.MPO)).isTrue();
-		assertThat(provider.eomDeck("EOM", TemplateVariant.STANDARD)).isFalse();
-		assertThat(provider.eomDeck("EOC", TemplateVariant.MPO)).isFalse();
+		assertThat(provider.eomDeck("EOM", DeckTemplate.MPO)).isTrue();
+		assertThat(provider.eomDeck("EOM", DeckTemplate.STANDARD)).isFalse();
+		assertThat(provider.eomDeck("EOC", DeckTemplate.MPO)).isFalse();
 	}
 
 	@Test
@@ -1308,12 +1310,12 @@ class RealSlidesProviderTest {
 				eomSlide("geo-master", "{{geo_n.1}}"),
 				eomSlide("thoughts-master", "{{thoughts on tactic n performance 1}}"));
 
-		// When: tactic 1 enables three breakdowns (past the ">2" gate) and tactic 2 only one
+		// When: tactic 1 enables three breakdowns and passed the gate; tactic 2 enables one and did not
 		List<Request> requests = provider.buildEomBreakdownRequests(
 				deck,
-				Map.of(1, Set.of(BreakdownType.TOP_PUBLISHERS, BreakdownType.CREATIVE, BreakdownType.GEO),
-						2, Set.of(BreakdownType.TOP_PUBLISHERS)),
-				Map.of());
+				Map.of(1, Set.of(DeckBreakdown.TOP_PUBLISHERS, DeckBreakdown.CREATIVE, DeckBreakdown.GEO),
+						2, Set.of(DeckBreakdown.TOP_PUBLISHERS)),
+				Map.of(), Set.of(1));
 
 		// Then: only tactic 1 gets a thoughts copy — tactic 2 would have shipped raw thought tokens
 		List<String> duplicated = requests.stream()

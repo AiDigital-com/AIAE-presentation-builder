@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckBreakdown;
 import com.google.api.services.slides.v1.model.Page;
 import com.google.api.services.slides.v1.model.PageElement;
 import com.google.api.services.slides.v1.model.Shape;
@@ -96,11 +96,11 @@ class EomSlideFinderTest {
 
 		assertThat(finder.tacticMasterSlideIds(deck)).containsExactly("tactic-master");
 		assertThat(finder.breakdownMasterSlideIds(deck)).containsExactlyInAnyOrderEntriesOf(Map.of(
-				BreakdownType.TOP_PUBLISHERS, "publishers",
-				BreakdownType.CREATIVE, "creative",
-				BreakdownType.GEO, "geo",
-				BreakdownType.AUDIENCE, "audience",
-				BreakdownType.DEVICE, "device"));
+				DeckBreakdown.TOP_PUBLISHERS, "publishers",
+				DeckBreakdown.CREATIVE, "creative",
+				DeckBreakdown.GEO, "geo",
+				DeckBreakdown.AUDIENCE, "audience",
+				DeckBreakdown.DEVICE, "device"));
 	}
 
 	@Test

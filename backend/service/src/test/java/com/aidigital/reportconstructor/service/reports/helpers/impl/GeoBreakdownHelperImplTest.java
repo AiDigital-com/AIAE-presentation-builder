@@ -29,12 +29,12 @@ import static org.mockito.Mockito.when;
 class GeoBreakdownHelperImplTest {
 
 	@Mock
-	ReportSheetHelper sheetHelper;
+	private ReportSheetHelper sheetHelper;
 	@Mock
-	BreakdownSelectionResolver breakdownResolver;
+	private BreakdownSelectionResolver breakdownResolver;
 
 	@InjectMocks
-	GeoBreakdownHelperImpl helper;
+	private GeoBreakdownHelperImpl helper;
 
 	@Test
 	void shouldCopySheetValuesVerbatimAndDashTheSlotsTheUserLeftBlankTest() {

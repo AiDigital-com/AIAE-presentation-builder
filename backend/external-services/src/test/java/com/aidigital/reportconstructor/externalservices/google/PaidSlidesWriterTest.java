@@ -1,9 +1,9 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.enums.PaidChannelKind;
-import com.aidigital.reportconstructor.service.reports.enums.PaidTableMarker;
-import com.aidigital.reportconstructor.service.reports.model.PaidSlideTable;
-import com.aidigital.reportconstructor.service.reports.model.PaidSlidesFill;
+import com.aidigital.reportconstructor.externalservices.google.deck.PaidDeckChannel;
+import com.aidigital.reportconstructor.externalservices.google.deck.PaidDeckTableMarker;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PaidDeckTable;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PaidDeckFill;
 import com.google.api.services.slides.v1.model.Group;
 import com.google.api.services.slides.v1.model.Page;
 import com.google.api.services.slides.v1.model.PageElement;
@@ -41,11 +41,11 @@ class PaidSlidesWriterTest {
 				.setObjectId("pmax").setTitle(" ps_pmax_table ")
 				.setTable(new Table().setTableRows(List.of(row.apply("SEARCH"), row.apply("SHOPPING"),
 						row.apply("YOUTUBE"), row.apply("DISPLAY"), row.apply("OTHER"), row.apply("TOTAL"))))));
-		PaidSlideTable table = new PaidSlideTable(PaidTableMarker.SEARCH_PMAX,
+		PaidDeckTable table = new PaidDeckTable(PaidDeckTableMarker.SEARCH_PMAX,
 				List.of(List.of("SEARCH", "9,000"), List.of("DISPLAY", "1,000")), List.of("TOTAL", "10,000"));
 
 		// When:
-		List<Request> requests = writer.requests(List.of(slide), new PaidSlidesFill(List.of(table), Set.of()));
+		List<Request> requests = writer.requests(List.of(slide), new PaidDeckFill(List.of(table), Set.of()));
 
 		// Then: row 0's label already reads SEARCH, so only its value changes; row 1 and the TOTAL row are written;
 		// data rows 4, 3 and 2 are deleted bottom-up after every write
@@ -100,10 +100,10 @@ class PaidSlidesWriterTest {
 		Page slide = new Page().setObjectId("s1").setPageElements(List.of(new PageElement()
 				.setObjectId("kw").setTitle("ps_kw_table")
 				.setTable(new Table().setTableRows(List.of(row.apply("1"), row.apply("2"), row.apply("3"))))));
-		PaidSlideTable table = new PaidSlideTable(PaidTableMarker.SEARCH_KEYWORDS, List.of(), null);
+		PaidDeckTable table = new PaidDeckTable(PaidDeckTableMarker.SEARCH_KEYWORDS, List.of(), null);
 
 		// When:
-		List<Request> requests = writer.requests(List.of(slide), new PaidSlidesFill(List.of(table), Set.of()));
+		List<Request> requests = writer.requests(List.of(slide), new PaidDeckFill(List.of(table), Set.of()));
 
 		// Then: row 0 is dashed in both cells, rows 2 and 1 are deleted
 		assertThat(requests.stream().filter(r -> r.getInsertText() != null))
@@ -116,11 +116,11 @@ class PaidSlidesWriterTest {
 	void shouldSkipATableTheDeckDoesNotCarryTest() {
 		// Given: a deck without the EOM metric table
 		Page slide = new Page().setObjectId("s1").setPageElements(List.of());
-		PaidSlideTable table = new PaidSlideTable(PaidTableMarker.SEARCH_EOM_METRICS,
+		PaidDeckTable table = new PaidDeckTable(PaidDeckTableMarker.SEARCH_EOM_METRICS,
 				List.of(List.of("Clicks", "—")), null);
 
 		// When:
-		List<Request> requests = writer.requests(List.of(slide), new PaidSlidesFill(List.of(table), Set.of()));
+		List<Request> requests = writer.requests(List.of(slide), new PaidDeckFill(List.of(table), Set.of()));
 
 		// Then:
 		assertThat(requests).isEmpty();
@@ -141,7 +141,7 @@ class PaidSlidesWriterTest {
 				.setTitle("ps_grp_table").setTable(new Table().setTableRows(List.of()))));
 		Page social = new Page().setObjectId("social").setPageElements(List.of(shape.apply("{{pso_spend}}\n")));
 		Page other = new Page().setObjectId("other").setPageElements(List.of(shape.apply("Paid search plan\n")));
-		PaidSlidesFill fill = new PaidSlidesFill(List.of(), Set.of(PaidChannelKind.SEARCH));
+		PaidDeckFill fill = new PaidDeckFill(List.of(), Set.of(PaidDeckChannel.SEARCH));
 
 		// When:
 		List<Request> requests = writer.requests(List.of(divider, overview, tableSlide, social, other), fill);
