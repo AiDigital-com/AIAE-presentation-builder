@@ -3,11 +3,11 @@ package com.aidigital.reportconstructor.service.admin.impl;
 import com.aidigital.reportconstructor.domain.admin.entities.AdminUserEntity;
 import com.aidigital.reportconstructor.domain.admin.repositories.AdminUserRepository;
 import com.aidigital.reportconstructor.service.admin.AdminUserService;
+import com.aidigital.reportconstructor.service.common.time.CurrentTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Locale;
 
@@ -19,6 +19,7 @@ import java.util.Locale;
 public class AdminUserServiceImpl implements AdminUserService {
 
 	private final AdminUserRepository adminUsers;
+	private final CurrentTime currentTime;
 
 	@Override
 	@Transactional(readOnly = true)
@@ -40,7 +41,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 			AdminUserEntity entity = new AdminUserEntity();
 			entity.setEmail(normalized);
 			entity.setAddedByEmail(addedByEmail == null ? null : normalize(addedByEmail));
-			entity.setCreatedAt(OffsetDateTime.now());
+			entity.setCreatedAt(currentTime.nowOffsetDateTime());
 			return adminUsers.save(entity);
 		});
 	}

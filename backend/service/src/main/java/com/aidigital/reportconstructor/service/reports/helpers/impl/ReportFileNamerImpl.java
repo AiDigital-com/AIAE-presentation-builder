@@ -1,16 +1,18 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTime;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportFileNamer;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Spring bean implementation of {@link ReportFileNamer}. The date/time stamp uses
- * {@link LocalDateTime#now()}, i.e. the server's default time zone.
+ * Spring bean implementation of {@link ReportFileNamer}. The date/time stamp is the application's
+ * local date-time from {@link CurrentTime} (UTC).
  */
 @Component
+@RequiredArgsConstructor
 public class ReportFileNamerImpl implements ReportFileNamer {
 
 	private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm");
@@ -20,12 +22,14 @@ public class ReportFileNamerImpl implements ReportFileNamer {
 	private static final String SEPARATOR = "_";
 	private static final String AT = "@";
 
+	private final CurrentTime currentTime;
+
 	@Override
 	public String buildFileName(String reportType, String clientName, String userEmail) {
 		String type = orFallback(reportType, FALLBACK_TYPE);
 		String client = orFallback(clientName, FALLBACK_CLIENT);
 		String user = userLocalPart(userEmail);
-		String stamp = LocalDateTime.now().format(STAMP);
+		String stamp = currentTime.nowLocalDateTime().format(STAMP);
 		return String.join(SEPARATOR, type, client, stamp, user);
 	}
 

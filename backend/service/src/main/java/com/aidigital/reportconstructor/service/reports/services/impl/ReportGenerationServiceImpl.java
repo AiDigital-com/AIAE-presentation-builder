@@ -72,10 +72,10 @@ import com.aidigital.reportconstructor.service.reports.ports.DeckMarkup;
 import com.aidigital.reportconstructor.service.reports.ports.SlidesProvider;
 import com.aidigital.reportconstructor.service.reports.ports.UserGoogleTokenProvider;
 import com.aidigital.reportconstructor.service.reports.services.PlaceholderResolverService;
-import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.aidigital.reportconstructor.service.reports.services.ReportGenerationService;
 import com.aidigital.reportconstructor.service.reports.diagnostics.ClaudeFailureLog;
 import com.aidigital.reportconstructor.service.reports.diagnostics.ClaudeFailureScope;
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimitsResolver;
 import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageScope;
 import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageTracker;
 import lombok.RequiredArgsConstructor;
@@ -201,6 +201,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 	/** Turns the parsed paid channels into the paid section's table cells and the slides to delete. */
 	private final PaidSlideTableAssembler paidTables;
 	private final PaidSlideChartAssembler paidCharts;
+	private final NarrativeCopyLimitsResolver copyLimits;
 
 	/**
 	 * Validates the brief, then enqueues the job and launches the build through the
@@ -270,7 +271,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 
 			// EOC and EOM send different prompt text for the same calls; the report type picks which, and the
 			// deck design picks how long the campaign-level copy may run.
-			ClaudeClient claude = claudeClients.forReport(payload.reportType(), NarrativeCopyLimits.forDeck(
+			ClaudeClient claude = claudeClients.forReport(payload.reportType(), copyLimits.forDeck(
 					slides.carriesMpoNarrative(payload.reportType(), payload.templateVariant())));
 			boolean live = claude.isLive();
 			// The brief is user-pasted and unbounded, and every batch below repeats it as context. Digest it
@@ -554,7 +555,7 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 		}
 		// EOC and EOM send different prompt text for the same calls; the report type picks which, and the deck
 		// design picks how long the campaign-level copy may run.
-		ClaudeClient claude = claudeClients.forReport(payload.reportType(), NarrativeCopyLimits.forDeck(
+		ClaudeClient claude = claudeClients.forReport(payload.reportType(), copyLimits.forDeck(
 				slides.carriesMpoNarrative(payload.reportType(), payload.templateVariant())));
 		boolean live = claude.isLive();
 		// Every call below repeats this text as context, so it is bounded to the digest budget before any of them

@@ -1,5 +1,8 @@
 package com.aidigital.reportconstructor.service.reports.services.impl;
 
+import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimitsResolver;
+import com.aidigital.reportconstructor.service.reports.enums.PaidCopySlotResolver;
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.service.reports.dto.PaidNarrativeInput;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.PaidNarrativeAssemblerImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.PaidSlideChartAssemblerImpl;
@@ -156,15 +159,15 @@ class ReportGenerationServiceImplTest {
 				claudeClients, slides, userGoogleTokens, self, claudeDefaults, fileNamer,
 				new ReportNumberParserImpl(), new Fmt(),
 				new EomDashboardResolver(new ReportNumberParserImpl(), new Fmt(), new RatePlanCalculator()), new SimpleAsyncTaskExecutor(),
-				new ClaudeUsageTrackerImpl(new NoOpClaudeUsageEventService()), new ClaudeFailureLogImpl(),
+				new ClaudeUsageTrackerImpl(new NoOpClaudeUsageEventService(), new CurrentTimeImpl()), new ClaudeFailureLogImpl(),
 				new BreakdownSelectionResolverImpl(), new BreakdownThoughtsGateImpl(),
 				new TacticConclusionAssemblerImpl(), sheetChartData, tacticExtraction,
 				new ImpressionContributionHelperImpl(new ReportNumberParserImpl(), new Fmt()), resumeState,
 				new SheetTacticCountHelperImpl(), new PacingNarrativeAssemblerImpl(), new MpoNarrativeAssemblerImpl(),
-				new DeckStyleTokenHelperImpl(new SheetRowHelperImpl()), paidTokens,
-				new PaidNarrativeAssemblerImpl(new PaidValueFormatter()),
+				new DeckStyleTokenHelperImpl(new SheetRowHelperImpl(new CurrentTimeImpl())), paidTokens,
+				new PaidNarrativeAssemblerImpl(new PaidValueFormatter(), new PaidCopySlotResolver()),
 				new PaidSlideTableAssemblerImpl(new PaidValueFormatter()),
-				new PaidSlideChartAssemblerImpl(new PaidValueFormatter()));
+				new PaidSlideChartAssemblerImpl(new PaidValueFormatter()), new NarrativeCopyLimitsResolver());
 	}
 
 	@Test
@@ -543,7 +546,7 @@ class ReportGenerationServiceImplTest {
 		PaidChannelData search = new PaidChannelData(PaidChannelKind.SEARCH, new PaidMetrics(1000, 100, 50, 5), null,
 				List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
 				List.of(), List.of(), List.of());
-		PaidNarrativeInput expectedInput = new PaidNarrativeAssemblerImpl(new PaidValueFormatter())
+		PaidNarrativeInput expectedInput = new PaidNarrativeAssemblerImpl(new PaidValueFormatter(), new PaidCopySlotResolver())
 				.toInput(search, false, "the full flight");
 		when(claude.paidNarrative(eq(expectedInput), eq("brief")))
 				.thenReturn(Map.of("verdict", "Google Ads delivered 1.2K clicks."));

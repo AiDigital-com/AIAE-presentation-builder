@@ -1,6 +1,7 @@
 package com.aidigital.reportconstructor.service.reports.usage.impl;
 
 import com.aidigital.reportconstructor.domain.reports.entities.ClaudeUsageEventEntity;
+import com.aidigital.reportconstructor.service.common.time.CurrentTime;
 import com.aidigital.reportconstructor.service.reports.enums.ClaudeUsageStatus;
 import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageEventService;
 import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageScope;
@@ -9,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.time.OffsetDateTime;
 import java.util.function.Supplier;
 
 /**
@@ -25,6 +25,7 @@ public class ClaudeUsageTrackerImpl implements ClaudeUsageTracker {
 	private final ThreadLocal<ClaudeUsageScope> bound = new ThreadLocal<>();
 
 	private final ClaudeUsageEventService events;
+	private final CurrentTime currentTime;
 
 	@Override
 	public ClaudeUsageScope begin(Long jobId, String ownerUserId, String ownerEmail) {
@@ -87,7 +88,7 @@ public class ClaudeUsageTrackerImpl implements ClaudeUsageTracker {
 			event.setCacheWriteTokens(cacheWrite);
 			event.setCacheReadTokens(cacheRead);
 			event.setModel(model);
-			event.setCreatedAt(OffsetDateTime.now());
+			event.setCreatedAt(currentTime.nowOffsetDateTime());
 			events.save(event);
 		} catch (Exception ex) {
 			log.warn("[claude:{}] usage event could not be recorded: {}", label, ex.getMessage());

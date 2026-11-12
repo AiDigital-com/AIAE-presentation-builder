@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.engine;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.service.reports.enums.PaidExportColumn;
 import com.aidigital.reportconstructor.service.reports.enums.PaidExportTab;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.ReportNumberParserImpl;
@@ -20,7 +21,7 @@ class PaidExportTableReaderTest {
 	@Test
 	void shouldReadTheSearchFullFlightTabByHeaderTextTest() {
 		// Given: the Google Ads FULL-FLIGHT layout (cut from the real export): header, zero row, daily rows, padding
-		PaidExportTableReader reader = new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl());
+		PaidExportTableReader reader = new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl(new CurrentTimeImpl()));
 		List<String> header = List.of("Table Info", "Date", "Goal", "Channel", "Channel_Short_Name", "Level 1 Naming",
 				"Impressions", "Clicks", "Cost", "Conversions", "CPC", "CPA_Conversions");
 		Map<String, List<List<String>>> tabs = Map.of("FULL-FLIGHT PERFORMANCE", List.of(
@@ -51,7 +52,7 @@ class PaidExportTableReaderTest {
 	@Test
 	void shouldFindABreakdownHeaderUnderItsTitleAndDropTheTotalRowTest() {
 		// Given: a Meta breakdown tab: title row, header row (mixed case), data, the export's own TOTAL row
-		PaidExportTableReader reader = new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl());
+		PaidExportTableReader reader = new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl(new CurrentTimeImpl()));
 		Map<String, List<List<String>>> tabs = Map.of(" audience targeting breakdown ", List.of(
 				List.of("AUDIENCE TARGETING BREAKDOWN"),
 				List.of("Ad Set", "Impressions", "Clicks", "CTR", "CPC", "Conversions", "CPA", "Cost"),
@@ -72,7 +73,7 @@ class PaidExportTableReaderTest {
 	@Test
 	void shouldRejectATabWithoutTheRequiredColumnsTest() {
 		// Given: a FULL-FLIGHT tab with no Conversions column
-		PaidExportTableReader reader = new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl());
+		PaidExportTableReader reader = new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl(new CurrentTimeImpl()));
 		Map<String, List<List<String>>> tabs = Map.of("FULL-FLIGHT PERFORMANCE", List.of(
 				List.of("Date", "Impressions", "Clicks", "Cost"),
 				List.of("2026-10-07", "59", "6", "$34.57")));
@@ -87,7 +88,7 @@ class PaidExportTableReaderTest {
 	@Test
 	void shouldReadAnUnformattedDateSerialTest() {
 		// Given: a Date cell that came through as a sheet serial number
-		PaidExportTableReader reader = new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl());
+		PaidExportTableReader reader = new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl(new CurrentTimeImpl()));
 		PaidTable table = new PaidTable(Map.of(PaidExportColumn.DATE, 0), List.of());
 
 		// When:

@@ -21,7 +21,7 @@ class PaidChartBuilderTest {
 	void shouldTakeTheChartIdFromTheAddChartReplyTest() {
 		// Given: theme and data replies are empty, the chart reply is last
 		PaidChartBuilder builder = new PaidChartBuilder(mock(DriveCopier.class), mock(ChartFileSharer.class),
-				mock(ChartErrorTranslator.class), new PaidChartSheetRequests(), new PaidChartSlideRequests(), new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
+				mock(ChartErrorTranslator.class), new PaidChartSheetRequests(), new PaidChartSlideRequests(), new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())), new PaidChartStyleResolver());
 		BatchUpdateSpreadsheetResponse reply = new BatchUpdateSpreadsheetResponse().setReplies(List.of(
 				new Response(), new Response(),
 				new Response().setAddChart(new AddChartResponse().setChart(new EmbeddedChart().setChartId(913)))));
@@ -39,7 +39,7 @@ class PaidChartBuilderTest {
 		// Given:
 		DriveCopier driveCopier = mock(DriveCopier.class);
 		PaidChartBuilder builder = new PaidChartBuilder(driveCopier, mock(ChartFileSharer.class),
-				mock(ChartErrorTranslator.class), new PaidChartSheetRequests(), new PaidChartSlideRequests(), new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
+				mock(ChartErrorTranslator.class), new PaidChartSheetRequests(), new PaidChartSlideRequests(), new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())), new PaidChartStyleResolver());
 
 		// When:
 		List<String> errors = builder.buildPaidCharts(new ChartClients(null, null, null),

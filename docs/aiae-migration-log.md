@@ -2,6 +2,24 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Static factories and direct `now()` (P11 slice, branch `PDI_240`)
+
+- New `service.common.time.CurrentTime` / `CurrentTimeImpl` (standard interface plus
+  `nowOffsetDateTime()`, UTC). All 22 direct `now()` calls replaced in 9 classes
+  (`ReportJobProgressHelperImpl` ×12, `AdminStatsServiceImpl`, `UsageRollupRefresher`,
+  `AdminUserServiceImpl`, `ClaudeUsageTrackerImpl`, `UsageDailyServiceImpl`,
+  `ReportFileNamerImpl`, `SheetRowHelperImpl`, `GlobalExceptionHandler`).
+  Behaviour: unchanged in production (JVM runs `-Duser.timezone=UTC`); on a developer
+  machine in another zone, "today"/file-name stamps now follow UTC instead of local time.
+- 3 static factories replaced by beans: `NarrativeCopyLimitsResolver`,
+  `PaidCopySlotResolver` (service) and `PaidChartStyleResolver` (external-services);
+  `PaidCopySlot` gained an instance `inReport(eom)`.
+  `ReportGenerationServiceImpl` now has 40 injected collaborators (+1); it is split in P11.
+- Gates: `check-production-static-methods` and `check-production-current-time` FAIL → PASS.
+  **12 of 21 failing.**
+- `mvn verify`: BUILD SUCCESS, 1,176 tests (+4: `CurrentTimeImplTest` ×2,
+  `PaidCopySlotResolverTest`, `PaidChartStyleResolverTest`), 0 failures.
+
 ## 2026-11-12 — Test field visibility made blocking (branch `PDI_240`)
 
 - 85 package-private test fields made `private` (84 in 16 `backend/service` test

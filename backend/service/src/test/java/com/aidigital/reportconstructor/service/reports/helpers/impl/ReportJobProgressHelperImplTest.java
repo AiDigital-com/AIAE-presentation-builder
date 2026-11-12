@@ -4,11 +4,13 @@ import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
 import com.aidigital.reportconstructor.service.reports.entity.ReportJobEntityService;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
@@ -24,6 +26,9 @@ class ReportJobProgressHelperImplTest {
 
 	@Mock
 	private ReportJobEntityService jobs;
+
+	@Spy
+	private CurrentTimeImpl currentTime = new CurrentTimeImpl();
 
 	@InjectMocks
 	private ReportJobProgressHelperImpl helper;

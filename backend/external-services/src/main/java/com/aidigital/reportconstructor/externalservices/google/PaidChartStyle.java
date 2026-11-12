@@ -1,7 +1,5 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.enums.PaidChartMarker;
-
 import java.util.List;
 
 /**
@@ -39,19 +37,6 @@ public enum PaidChartStyle {
 		this.colors = colors;
 		this.squareShare = squareShare;
 		this.centerText = centerText;
-	}
-
-	/**
-	 * @param marker a paid chart of the template
-	 * @return the style that chart is drawn with
-	 */
-	public static PaidChartStyle of(PaidChartMarker marker) {
-		return switch (marker) {
-			case SEARCH_CLICKS_CTR, SOCIAL_CLICKS_CTR -> CLICKS_CTR;
-			case SEARCH_SPEND, SOCIAL_SPEND -> SPEND;
-			case SEARCH_CONVERSION_DONUT, SOCIAL_AUDIENCE_DONUT -> OVERVIEW_DONUT;
-			case SOCIAL_PLACEMENT_DONUT -> PLACEMENT_DONUT;
-		};
 	}
 
 	/**

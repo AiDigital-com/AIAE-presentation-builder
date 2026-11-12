@@ -11,7 +11,9 @@ import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
 import com.aidigital.reportconstructor.service.common.error.ValidationMessage;
 import com.aidigital.reportconstructor.service.common.error.ValidationParameter;
+import com.aidigital.reportconstructor.service.common.time.CurrentTime;
 import jakarta.validation.ConstraintViolationException;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -24,8 +26,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
  * Converts service and framework exceptions into the committed OpenAPI error shape.
  */
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
 
 	private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
@@ -50,6 +51,9 @@ public class GlobalExceptionHandler {
 	private static final String UNAUTH_PREFIX = "C005";
 	private static final String CONFLICT_PREFIX = "C006";
 	private static final String RATE_LIMIT_PREFIX = "C007";
+
+	/** Application clock for the error timestamp (UTC). */
+	private final CurrentTime currentTime;
 
 	/**
 	 * Handles canonical application exceptions.
@@ -186,7 +190,7 @@ public class GlobalExceptionHandler {
 		ApiErrorV1 dto = new ApiErrorV1();
 		dto.setCode(msg.getCode());
 		dto.setMessage(msg.getMessage());
-		dto.setTimestamp(LocalDateTime.now(ZoneOffset.UTC));
+		dto.setTimestamp(currentTime.nowLocalDateTime());
 		dto.setCorrelationId(MDC.get(MDC_CORRELATION_ID));
 		List<ValidationParameterV1> params = msg.getParameters().stream()
 				.map(p -> {

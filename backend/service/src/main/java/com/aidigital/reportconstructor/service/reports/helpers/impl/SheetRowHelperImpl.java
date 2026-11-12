@@ -1,7 +1,9 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTime;
 import com.aidigital.reportconstructor.service.reports.dto.FlightDates;
 import com.aidigital.reportconstructor.service.reports.helpers.SheetRowHelper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -21,6 +23,7 @@ import java.util.Set;
  * {@link LocalDate} and accepts the range of date formats Google Sheets emits.
  */
 @Component
+@RequiredArgsConstructor
 public class SheetRowHelperImpl implements SheetRowHelper {
 
 	/** Maximum number of rows scanned below a matched column header before giving up. */
@@ -28,6 +31,9 @@ public class SheetRowHelperImpl implements SheetRowHelper {
 
 	/** Number of leading cells inspected for a {@code "total"} label when detecting a footer row. */
 	private static final int FOOTER_LABEL_SCAN_COLUMNS = 5;
+
+	/** Supplies the current year for dates written without one. */
+	private final CurrentTime currentTime;
 
 	@Override
 	public String findLabelValue(List<List<String>> rows, String label) {
@@ -324,7 +330,7 @@ public class SheetRowHelperImpl implements SheetRowHelper {
 				DateTimeFormatter f = new DateTimeFormatterBuilder()
 						.parseCaseInsensitive()
 						.appendPattern(p)
-						.parseDefaulting(java.time.temporal.ChronoField.YEAR, LocalDate.now().getYear())
+						.parseDefaulting(java.time.temporal.ChronoField.YEAR, currentTime.nowLocalDate().getYear())
 						.toFormatter(Locale.ENGLISH);
 				return LocalDate.parse(s, f);
 			} catch (Exception ignored) {

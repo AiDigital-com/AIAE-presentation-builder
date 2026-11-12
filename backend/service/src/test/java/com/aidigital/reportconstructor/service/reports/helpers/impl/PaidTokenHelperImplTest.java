@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.service.reports.dto.DateFilter;
 import com.aidigital.reportconstructor.service.reports.dto.DateFilterMode;
 import com.aidigital.reportconstructor.service.reports.dto.GeneratePayload;
@@ -22,7 +23,7 @@ class PaidTokenHelperImplTest {
 	void shouldFillTheSearchTokensFromTheGoogleAdsExportTest() {
 		// Given: an EOC request with a Google Ads export (FULL-FLIGHT, PMax, age, gender and two ads)
 		PaidTokenHelperImpl helper = new PaidTokenHelperImpl(new PaidExportCollector(
-				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl())),
+				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl(new CurrentTimeImpl()))),
 				new PaidValueFormatter());
 		Map<String, List<List<String>>> search = Map.of(
 				"FULL-FLIGHT PERFORMANCE", List.of(
@@ -131,7 +132,7 @@ class PaidTokenHelperImplTest {
 	void shouldFillTheSocialTokensAndTheEomMonthOnMonthTest() {
 		// Given: an EOM request for October with a Meta export (FULL-FLIGHT in September and October)
 		PaidTokenHelperImpl helper = new PaidTokenHelperImpl(new PaidExportCollector(
-				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl())),
+				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl(new CurrentTimeImpl()))),
 				new PaidValueFormatter());
 		Map<String, List<List<String>>> social = Map.of(
 				"FULL-FLIGHT PERFORMANCE", List.of(
@@ -192,7 +193,7 @@ class PaidTokenHelperImplTest {
 	void shouldWriteNothingWithoutAnExportTest() {
 		// Given: an MPO request with no paid export connected
 		PaidTokenHelperImpl helper = new PaidTokenHelperImpl(new PaidExportCollector(
-				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl())),
+				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl(new CurrentTimeImpl()))),
 				new PaidValueFormatter());
 		GeneratePayload payload = new GeneratePayload("brief", "EOC", null, List.of(), List.of(), List.of(),
 				List.of(), List.of(), List.of(), null, null, null, null, null, null, TemplateVariant.MPO);

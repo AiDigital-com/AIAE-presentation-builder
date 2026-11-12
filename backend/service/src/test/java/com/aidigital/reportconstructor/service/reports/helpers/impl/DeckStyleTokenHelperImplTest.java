@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.service.reports.ports.DeckMarkup;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DeckStyleTokenHelperImplTest {
 
 	private DeckStyleTokenHelperImpl newHelper() {
-		return new DeckStyleTokenHelperImpl(new SheetRowHelperImpl());
+		return new DeckStyleTokenHelperImpl(new SheetRowHelperImpl(new CurrentTimeImpl()));
 	}
 
 	@Test

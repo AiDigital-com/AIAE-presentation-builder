@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.engine;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.service.reports.dto.FlightDates;
 import com.aidigital.reportconstructor.service.reports.enums.PaidChannelKind;
 import com.aidigital.reportconstructor.service.reports.enums.PaidExportTab;
@@ -27,7 +28,7 @@ class PaidExportCollectorTest {
 	void shouldSumSearchCampaignsFromFullFlightAndRankThemTest() {
 		// Given: a Google Ads export with FULL-FLIGHT over two months, a keyword tab and a gender tab
 		PaidExportCollector collector = new PaidExportCollector(
-				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl()));
+				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl(new CurrentTimeImpl())));
 		List<String> header = List.of("Date", "Level 1 Naming", "Impressions", "Clicks", "Cost", "Conversions");
 		Map<String, List<List<String>>> tabs = Map.of(
 				"FULL-FLIGHT PERFORMANCE", List.of(
@@ -82,7 +83,7 @@ class PaidExportCollectorTest {
 	void shouldLimitTotalsToTheWindowAndSumThePreviousMonthTest() {
 		// Given: an EOM window of October and FULL-FLIGHT rows in September and October
 		PaidExportCollector collector = new PaidExportCollector(
-				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl()));
+				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl(new CurrentTimeImpl())));
 		Map<String, List<List<String>>> tabs = Map.of("FULL-FLIGHT PERFORMANCE", List.of(
 				List.of("Date", "Level 1 Naming", "Impressions", "Clicks", "Cost", "Conversions"),
 				List.of("2026-09-30", "Brand", "100", "10", "$50.00", "5"),
@@ -105,7 +106,7 @@ class PaidExportCollectorTest {
 	void shouldGroupSocialCreativesAndPlacementsAcrossPlatformsTest() {
 		// Given: a Meta export: FULL-FLIGHT by creative, a placement tab split by device, an age tab per ad set
 		PaidExportCollector collector = new PaidExportCollector(
-				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl()));
+				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl(new CurrentTimeImpl())));
 		Map<String, List<List<String>>> tabs = Map.of(
 				"FULL-FLIGHT PERFORMANCE", List.of(
 						List.of("Date", "Channel", "Creative", "Impressions", "Clicks", "Cost", "Conversions"),
@@ -150,7 +151,7 @@ class PaidExportCollectorTest {
 	void shouldSkipAnExportWithoutAUsableFullFlightTabTest() {
 		// Given: an export with only a breakdown tab
 		PaidExportCollector collector = new PaidExportCollector(
-				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl()));
+				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl(new CurrentTimeImpl())));
 		Map<String, List<List<String>>> tabs = Map.of("GENDER SPLIT", List.of(
 				List.of("Gender", "Impressions", "Clicks", "Cost", "Conversions")));
 
@@ -165,7 +166,7 @@ class PaidExportCollectorTest {
 	void shouldSkipAChannelWithNoExportConnectedTest() {
 		// Given: no tabs at all
 		PaidExportCollector collector = new PaidExportCollector(
-				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl()));
+				new PaidExportTableReader(new ReportNumberParserImpl(), new SheetRowHelperImpl(new CurrentTimeImpl())));
 
 		// When:
 		Optional<PaidChannelData> data = collector.collect(PaidChannelKind.SOCIAL, Map.of(), null);

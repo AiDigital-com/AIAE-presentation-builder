@@ -4,6 +4,7 @@ import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
 import com.aidigital.reportconstructor.domain.reports.projections.JobOwner;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
+import com.aidigital.reportconstructor.service.common.time.CurrentTime;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeUsage;
 import com.aidigital.reportconstructor.service.reports.entity.ReportJobEntityService;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportJobProgressHelper;
@@ -37,6 +38,7 @@ public class ReportJobProgressHelperImpl implements ReportJobProgressHelper {
 	private static final String SHEET_TARGET = "SHEET";
 
 	private final ReportJobEntityService jobs;
+	private final CurrentTime currentTime;
 
 	@Transactional
 	@Override
@@ -48,7 +50,7 @@ public class ReportJobProgressHelperImpl implements ReportJobProgressHelper {
 		job.setTotal(7);
 		job.setLabel("Queued…");
 		job.setReportTypeCode(reportTypeCode);
-		OffsetDateTime now = OffsetDateTime.now();
+		OffsetDateTime now = currentTime.nowOffsetDateTime();
 		job.setCreatedAt(now);
 		job.setUpdatedAt(now);
 		return jobs.save(job);
@@ -62,7 +64,7 @@ public class ReportJobProgressHelperImpl implements ReportJobProgressHelper {
 			job.setTarget(target);
 			job.setMediaPlanUrl(mediaPlanUrl);
 			job.setElevateUrl(elevateUrl);
-			job.setUpdatedAt(OffsetDateTime.now());
+			job.setUpdatedAt(currentTime.nowOffsetDateTime());
 			jobs.save(job);
 		});
 	}
@@ -73,7 +75,7 @@ public class ReportJobProgressHelperImpl implements ReportJobProgressHelper {
 		jobs.findById(jobId).ifPresent(job -> {
 			job.setArtifactName(artifactName);
 			job.setSheetUrl(sheetUrl);
-			job.setUpdatedAt(OffsetDateTime.now());
+			job.setUpdatedAt(currentTime.nowOffsetDateTime());
 			jobs.save(job);
 		});
 	}
@@ -86,7 +88,7 @@ public class ReportJobProgressHelperImpl implements ReportJobProgressHelper {
 		}
 		jobs.findById(jobId).ifPresent(job -> {
 			job.setPayloadJson(payloadJson);
-			job.setUpdatedAt(OffsetDateTime.now());
+			job.setUpdatedAt(currentTime.nowOffsetDateTime());
 			jobs.save(job);
 		});
 	}
@@ -98,8 +100,8 @@ public class ReportJobProgressHelperImpl implements ReportJobProgressHelper {
 			if (job.getDismissedAt() != null) {
 				return;
 			}
-			job.setDismissedAt(OffsetDateTime.now());
-			job.setUpdatedAt(OffsetDateTime.now());
+			job.setDismissedAt(currentTime.nowOffsetDateTime());
+			job.setUpdatedAt(currentTime.nowOffsetDateTime());
 			jobs.save(job);
 		});
 	}
@@ -112,7 +114,7 @@ public class ReportJobProgressHelperImpl implements ReportJobProgressHelper {
 		}
 		jobs.findById(jobId).ifPresent(job -> {
 			job.setSlideCount(slideCount);
-			job.setUpdatedAt(OffsetDateTime.now());
+			job.setUpdatedAt(currentTime.nowOffsetDateTime());
 			jobs.save(job);
 		});
 	}
@@ -130,7 +132,7 @@ public class ReportJobProgressHelperImpl implements ReportJobProgressHelper {
 			job.setCacheReadTokens(usage.cacheReadTokens());
 			job.setClaudeCalls(usage.calls());
 			job.setClaudeModel(usage.model());
-			job.setUpdatedAt(OffsetDateTime.now());
+			job.setUpdatedAt(currentTime.nowOffsetDateTime());
 			jobs.save(job);
 		});
 	}
@@ -218,7 +220,7 @@ public class ReportJobProgressHelperImpl implements ReportJobProgressHelper {
 		job.setStatus("running");
 		job.setStep(step);
 		job.setLabel(label);
-		job.setUpdatedAt(OffsetDateTime.now());
+		job.setUpdatedAt(currentTime.nowOffsetDateTime());
 		jobs.save(job);
 	}
 
@@ -231,7 +233,7 @@ public class ReportJobProgressHelperImpl implements ReportJobProgressHelper {
 		job.setLabel("Done!");
 		job.setSlideUrl(slideUrl);
 		job.setWarningsJson(warningsJson);
-		job.setUpdatedAt(OffsetDateTime.now());
+		job.setUpdatedAt(currentTime.nowOffsetDateTime());
 		jobs.save(job);
 	}
 
@@ -241,7 +243,7 @@ public class ReportJobProgressHelperImpl implements ReportJobProgressHelper {
 		jobs.findById(jobId).ifPresent(job -> {
 			job.setStatus("error");
 			job.setErrorMessage(errorMessage);
-			job.setUpdatedAt(OffsetDateTime.now());
+			job.setUpdatedAt(currentTime.nowOffsetDateTime());
 			jobs.save(job);
 		});
 	}
@@ -278,7 +280,7 @@ public class ReportJobProgressHelperImpl implements ReportJobProgressHelper {
 	public void clearJobWarnings(Long jobId) {
 		jobs.findById(jobId).ifPresent(job -> {
 			job.setWarningsJson(null);
-			job.setUpdatedAt(OffsetDateTime.now());
+			job.setUpdatedAt(currentTime.nowOffsetDateTime());
 			jobs.save(job);
 		});
 	}

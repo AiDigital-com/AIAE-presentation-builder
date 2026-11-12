@@ -25,6 +25,7 @@ import com.aidigital.reportconstructor.service.admin.enums.AdminPeriodUnit;
 import com.aidigital.reportconstructor.service.admin.services.AdminStatsService;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
+import com.aidigital.reportconstructor.service.common.time.CurrentTime;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportJobProgressHelper;
 import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageEventService;
 import com.aidigital.reportconstructor.service.reports.usage.UsageDailyService;
@@ -74,6 +75,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
 	private final AdminTokenAggregator tokenAggregator;
 	private final AdminFailureAssembler failureAssembler;
 	private final AdminStatsCache statsCache;
+	private final CurrentTime currentTime;
 
 	@Override
 	public AdminStats statsFor(String callerEmail, LocalDate from, LocalDate to) {
@@ -83,7 +85,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
 		if (refreshRollup()) {
 			statsCache.invalidate();
 		}
-		AdminDateRange range = rangeResolver.resolve(from, to, LocalDate.now());
+		AdminDateRange range = rangeResolver.resolve(from, to, currentTime.nowLocalDate());
 		return statsCache.snapshot(range, () -> assemble(range));
 	}
 
@@ -137,7 +139,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
 		OffsetDateTime rollupUpdatedAt = usageDaily.lastRefreshedAt();
 
 		return new AdminStats(
-				OffsetDateTime.now().toLocalDateTime(),
+				currentTime.nowOffsetDateTime().toLocalDateTime(),
 				rollupUpdatedAt == null ? null : rollupUpdatedAt.toLocalDateTime(),
 				new AdminRangeView(range.from(), range.to(), range.unit().getCode()),
 				rollupTotals.totals(days,

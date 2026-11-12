@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -10,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class SheetPlaceholderReaderImplTest {
 
-	private final SheetPlaceholderReaderImpl reader = new SheetPlaceholderReaderImpl(new SheetRowHelperImpl());
+	private final SheetPlaceholderReaderImpl reader = new SheetPlaceholderReaderImpl(new SheetRowHelperImpl(new CurrentTimeImpl()));
 
 	@Test
 	void shouldReadTopInfoBlockByLabelAnchorsTest() {

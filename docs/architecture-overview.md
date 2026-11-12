@@ -222,6 +222,9 @@ sequenceDiagram
   to the working directory). Checkstyle (`backend/config/checkstyle.xml`):
   LineLength 120 (tab width 4), FileLength 2700. `ClaudeBatchPromptBuilder.java`
   sits at the FileLength limit — grow it only by moving code out.
+- Production code never calls `now()`: inject `service.common.time.CurrentTime`
+  (UTC). Static methods on beans/enums are replaced by small `@Component`
+  resolvers (e.g. `NarrativeCopyLimitsResolver`).
 - `mvn verify` enforces Maven dependency analysis in every module: declare the
   libraries a module compiles against, keep starters at `runtime` in
   `application`. Policy and allowlist: `backend/DEPENDENCY-ANALYSIS.md`.

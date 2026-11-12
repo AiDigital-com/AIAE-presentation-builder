@@ -46,6 +46,7 @@ public class PaidChartBuilder {
 
 	/** Times every direct Sheets/Slides call on the shared external-call timer. */
 	private final GoogleCallTimer googleCalls;
+	private final PaidChartStyleResolver styleResolver;
 
 	/**
 	 * @param clients authenticated Drive, Sheets and Slides clients
@@ -105,7 +106,7 @@ public class PaidChartBuilder {
 	 */
 	void linkChart(ChartClients clients, PaidChartRequest req, PaidSlideChart chart, PaidChartSlot slot,
 			String folderId) throws IOException {
-		PaidChartStyle style = PaidChartStyle.of(chart.marker());
+		PaidChartStyle style = styleResolver.of(chart.marker());
 		String spreadsheetId = driveCopier.createSpreadsheet(clients.drive(),
 				chart.marker().marker() + " — " + req.campaignTitle(), folderId);
 		chartFileSharer.shareLooseCopy(clients.drive(), folderId, spreadsheetId);

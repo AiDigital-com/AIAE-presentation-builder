@@ -1,6 +1,7 @@
 package com.aidigital.reportconstructor.service.admin;
 
 import com.aidigital.reportconstructor.service.admin.config.UsageRollupProperties;
+import com.aidigital.reportconstructor.service.common.time.CurrentTime;
 import com.aidigital.reportconstructor.service.reports.usage.UsageDailyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +51,7 @@ public class UsageRollupRefresher {
 	private final UsageDailyService rollup;
 	private final UsageRollupProperties props;
 	private final AdminStatsCache statsCache;
+	private final CurrentTime currentTime;
 
 	/**
 	 * Rebuilds the trailing window on a timer, dropping anything derived from the old rows.
@@ -78,7 +80,7 @@ public class UsageRollupRefresher {
 			rebuildEverything();
 			return true;
 		}
-		if (Duration.between(last, OffsetDateTime.now()).getSeconds() >= props.getStalenessSeconds()) {
+		if (Duration.between(last, currentTime.nowOffsetDateTime()).getSeconds() >= props.getStalenessSeconds()) {
 			refreshTrailingWindow();
 			return true;
 		}
@@ -93,7 +95,7 @@ public class UsageRollupRefresher {
 			log.debug("[rollup] trailing window rebuild skipped, one is already running");
 			return;
 		}
-		LocalDate today = LocalDate.now();
+		LocalDate today = currentTime.nowLocalDate();
 		try {
 			int rows = rollup.rebuild(
 					today.minusDays(Math.max(1, props.getTrailingDays())), today.plusDays(1));

@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.usage.impl;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.domain.reports.entities.ClaudeUsageEventEntity;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeUsage;
 import com.aidigital.reportconstructor.service.reports.enums.ClaudeUsageStatus;
@@ -18,7 +19,7 @@ class ClaudeUsageTrackerImplTest {
 	@Test
 	void shouldAccumulateRecordedUsageWithinAScopeTest() {
 		// Given:
-		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(new NoOpClaudeUsageEventService());
+		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(new NoOpClaudeUsageEventService(), new CurrentTimeImpl());
 		ClaudeUsageScope scope = tracker.begin(7L, "user-1", "jane@aidigital.com");
 
 		// When:
@@ -39,7 +40,7 @@ class ClaudeUsageTrackerImplTest {
 	void shouldStampTheScopeJobAndOwnerOntoEachEventTest() {
 		// Given:
 		NoOpClaudeUsageEventService events = new NoOpClaudeUsageEventService();
-		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(events);
+		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(events, new CurrentTimeImpl());
 		tracker.begin(7L, "user-1", "jane@aidigital.com");
 
 		// When:
@@ -61,7 +62,7 @@ class ClaudeUsageTrackerImplTest {
 		// Given: a thread with no scope bound — Claude work that belongs to no report. Dropping it would
 		// make billed traffic invisible, which is worse than leaving it unattributed.
 		NoOpClaudeUsageEventService events = new NoOpClaudeUsageEventService();
-		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(events);
+		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(events, new CurrentTimeImpl());
 
 		// When:
 		tracker.record("LineItemMatch", 100, 20, 0, 0, "claude-sonnet-4-6");
@@ -77,7 +78,7 @@ class ClaudeUsageTrackerImplTest {
 	void shouldBookALostCallAsEstimatedAndKeepItOutOfTheMeasuredTotalTest() {
 		// Given: a run whose second call timed out after the request had gone out.
 		NoOpClaudeUsageEventService events = new NoOpClaudeUsageEventService();
-		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(events);
+		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(events, new CurrentTimeImpl());
 		ClaudeUsageScope scope = tracker.begin(7L, "user-1", "jane@aidigital.com");
 
 		// When:
@@ -99,7 +100,7 @@ class ClaudeUsageTrackerImplTest {
 		// Given: a run's scope, and five tasks that will each run on a different thread, as the five
 		// breakdown builders do.
 		NoOpClaudeUsageEventService events = new NoOpClaudeUsageEventService();
-		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(events);
+		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(events, new CurrentTimeImpl());
 		ClaudeUsageScope scope = tracker.begin(7L, "user-1", "jane@aidigital.com");
 		var executor = Executors.newFixedThreadPool(5);
 
@@ -127,7 +128,7 @@ class ClaudeUsageTrackerImplTest {
 	@Test
 	void shouldRestoreThePreviousScopeAfterAWrappedTaskTest() {
 		// Given: a task wrapped for one scope, run on a thread that already carries another.
-		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(new NoOpClaudeUsageEventService());
+		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(new NoOpClaudeUsageEventService(), new CurrentTimeImpl());
 		ClaudeUsageScope outer = tracker.begin(1L, null, null);
 		ClaudeUsageScope inner = new ClaudeUsageScope(2L, null, null);
 
@@ -146,7 +147,7 @@ class ClaudeUsageTrackerImplTest {
 	@Test
 	void shouldUnbindTheScopeOnClearTest() {
 		// Given:
-		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(new NoOpClaudeUsageEventService());
+		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(new NoOpClaudeUsageEventService(), new CurrentTimeImpl());
 		tracker.begin(1L, null, null);
 
 		// When:

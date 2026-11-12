@@ -4,6 +4,7 @@ import com.aidigital.reportconstructor.domain.reports.projections.UsageActiveDay
 import com.aidigital.reportconstructor.domain.reports.projections.UsageDailyBucket;
 import com.aidigital.reportconstructor.domain.reports.projections.UsageDailyUserRow;
 import com.aidigital.reportconstructor.domain.reports.repositories.UsageDailyRepository;
+import com.aidigital.reportconstructor.service.common.time.CurrentTime;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportJobProgressHelper;
 import com.aidigital.reportconstructor.service.reports.usage.UsageDailyService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class UsageDailyServiceImpl implements UsageDailyService {
 
 	private final UsageDailyRepository rollup;
 	private final ReportJobProgressHelper jobs;
+	private final CurrentTime currentTime;
 
 	@Transactional
 	@Override
@@ -46,7 +48,7 @@ public class UsageDailyServiceImpl implements UsageDailyService {
 			return 0;
 		}
 		// Exclusive upper bound one day past today, so today's own jobs are included.
-		return rebuild(earliest.toLocalDate(), LocalDate.now().plusDays(1));
+		return rebuild(earliest.toLocalDate(), currentTime.nowLocalDate().plusDays(1));
 	}
 
 	@Transactional(readOnly = true)
