@@ -2182,7 +2182,7 @@ public class RealClaudeClient implements ClaudeClient {
 		if (resp == null) {
 			return null;
 		}
-		return normalizer.limitGeoSummary(normalizer.extractText(resp));
+		return normalizer.limitGeoSummary(messagesClient.replyText(resp));
 	}
 
 	@Override
@@ -2195,7 +2195,7 @@ public class RealClaudeClient implements ClaudeClient {
 		if (resp == null) {
 			return null;
 		}
-		String text = normalizer.extractText(resp);
+		String text = messagesClient.replyText(resp);
 		return text == null || text.isBlank() ? null : text.trim();
 	}
 
@@ -2211,7 +2211,7 @@ public class RealClaudeClient implements ClaudeClient {
 			log.warn("[claude:BriefDigest] digest failed; the raw brief is used as context instead");
 			return null;
 		}
-		String text = normalizer.extractText(resp);
+		String text = messagesClient.replyText(resp);
 		if (text == null || text.isBlank()) {
 			return null;
 		}
@@ -2230,7 +2230,7 @@ public class RealClaudeClient implements ClaudeClient {
 			log.warn("[claude:ChangeLogDigest] digest failed; the raw change log is used as context instead");
 			return null;
 		}
-		String text = normalizer.extractText(resp);
+		String text = messagesClient.replyText(resp);
 		if (text == null || text.isBlank()) {
 			return null;
 		}
@@ -2269,6 +2269,6 @@ public class RealClaudeClient implements ClaudeClient {
 		if (resp == null) {
 			return null;
 		}
-		return normalizer.limitPrimaryKpis(normalizer.extractText(resp));
+		return normalizer.limitPrimaryKpis(messagesClient.replyText(resp));
 	}
 }

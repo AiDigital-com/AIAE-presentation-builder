@@ -2,6 +2,29 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Anthropic transport converged (P8 / D6, branch `PDI_240`)
+
+- Measured first: `anthropic` held 110 of the remaining `service` import lines. The transport,
+  `AnthropicMessagesClient` (812 lines), is used by everything else through three methods (`callJsonObject`,
+  `callJsonArray`, `callRaw`) and needed only `ClaudeUsageTracker` (`record`, `recordEstimated`),
+  `ClaudeFailureLog` (`record`) and `ClaudeResponseNormalizer.extractText`. The rest — `ClaudeBatchPromptBuilder`
+  2,700, `RealClaudeClient` 2,274, `EomPromptBuilder` 1,151, `ClaudeResponseNormalizer` 685, `StubClaudeClient`,
+  flavour config, `RealLineItemMatchAssistant` — is prompt building and reply interpretation on ~40 service
+  types: business logic, which the target shape keeps in `service`.
+- This step (A1): new `anthropic.AnthropicClient` (public `callJsonObject`/`callJsonArray`/`callRaw`/`replyText`),
+  implemented by `AnthropicMessagesClient`; new Anthropic-owned `AnthropicCallListener` (`usage`,
+  `estimatedUsage`, `replyProblem`) replaces its two service collaborators; `bridge.ClaudeCallRecorder`
+  implements it over `ClaudeUsageTracker` / `ClaudeFailureLog` (same calls, same arguments). Reply-text
+  extraction moved from the normalizer into the transport (`replyText`); `RealClaudeClient`'s five raw-reply
+  reads use it. `AnthropicMessagesClient` imports nothing from `service`.
+- Tests: `AnthropicMessagesClientTest` 30 (29 constructor calls rewritten by an argument parser; the usage /
+  no-usage / estimate tests now verify the listener; `replyText` test moved here from
+  `ClaudeResponseNormalizerTest`), `RealClaudeClientTest` 47 (its five raw-reply stubs let the mocked
+  transport's `replyText` run), new `ClaudeCallRecorderTest` 2. `external-services` 469 → 471.
+  `mvn -Pmvp verify`: BUILD SUCCESS.
+- `service` import lines in `external-services` main outside `bridge`: 110 in 11 files → 108 in 10 — all prompt
+  and reply logic, the next step (A2: move it into `service` behind a transport port).
+
 ## 2026-11-12 — Charts and pacing pivots converged (P8 / D6, branch `PDI_240`)
 
 - Measured first: pivoting the BigQuery export ran inside the integration — `TacticChartBuilder` and

@@ -147,8 +147,15 @@ provider is converted, the bridges move into `service` and the module edge flips
   `StubChartProvider`) and its request records, `DeckBreakdownSeries`, `PaidChartKind`, `PaidChartShape`
   are the chart vocabulary, kept identical to the service's by `ChartModelMapperTest`.
 - The whole `google`, `clerk` and `common` tree now imports nothing from `service`; only `bridge` does.
-- Not yet converted: `anthropic` (prompt building on service types, `ClaudeClient` /
-  `LineItemMatchAssistant` ports).
+- Converted: **Anthropic transport** (`anthropic.AnthropicClient` — `callJsonObject`, `callJsonArray`,
+  `callRaw`, `replyText` — implemented by `AnthropicMessagesClient`, which owns auth, pooling, concurrency,
+  retries, truncation salvage and JSON repair). It reports token usage and rejected replies through the
+  Anthropic-owned `AnthropicCallListener`, implemented by `bridge.ClaudeCallRecorder` over the service's
+  `ClaudeUsageTracker` and `ClaudeFailureLog`.
+- Not yet converted: the Claude **prompt and reply logic** — `RealClaudeClient`, `StubClaudeClient`,
+  `ClaudeBatchPromptBuilder`, `EomPromptBuilder`, `ClaudeResponseNormalizer`, the flavour config,
+  `RealLineItemMatchAssistant` and their helpers (~6,000 lines on ~40 service types). In the target shape this
+  is service code calling the transport; it moves into `service` behind a small transport port.
 
 Controllers implement generated OpenAPI interfaces and delegate to services.
 Repositories are accessed only through their paired entity services.

@@ -1373,8 +1373,9 @@ class RealClaudeClientTest {
 				List.of("Target markets", "Dallas, Austin"));
 		String expectedPrompt = promptBuilder.buildGeoPrompt(
 				List.of("### TAB: Proposal ###", "Target markets | Dallas, Austin"));
-		when(messagesClient.callRaw(eq(expectedPrompt), eq(60), eq(30), eq("Geo")))
-				.thenReturn(json.readTree("{\"content\":[{\"type\":\"text\",\"text\":\"Dallas, Austin\"}]}"));
+		JsonNode rawReply = json.readTree("{\"content\":[{\"type\":\"text\",\"text\":\"Dallas, Austin\"}]}");
+		when(messagesClient.callRaw(eq(expectedPrompt), eq(60), eq(30), eq("Geo"))).thenReturn(rawReply);
+		when(messagesClient.replyText(rawReply)).thenCallRealMethod();
 
 		// When:
 		String summary = client.summarizeGeo(workbook);
@@ -1419,9 +1420,10 @@ class RealClaudeClientTest {
 				new AnthropicProperties());
 		List<String> goals = List.of("Build awareness", "  ", "Drive site visits");
 		String expectedPrompt = promptBuilder.buildFunnelFromGoalsPrompt(goals).orElseThrow();
-		when(messagesClient.callRaw(eq(expectedPrompt), eq(60), eq(30), eq("Funnel")))
-				.thenReturn(json.readTree(
-						"{\"content\":[{\"type\":\"text\",\"text\":\"Awareness, Consideration\"}]}"));
+		JsonNode rawReply = json.readTree(
+						"{\"content\":[{\"type\":\"text\",\"text\":\"Awareness, Consideration\"}]}");
+		when(messagesClient.callRaw(eq(expectedPrompt), eq(60), eq(30), eq("Funnel"))).thenReturn(rawReply);
+		when(messagesClient.replyText(rawReply)).thenCallRealMethod();
 
 		// When:
 		String stages = client.summarizeFunnelStages(goals);
@@ -1462,9 +1464,10 @@ class RealClaudeClientTest {
 				new AnthropicProperties());
 		String brief = "Acme wants awareness among auto intenders in Texas over Q1 on a $500,000 budget.";
 		String expectedPrompt = promptBuilder.buildBriefDigestPrompt(brief, 2000).orElseThrow();
-		when(messagesClient.callRaw(eq(expectedPrompt), eq(1200), eq(60), eq("BriefDigest")))
-				.thenReturn(json.readTree(
-						"{\"content\":[{\"type\":\"text\",\"text\":\"Acme. Awareness. Texas. Q1. $500,000.\"}]}"));
+		JsonNode rawReply = json.readTree(
+						"{\"content\":[{\"type\":\"text\",\"text\":\"Acme. Awareness. Texas. Q1. $500,000.\"}]}");
+		when(messagesClient.callRaw(eq(expectedPrompt), eq(1200), eq(60), eq("BriefDigest"))).thenReturn(rawReply);
+		when(messagesClient.replyText(rawReply)).thenCallRealMethod();
 
 		// When:
 		String digest = client.digestBrief(brief);
@@ -1488,10 +1491,11 @@ class RealClaudeClientTest {
 				new AnthropicProperties());
 		String changeLog = "Shifted 20% of Display budget to CTV on Jul 3 after CTV VCR held above 95%.";
 		String expectedPrompt = promptBuilder.buildChangeLogDigestPrompt(changeLog, 1500).orElseThrow();
-		when(messagesClient.callRaw(eq(expectedPrompt), eq(900), eq(60), eq("ChangeLogDigest")))
-				.thenReturn(json.readTree(
+		JsonNode rawReply = json.readTree(
 						"{\"content\":[{\"type\":\"text\",\"text\":\"Jul 3: 20% of Display budget moved to CTV; "
-								+ "CTV VCR above 95%.\"}]}"));
+								+ "CTV VCR above 95%.\"}]}");
+		when(messagesClient.callRaw(eq(expectedPrompt), eq(900), eq(60), eq("ChangeLogDigest"))).thenReturn(rawReply);
+		when(messagesClient.replyText(rawReply)).thenCallRealMethod();
 
 		// When:
 		String digest = client.digestChangeLog(changeLog);
@@ -1537,9 +1541,10 @@ class RealClaudeClientTest {
 		String oversized = "Acme wants awareness among auto intenders. ".repeat(80);
 		String compact = "Acme wants awareness among auto intenders in Texas over Q1.";
 		String expectedPrompt = promptBuilder.buildBriefDigestPrompt(oversized, 2000).orElseThrow();
-		when(messagesClient.callRaw(eq(expectedPrompt), eq(1200), eq(60), eq("BriefDigest")))
-				.thenReturn(json.readTree(
-						"{\"content\":[{\"type\":\"text\",\"text\":\"Acme. Awareness. Auto intenders.\"}]}"));
+		JsonNode rawReply = json.readTree(
+						"{\"content\":[{\"type\":\"text\",\"text\":\"Acme. Awareness. Auto intenders.\"}]}");
+		when(messagesClient.callRaw(eq(expectedPrompt), eq(1200), eq(60), eq("BriefDigest"))).thenReturn(rawReply);
+		when(messagesClient.replyText(rawReply)).thenCallRealMethod();
 
 		// When:
 		String bounded = client.digestBriefIfOversized(oversized);

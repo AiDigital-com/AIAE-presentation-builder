@@ -61,14 +61,6 @@ class ClaudeResponseNormalizerTest {
 	}
 
 	@Test
-	void extractText_concatenatesContentBlocks() throws Exception {
-		var resp = json.readTree("""
-				{"content":[{"type":"text","text":"hello "},{"type":"text","text":"world"}]}
-				""");
-		assertEquals("hello world", normalizer.extractText(resp));
-	}
-
-	@Test
 	void limitStrategicPoint_max22Chars() {
 		assertThat(normalizer.limitStrategicPoint("abcdefghijklmnopqrstuvwxyz")).hasSize(22);
 	}

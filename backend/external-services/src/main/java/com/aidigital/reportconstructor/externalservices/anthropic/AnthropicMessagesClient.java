@@ -1,8 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.anthropic;
 
 import com.aidigital.reportconstructor.externalservices.common.http.PooledRestClientFactory;
-import com.aidigital.reportconstructor.service.reports.diagnostics.ClaudeFailureLog;
-import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageTracker;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,7 +32,7 @@ import java.util.regex.Pattern;
 @Slf4j
 @Component
 @ConditionalOnExpression("'${external.anthropic.api-key:}' != ''")
-public class AnthropicMessagesClient {
+public class AnthropicMessagesClient implements AnthropicClient {
 
 	/** Low-cardinality client name used for metrics and pooled-client diagnostics. */
 	static final String CLIENT_NAME = "anthropic";
@@ -96,12 +94,9 @@ public class AnthropicMessagesClient {
 	private final ObjectMapper json = JsonMapper.builder()
 			.enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
 			.build();
-	private final ClaudeResponseNormalizer normalizer;
-	private final ClaudeUsageTracker usageTracker;
+	/** Receives every call's token usage and why a reply was rejected (the run's accounting and result card). */
+	private final AnthropicCallListener listener;
 	private final PromptTokenEstimator tokenEstimator;
-
-	/** Run-scoped sink an unparseable reply's head goes to, so the report's own card can explain itself. */
-	private final ClaudeFailureLog failureLog;
 
 	/** Extra attempts after the first send when a transient upstream failure is retryable; at least 0. */
 	private final int maxRetries;
@@ -135,24 +130,18 @@ public class AnthropicMessagesClient {
 	 *
 	 * @param httpClients  shared factory building pooled, instrumented and logged HTTP clients
 	 * @param props        Anthropic configuration supplying the API key and model identifier
-	 * @param normalizer   helper that extracts the assistant text content from a Messages API response
-	 * @param usageTracker   token accounting every call is reported to
+	 * @param listener       receives every call's token usage and the reasons replies were rejected
 	 * @param tokenEstimator local prompt-size estimate, used to book a call whose reply never arrived
-	 * @param failureLog     run-scoped sink the reasons replies were rejected are collected in
 	 */
 	public AnthropicMessagesClient(
 			PooledRestClientFactory httpClients,
 			AnthropicProperties props,
-			ClaudeResponseNormalizer normalizer,
-			ClaudeUsageTracker usageTracker,
-			PromptTokenEstimator tokenEstimator,
-			ClaudeFailureLog failureLog) {
+			AnthropicCallListener listener,
+			PromptTokenEstimator tokenEstimator) {
 		this.apiKey = props.getApiKey();
 		this.model = props.getModel();
-		this.normalizer = normalizer;
-		this.usageTracker = usageTracker;
+		this.listener = listener;
 		this.tokenEstimator = tokenEstimator;
-		this.failureLog = failureLog;
 		this.httpClients = httpClients;
 		this.callLimiter = new Semaphore(Math.max(1, props.getMaxConcurrentCalls()));
 		this.maxRetries = Math.max(0, props.getMaxRetries());
@@ -174,7 +163,8 @@ public class AnthropicMessagesClient {
 	 *                     repair the trailing JSON by closing open braces
 	 * @return parsed object node, or {@code null} on failure
 	 */
-	JsonNode callJsonObject(
+	@Override
+	public JsonNode callJsonObject(
 			String prompt, int maxTokens, int timeoutSec, String label, boolean allowPartial) {
 		JsonNode resp = callRaw(prompt, maxTokens, timeoutSec, label);
 		if (resp == null) {
@@ -188,7 +178,7 @@ public class AnthropicMessagesClient {
 		if (truncated) {
 			noteSalvagedTruncation(label, effectiveMaxTokens(maxTokens));
 		}
-		String text = normalizer.extractText(resp);
+		String text = replyText(resp);
 		if (text == null || text.isBlank()) {
 			return null;
 		}
@@ -221,7 +211,8 @@ public class AnthropicMessagesClient {
 	 *                     had, and the only way a reply that merely forgot its final {@code ]} survives
 	 * @return the parsed array node, or {@code null} when no usable array could be recovered
 	 */
-	JsonNode callJsonArray(
+	@Override
+	public JsonNode callJsonArray(
 			String prompt, int maxTokens, int timeoutSec, String label, boolean allowPartial) {
 		JsonNode resp = callRaw(prompt, maxTokens, timeoutSec, label);
 		if (resp == null) {
@@ -235,7 +226,7 @@ public class AnthropicMessagesClient {
 		if (truncated) {
 			noteSalvagedTruncation(label, effectiveMaxTokens(maxTokens));
 		}
-		String text = normalizer.extractText(resp);
+		String text = replyText(resp);
 		if (text == null || text.isBlank()) {
 			return null;
 		}
@@ -468,7 +459,7 @@ public class AnthropicMessagesClient {
 		log.debug("[claude:{}] full unparseable reply:\n{}", label, text);
 		// The head of the reply is the one piece of evidence that says what actually broke the parse, and the
 		// person whose report degraded cannot open the server log — so it goes on their result card too.
-		failureLog.record(label, "reply was not valid JSON (" + shape + ", " + text.length()
+		listener.replyProblem(label, "reply was not valid JSON (" + shape + ", " + text.length()
 				+ " chars); it began: " + snippet(text));
 	}
 
@@ -487,7 +478,7 @@ public class AnthropicMessagesClient {
 	void noteSalvagedTruncation(String label, int maxTokens) {
 		log.warn("[claude:{}] reply ran out of its {}-token output budget; salvaged the part that arrived, so "
 				+ "later fields kept their previous values", label, maxTokens);
-		failureLog.record(label, "reply ran out of its " + maxTokens + "-token output budget; the fields it "
+		listener.replyProblem(label, "reply ran out of its " + maxTokens + "-token output budget; the fields it "
 				+ "never reached kept their previous values");
 	}
 
@@ -632,7 +623,8 @@ public class AnthropicMessagesClient {
 	 * @param label      short tag identifying this call in log messages
 	 * @return the full Messages API response as a JSON tree, or {@code null} on failure
 	 */
-	JsonNode callRaw(String prompt, int maxTokens, int timeoutSec, String label) {
+	@Override
+	public JsonNode callRaw(String prompt, int maxTokens, int timeoutSec, String label) {
 		RestClient client;
 		byte[] requestBody;
 		try {
@@ -742,7 +734,7 @@ public class AnthropicMessagesClient {
 				// estimate of what it cost and flagged as such rather than dropped.
 				if (lastAttempt) {
 					log.error("[claude:{}] request failed after sending: {}", label, ex.getMessage());
-					usageTracker.recordEstimated(label, tokenEstimator.estimateTokens(prompt), model);
+					listener.estimatedUsage(label, tokenEstimator.estimateTokens(prompt), model);
 					return null;
 				}
 				log.warn("[claude:{}] request failed after sending (attempt {}/{}) — retrying: {}",
@@ -805,8 +797,23 @@ public class AnthropicMessagesClient {
 		long output = usage.path("output_tokens").asLong(0);
 		long cacheWrite = usage.path("cache_creation_input_tokens").asLong(0);
 		long cacheRead = usage.path("cache_read_input_tokens").asLong(0);
-		usageTracker.record(label, input, output, cacheWrite, cacheRead, response.path("model").asText(model));
+		listener.usage(label, input, output, cacheWrite, cacheRead, response.path("model").asText(model));
 		log.debug("[claude:{}] usage in={} out={} cacheWrite={} cacheRead={}",
 				label, input, output, cacheWrite, cacheRead);
+	}
+
+	@Override
+	public String replyText(JsonNode response) {
+		JsonNode content = response.path("content");
+		if (!content.isArray() || content.isEmpty()) {
+			return null;
+		}
+		StringBuilder sb = new StringBuilder();
+		for (JsonNode part : content) {
+			if ("text".equals(part.path("type").asText())) {
+				sb.append(part.path("text").asText());
+			}
+		}
+		return sb.toString();
 	}
 }
