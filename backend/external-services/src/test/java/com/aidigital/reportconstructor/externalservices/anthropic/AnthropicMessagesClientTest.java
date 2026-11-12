@@ -38,7 +38,7 @@ class AnthropicMessagesClientTest {
 		// the shape that used to blank a whole breakdown slide
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 		String truncated = "{\"tactic_1\": [\"First bullet.\", \"Second bullet.\", \"Third bullet.\", \"Fourth bul";
 
 		// When:
@@ -54,7 +54,7 @@ class AnthropicMessagesClientTest {
 		// Given: a campaign reply that quotes a line name without escaping the quotes
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 		String reply = "{\"thoughts_on_performance\": [\"The \"Netflix\" line never activated.\", \"Video beat plan.\"]}";
 
 		// When:
@@ -71,7 +71,7 @@ class AnthropicMessagesClientTest {
 		// Given: a paid narrative reply quoting an audience name right before a comma inside the prose
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 		String reply = "{\"aud_take_1\": \"Scale \"Noventra Meta - LAL\", the top converter at $93.80.\", "
 				+ "\"aud_take_2\": \"Retargeting held a $65.14 CPA.\"}";
 
@@ -89,7 +89,7 @@ class AnthropicMessagesClientTest {
 		// Given: a thought the model wrapped with a literal newline instead of \n
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 		String reply = "{\"results_overviews\": {\"1\": \"Six tactics delivered 4.47M impressions.\nNetflix never activated.\"}}";
 
 		// When:
@@ -106,7 +106,7 @@ class AnthropicMessagesClientTest {
 		// does not parse
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 
 		// When:
 		String repaired = client.repairTruncatedJson("{\"tactic_1\": [\"Done.\"], \"tactic_2\"");
@@ -121,7 +121,7 @@ class AnthropicMessagesClientTest {
 		// not the brackets open at the point the document is cut
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 
 		// When:
 		String repaired = client.repairTruncatedJson("{\"a\": [1,2], \"b\": {\"c\": 1");
@@ -135,7 +135,7 @@ class AnthropicMessagesClientTest {
 		// Given: a bullet quoting a placeholder token, whose braces must not be read as JSON structure
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 
 		// When:
 		String repaired = client.repairTruncatedJson("{\"tactic_1\": [\"Cell still reads {{cr_live_n}}.\", \"Sec");
@@ -149,7 +149,7 @@ class AnthropicMessagesClientTest {
 		// Given: a reply that was cut before its first entry closed — there is nothing to salvage
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 
 		// When:
 		String repaired = client.repairTruncatedJson("{\"tactic_1\": [\"Unfinished bul");
@@ -165,7 +165,7 @@ class AnthropicMessagesClientTest {
 		// reply, blanking the slide and triggering the retry storm.
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 		String wrapped = "Here are the observations:\n\n{\"tactic_1\": [\"First.\", \"Second.\"]}\n\nThese show the mix.";
 
 		// When:
@@ -181,7 +181,7 @@ class AnthropicMessagesClientTest {
 		// Given: a preamble, then an object the model stopped writing part-way through its last bullet.
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 		String wrapped = "Sure! {\"tactic_1\": [\"First.\", \"Second.\", \"Third.\", \"Fourth bul";
 
 		// When:
@@ -197,7 +197,7 @@ class AnthropicMessagesClientTest {
 		// Given: a reply that is a JSON array rather than the keyed object the caller needs.
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 
 		// When-Then: a non-object never masquerades as a usable reply.
 		assertThat(client.parseJsonObject("[\"a\", \"b\"]", true)).isNull();
@@ -208,7 +208,7 @@ class AnthropicMessagesClientTest {
 		// Given: a reply with no JSON object at all — a refusal or a plain-prose answer.
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 
 		// When-Then:
 		assertThat(client.parseJsonObject("I can't help with that request.", true)).isNull();
@@ -219,7 +219,7 @@ class AnthropicMessagesClientTest {
 		// Given: a multi-line reply longer than the snippet cap.
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 		String reply = "line one\n\n   line two".repeat(60);
 
 		// When:
@@ -237,7 +237,7 @@ class AnthropicMessagesClientTest {
 		// deep that closed the inner array and stopped, leaving the outer one open
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 		String unclosed = "[[\"Modrinth anchored reach.\", \"Five destinations held 25%.\", "
 				+ "\"Brand-safe gaming mix.\", \"We steered weight to strong publishers.\"]";
 
@@ -258,7 +258,7 @@ class AnthropicMessagesClientTest {
 		// Given: a section reply the model stopped writing part-way through its last bullet
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 
 		// When:
 		JsonNode parsed = client.parseJsonArray("[\"First.\", \"Second.\", \"Thi", true);
@@ -273,7 +273,7 @@ class AnthropicMessagesClientTest {
 		// Given: the same unclosed reply, on a caller that has not opted into salvage
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 
 		// When-Then: strict parsing is unchanged — nothing repaired slips into a caller that did not ask for it
 		assertThat(client.parseJsonArray("[\"First.\", \"Second.\", \"Thi", false)).isNull();
@@ -284,7 +284,7 @@ class AnthropicMessagesClientTest {
 		// Given: a reply with a preamble and a trailing comment around the array
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 
 		// When:
 		JsonNode parsed = client.parseJsonArray("Here you go:\n[\"First.\", \"Second.\"]\nLet me know.", true);
@@ -301,7 +301,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		props.setReplySnippetLimit(1200);
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 
 		// When:
 		String snippet = client.snippet("x".repeat(2000));
@@ -316,7 +316,7 @@ class AnthropicMessagesClientTest {
 		// alongside the other transient upstream conditions worth another send.
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 
 		// When-Then: every transient upstream status is retried.
 		assertThat(client.isTransientStatus(522)).isTrue();
@@ -332,7 +332,7 @@ class AnthropicMessagesClientTest {
 		// Given: the client. A bad request or auth failure would only fail again, so it must fail fast.
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 
 		// When-Then: permanent statuses are never retried.
 		assertThat(client.isTransientStatus(400)).isFalse();
@@ -347,7 +347,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		props.setRetryBackoffMillis(0);
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 
 		// When: the backoff for a failed attempt is applied.
 		long start = System.nanoTime();
@@ -365,7 +365,7 @@ class AnthropicMessagesClientTest {
 		props.setApiKey("key");
 		AnthropicCallListener listener = mock(AnthropicCallListener.class);
 		AnthropicMessagesClient client =
-				new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener, new PromptTokenEstimator());
+				new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener);
 		JsonNode response = new ObjectMapper().readTree("""
 				{"model": "claude-sonnet-4-6", "usage": {"input_tokens": 1200, "output_tokens": 340,
 				"cache_creation_input_tokens": 90, "cache_read_input_tokens": 8000}}""");
@@ -382,7 +382,7 @@ class AnthropicMessagesClientTest {
 		// Given: a prompt with no cache marker, sent the way any call sends it
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 
 		// When: the request's message list is built
 		var messages = client.buildMessages("Return four observations.");
@@ -399,7 +399,7 @@ class AnthropicMessagesClientTest {
 		props.setApiKey("key");
 		AnthropicCallListener listener = mock(AnthropicCallListener.class);
 		AnthropicMessagesClient client =
-				new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener, new PromptTokenEstimator());
+				new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener);
 		JsonNode response = new ObjectMapper().readTree("{\"content\": []}");
 
 		// When:
@@ -414,7 +414,7 @@ class AnthropicMessagesClientTest {
 		// Given: a RestClient bound to a mock server that answers with an Anthropic overload
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 		RestClient.Builder builder = RestClient.builder().baseUrl("https://api.anthropic.com");
 		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
 		server.expect(requestTo("https://api.anthropic.com/v1/messages"))
@@ -442,7 +442,7 @@ class AnthropicMessagesClientTest {
 		props.setApiKey("key");
 		props.setMaxRetries(2);
 		props.setRetryBackoffMillis(0);
-		AnthropicMessagesClient client = spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator()));
+		AnthropicMessagesClient client = spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class)));
 		RestClient restClient = mock(RestClient.class);
 		byte[] body = "{}".getBytes(StandardCharsets.UTF_8);
 		doReturn(ResponseEntity.status(529).body("overloaded"))
@@ -464,7 +464,7 @@ class AnthropicMessagesClientTest {
 		props.setApiKey("key");
 		props.setMaxRetries(3);
 		props.setRetryBackoffMillis(0);
-		AnthropicMessagesClient client = spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator()));
+		AnthropicMessagesClient client = spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class)));
 		RestClient restClient = mock(RestClient.class);
 		byte[] body = "{}".getBytes(StandardCharsets.UTF_8);
 		doReturn(ResponseEntity.status(400).body("bad request")).when(client).exchange(restClient, body);
@@ -485,8 +485,7 @@ class AnthropicMessagesClientTest {
 		props.setMaxRetries(1);
 		props.setRetryBackoffMillis(0);
 		AnthropicCallListener listener = mock(AnthropicCallListener.class);
-		PromptTokenEstimator estimator = new PromptTokenEstimator();
-		AnthropicMessagesClient client = spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener, estimator));
+		AnthropicMessagesClient client = spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener));
 		RestClient restClient = mock(RestClient.class);
 		byte[] body = "{}".getBytes(StandardCharsets.UTF_8);
 		doThrow(new ResourceAccessException("Read timed out")).when(client).exchange(restClient, body);
@@ -497,8 +496,7 @@ class AnthropicMessagesClientTest {
 		// Then: both attempts were made and the lost call is booked once, as an estimate
 		assertThat(reply).isNull();
 		verify(client, times(2)).exchange(restClient, body);
-		verify(listener).estimatedUsage("BatchB", estimator.estimateTokens("Summarise the campaign."),
-				props.getModel());
+		verify(listener).unansweredCall("BatchB", "Summarise the campaign.", props.getModel());
 	}
 
 	@Test
@@ -507,7 +505,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(
-				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
 		JsonNode response = new ObjectMapper().readTree("""
 				{"content":[{"type":"text","text":"hello "},{"type":"tool_use"},{"type":"text","text":"world"}]}""");
 
@@ -529,7 +527,7 @@ class AnthropicMessagesClientTest {
 		RestClient sixty = mock(RestClient.class);
 		when(factory.createClient("anthropic", "https://api.anthropic.com", Duration.ofSeconds(30))).thenReturn(thirty);
 		when(factory.createClient("anthropic", "https://api.anthropic.com", Duration.ofSeconds(60))).thenReturn(sixty);
-		AnthropicMessagesClient client = new AnthropicMessagesClient(factory, props, mock(AnthropicCallListener.class), new PromptTokenEstimator());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(factory, props, mock(AnthropicCallListener.class));
 
 		// When:
 		RestClient first = client.restClientFor(60);

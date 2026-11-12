@@ -77,7 +77,7 @@ public class AnthropicMessagesClient implements AnthropicClient {
 	 * colliding with real prompt text, and it is stripped before the request is sent so the model never sees
 	 * it. When a prompt carries no marker it is sent as one uncached block, exactly as before.
 	 */
-	static final String CACHE_BREAKPOINT = "\u0000CACHE_BREAKPOINT\u0000";
+	public static final String CACHE_BREAKPOINT = "\u0000CACHE_BREAKPOINT\u0000";
 
 	private final String apiKey;
 	private final String model;
@@ -96,7 +96,6 @@ public class AnthropicMessagesClient implements AnthropicClient {
 			.build();
 	/** Receives every call's token usage and why a reply was rejected (the run's accounting and result card). */
 	private final AnthropicCallListener listener;
-	private final PromptTokenEstimator tokenEstimator;
 
 	/** Extra attempts after the first send when a transient upstream failure is retryable; at least 0. */
 	private final int maxRetries;
@@ -131,17 +130,14 @@ public class AnthropicMessagesClient implements AnthropicClient {
 	 * @param httpClients  shared factory building pooled, instrumented and logged HTTP clients
 	 * @param props        Anthropic configuration supplying the API key and model identifier
 	 * @param listener       receives every call's token usage and the reasons replies were rejected
-	 * @param tokenEstimator local prompt-size estimate, used to book a call whose reply never arrived
 	 */
 	public AnthropicMessagesClient(
 			PooledRestClientFactory httpClients,
 			AnthropicProperties props,
-			AnthropicCallListener listener,
-			PromptTokenEstimator tokenEstimator) {
+			AnthropicCallListener listener) {
 		this.apiKey = props.getApiKey();
 		this.model = props.getModel();
 		this.listener = listener;
-		this.tokenEstimator = tokenEstimator;
 		this.httpClients = httpClients;
 		this.callLimiter = new Semaphore(Math.max(1, props.getMaxConcurrentCalls()));
 		this.maxRetries = Math.max(0, props.getMaxRetries());
@@ -734,7 +730,7 @@ public class AnthropicMessagesClient implements AnthropicClient {
 				// estimate of what it cost and flagged as such rather than dropped.
 				if (lastAttempt) {
 					log.error("[claude:{}] request failed after sending: {}", label, ex.getMessage());
-					listener.estimatedUsage(label, tokenEstimator.estimateTokens(prompt), model);
+					listener.unansweredCall(label, prompt, model);
 					return null;
 				}
 				log.warn("[claude:{}] request failed after sending (attempt {}/{}) — retrying: {}",

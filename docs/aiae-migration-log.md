@@ -2,6 +2,37 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Claude prompt and reply logic moved into the service (P8 / D6, step A2, branch `PDI_240`)
+
+- `git mv`'d from `externalservices.anthropic` to `service.reports.claude`: 19 classes
+  (`RealClaudeClient`, `StubClaudeClient`, `ClaudeBatchPromptBuilder`, `EomPromptBuilder`,
+  `ClaudeResponseNormalizer`, `AnthropicClaudeClientFlavors`, `EomClaudeClientConfig`, `ClaudeCompression*`,
+  `ClaudeSectionAttempt`, `LeadPhraseSpec`, `MpoPromptSpec`, `PaidPromptSpec`, `PromptTokenEstimator`,
+  `RealLineItemMatchAssistant`, `StubLineItemMatchAssistant`, `TacticThoughtsCompleteness`, `WorkbookGeoFilter`)
+  and their 9 test classes. No name collided with existing service types; bean names and conditions
+  (`external.anthropic.api-key`) are unchanged.
+- New service port `ports.ClaudeTransport` (+ `ports.ClaudeReply`): `callJsonObject`, `callJsonArray` as before;
+  `callText` replaces the five `callRaw` + reply-text pairs and keeps their distinction exactly (`null` = no
+  reply, so the digest "failed" warnings still fire only then; a reply's `text` may be `null`).
+  `CACHE_BREAKPOINT` is declared on the port; `ClaudeTransportBridgeTest` pins it equal to the transport's.
+- `bridge.ClaudeTransportBridge` implements the port over `AnthropicClient`, conditional on the API key like the
+  transport. `AnthropicCallListener.estimatedUsage(label, tokens, model)` became `unansweredCall(label, prompt,
+  model)` so the transport no longer needs the token estimator; `ClaudeCallRecorder` estimates with the moved
+  `PromptTokenEstimator` — same number booked.
+- Configuration: `breakdownChunkSize` and `sectionRetries` moved from `AnthropicProperties` to
+  `service.reports.claude.ClaudePromptProperties`, bound to the same `external.anthropic.*` keys (verified by the
+  new wiring test). `service/pom.xml` declares `spring-boot-autoconfigure` (`@ConditionalOnExpression`).
+  `application.yml` sets `CLAUDE_LOG_LEVEL` on the new package too.
+- `ClaudeBatchPromptBuilder` sat at Checkstyle's 2,700-line limit; the added port import made it 2,701. One
+  JavaDoc paragraph shortened by the rename was reflowed from three lines to two — no content change.
+- New `application` test `ClaudeWiringSmokeTest` boots with an API key: both Claude flavours are
+  `RealClaudeClient`, one `ClaudeTransport`, `RealLineItemMatchAssistant` active, prompt settings bound. The
+  existing smoke test covers the no-key (stub) wiring.
+- Tests: `service` 629 → 801, `external-services` 471 → 303, `application` 92 → 93 — the moved tests plus
+  `ClaudeTransportBridgeTest` 4 and the wiring test; nothing lost. `mvn -Pmvp verify`: BUILD SUCCESS.
+- **`service` imports in `external-services` main outside `bridge`: 0.** Gates: 3 of 21 failing (structure-lint
+  on the module edge, D2/D3, D4) — the edge flip is the remaining step.
+
 ## 2026-11-12 — Anthropic transport converged (P8 / D6, branch `PDI_240`)
 
 - Measured first: `anthropic` held 110 of the remaining `service` import lines. The transport,

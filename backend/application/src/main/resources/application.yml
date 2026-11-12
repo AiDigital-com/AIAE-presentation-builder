@@ -63,6 +63,8 @@ logging:
     # DEBUG here dumps the full text of any Claude reply that failed to parse, so a section failure can be
     # diagnosed on a deployed run without widening every other logger.
     com.aidigital.reportconstructor.externalservices.anthropic: ${CLAUDE_LOG_LEVEL:INFO}
+    # The report's Claude logic (prompts, reply checks, retries) lives in the service; same switch.
+    com.aidigital.reportconstructor.service.reports.claude: ${CLAUDE_LOG_LEVEL:INFO}
 
 # App-specific config — these become AuthProperties / UsageLoggingProperties
 # via @ConfigurationProperties("app.auth") and ("app.usage-logging").

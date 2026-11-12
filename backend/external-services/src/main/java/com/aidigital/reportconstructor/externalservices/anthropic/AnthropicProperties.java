@@ -34,15 +34,6 @@ public class AnthropicProperties {
 	 */
 	private double outputTokenHeadroom = 1.35;
 
-	/**
-	 * Tactics per Step-2 per-tactic conclusions call in the slides-from-sheet flow. Default 7: that call
-	 * produces only each tactic's ~190-character overview (every breakdown section has its own call), so a
-	 * chunk of 7 still asks for a small reply while turning a 28-tactic deck's 28 calls into 4 — and lets the
-	 * model see neighbouring tactics rather than writing every overview blind. Chunks run concurrently, so a
-	 * larger chunk trades parallelism for context; raise it further only alongside a larger reply budget.
-	 * Clamped to at least 1 at use.
-	 */
-	private int breakdownChunkSize = 7;
 
 	/**
 	 * Upper bound on Claude HTTP calls in flight at once across the whole run, enforced by a shared semaphore
@@ -58,7 +49,7 @@ public class AnthropicProperties {
 	 * such failure otherwise discards a whole batch and blanks its slide tokens, so a cheap re-send is worth
 	 * it. Default 1 means one retry, two sends in total: a run fans out many calls, and a third send mostly
 	 * lengthens an already-slow run against an upstream that is still failing rather than rescuing it — the
-	 * same reasoning as {@link #sectionRetries}. Clamped to at least 0 (no retry) at use.
+	 * same reasoning as the per-section retries. Clamped to at least 0 (no retry) at use.
 	 */
 	private int maxRetries = 1;
 
@@ -69,13 +60,6 @@ public class AnthropicProperties {
 	 */
 	private long retryBackoffMillis = 1000;
 
-	/**
-	 * Extra attempts a per-section pilot call makes when its reply fails the positional contract (not a JSON
-	 * array of exactly the expected count of non-blank strings) before the tactic's section ships blank.
-	 * Default 1 means one retry, two sends in total: a deterministic rejection reproduces on the re-send, so a
-	 * third identical prompt mostly burns tokens. Clamped to at least 0 (no retry) at use.
-	 */
-	private int sectionRetries = 1;
 
 	/**
 	 * Characters of an unparseable reply written to the WARN line that reports the parse failure. The default
@@ -109,13 +93,7 @@ public class AnthropicProperties {
 		this.outputTokenHeadroom = outputTokenHeadroom;
 	}
 
-	public int getBreakdownChunkSize() {
-		return breakdownChunkSize;
-	}
 
-	public void setBreakdownChunkSize(int breakdownChunkSize) {
-		this.breakdownChunkSize = breakdownChunkSize;
-	}
 
 	public int getMaxConcurrentCalls() {
 		return maxConcurrentCalls;
@@ -141,13 +119,7 @@ public class AnthropicProperties {
 		this.retryBackoffMillis = retryBackoffMillis;
 	}
 
-	public int getSectionRetries() {
-		return sectionRetries;
-	}
 
-	public void setSectionRetries(int sectionRetries) {
-		this.sectionRetries = sectionRetries;
-	}
 
 	public int getReplySnippetLimit() {
 		return replySnippetLimit;

@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.bridge;
 
+import com.aidigital.reportconstructor.service.reports.claude.PromptTokenEstimator;
 import com.aidigital.reportconstructor.service.reports.diagnostics.ClaudeFailureLog;
 import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageTracker;
 import org.junit.jupiter.api.Test;
@@ -15,15 +16,17 @@ class ClaudeCallRecorderTest {
 		// Given:
 		ClaudeUsageTracker tracker = mock(ClaudeUsageTracker.class);
 		ClaudeFailureLog failureLog = mock(ClaudeFailureLog.class);
-		ClaudeCallRecorder recorder = new ClaudeCallRecorder(tracker, failureLog);
+		PromptTokenEstimator estimator = new PromptTokenEstimator();
+		ClaudeCallRecorder recorder = new ClaudeCallRecorder(tracker, failureLog, estimator);
 
 		// When:
 		recorder.usage("BatchC", 1200, 340, 90, 8000, "claude-sonnet-4-6");
-		recorder.estimatedUsage("BatchB", 950, "claude-sonnet-4-6");
+		recorder.unansweredCall("BatchB", "Summarise the campaign.", "claude-sonnet-4-6");
 
-		// Then:
+		// Then: an unanswered call is booked at the prompt's estimated size
 		verify(tracker).record("BatchC", 1200, 340, 90, 8000, "claude-sonnet-4-6");
-		verify(tracker).recordEstimated("BatchB", 950, "claude-sonnet-4-6");
+		verify(tracker).recordEstimated("BatchB", estimator.estimateTokens("Summarise the campaign."),
+				"claude-sonnet-4-6");
 		verifyNoInteractions(failureLog);
 	}
 
@@ -32,7 +35,7 @@ class ClaudeCallRecorderTest {
 		// Given:
 		ClaudeUsageTracker tracker = mock(ClaudeUsageTracker.class);
 		ClaudeFailureLog failureLog = mock(ClaudeFailureLog.class);
-		ClaudeCallRecorder recorder = new ClaudeCallRecorder(tracker, failureLog);
+		ClaudeCallRecorder recorder = new ClaudeCallRecorder(tracker, failureLog, new PromptTokenEstimator());
 
 		// When:
 		recorder.replyProblem("BatchA", "reply was not valid JSON (object, 12 chars); it began: Sorry");

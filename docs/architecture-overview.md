@@ -152,10 +152,16 @@ provider is converted, the bridges move into `service` and the module edge flips
   retries, truncation salvage and JSON repair). It reports token usage and rejected replies through the
   Anthropic-owned `AnthropicCallListener`, implemented by `bridge.ClaudeCallRecorder` over the service's
   `ClaudeUsageTracker` and `ClaudeFailureLog`.
-- Not yet converted: the Claude **prompt and reply logic** — `RealClaudeClient`, `StubClaudeClient`,
-  `ClaudeBatchPromptBuilder`, `EomPromptBuilder`, `ClaudeResponseNormalizer`, the flavour config,
-  `RealLineItemMatchAssistant` and their helpers (~6,000 lines on ~40 service types). In the target shape this
-  is service code calling the transport; it moves into `service` behind a small transport port.
+- The Claude **prompt and reply logic** is service code: `service.reports.claude` holds `RealClaudeClient`,
+  `StubClaudeClient`, `ClaudeBatchPromptBuilder`, `EomPromptBuilder`, `ClaudeResponseNormalizer`, the flavour
+  config (`AnthropicClaudeClientFlavors`, `EomClaudeClientConfig`), `RealLineItemMatchAssistant` /
+  `StubLineItemMatchAssistant`, compression, `PromptTokenEstimator` and `ClaudePromptProperties`
+  (`breakdown-chunk-size`, `section-retries`, still under `external.anthropic.*`). It reaches the model only
+  through the service port `ClaudeTransport` (`callJsonObject`, `callJsonArray`, `callText` → `ClaudeReply`,
+  `CACHE_BREAKPOINT`), implemented by `bridge.ClaudeTransportBridge` over `AnthropicClient` when an API key is
+  configured.
+- **Status:** nothing in `external-services` outside `bridge` imports `service`. What remains is the module
+  edge itself — moving `bridge` into `service` and flipping the poms to `service → external-services`.
 
 Controllers implement generated OpenAPI interfaces and delegate to services.
 Repositories are accessed only through their paired entity services.

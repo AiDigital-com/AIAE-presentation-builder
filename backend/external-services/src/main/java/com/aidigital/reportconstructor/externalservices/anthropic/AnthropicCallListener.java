@@ -21,13 +21,14 @@ public interface AnthropicCallListener {
 			String model);
 
 	/**
-	 * Reports a call whose request was sent but whose reply never arrived, so its cost is only estimated.
+	 * Reports a call whose request was sent but whose reply never arrived, so its cost can only be estimated
+	 * from the prompt.
 	 *
-	 * @param label               the call's tag
-	 * @param estimatedInputTokens local estimate of the prompt's size
-	 * @param model               the model the request was sent to
+	 * @param label  the call's tag
+	 * @param prompt the prompt that was sent
+	 * @param model  the model the request was sent to
 	 */
-	void estimatedUsage(String label, long estimatedInputTokens, String model);
+	void unansweredCall(String label, String prompt, String model);
 
 	/**
 	 * Reports why a reply was rejected or only partly used, in words meant for the person who ran the report.
