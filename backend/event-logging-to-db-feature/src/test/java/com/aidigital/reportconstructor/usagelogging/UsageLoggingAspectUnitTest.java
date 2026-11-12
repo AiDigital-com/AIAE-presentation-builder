@@ -35,9 +35,9 @@ import static org.mockito.Mockito.when;
 class UsageLoggingAspectUnitTest {
 
 	@Mock
-	UsageLogger usageLogger;
+	private UsageLogger usageLogger;
 	@Mock
-	UsageLoggingProperties props;
+	private UsageLoggingProperties props;
 
 	private final UsageAttributes usageAttributes = new UsageAttributes();
 	private UsageLoggingAspect aspect;

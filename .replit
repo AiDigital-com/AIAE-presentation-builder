@@ -31,13 +31,16 @@ runButton = "Run"
 name = "Run"
 mode = "parallel"
 
+# Inline form of scripts/replit-dev-backend.sh / replit-dev-frontend.sh (AIAE
+# Replit contract: the literal commands live here so verify-gates.sh can check
+# them). Keep the scripts in sync; they remain for running outside Replit.
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "bash scripts/replit-dev-backend.sh"
+args = "bash -lc 'source scripts/replit-env.sh; source scripts/lib/new-template-env.sh; mvn -f backend/pom.xml -DskipTests -Djacoco.skip=true -Dcheckstyle.skip=true -Dskip.frontend=true install && exec mvn -f backend/application/pom.xml -DskipTests -Djacoco.skip=true -Dcheckstyle.skip=true -Dskip.frontend=true spring-boot:run'"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "bash scripts/replit-dev-frontend.sh"
+args = "bash -lc 'source scripts/replit-env.sh; cd frontend && { if [ -f package-lock.json ]; then npm ci; else npm install; fi; } && npm run generate:api && exec npm run dev -- --host 0.0.0.0 --port 5173'"
 
 [agent]
 expertMode = true

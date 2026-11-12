@@ -9,3 +9,7 @@ npm run generate:api
 npm run typecheck
 npm run lint
 npm run build
+
+# AIAE gates — report-only for now (always exits 0); see docs/aiae-migration-plan.md.
+cd ..
+bash scripts/gates-report.sh

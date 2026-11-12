@@ -18,6 +18,9 @@ if [ -f scripts/lib/deploy-env.sh ]; then
   . scripts/lib/deploy-env.sh
 fi
 
+# Same normalization as replit-build.sh (defaults only; never overrides the
+# deploy-env.sh values above). Required by the AIAE Replit contract.
+source scripts/replit-env.sh
 
 # Prefer the extracted (exploded) layout produced by replit-build.sh for a
 # faster cold start; fall back to the fat jar if extraction is absent.

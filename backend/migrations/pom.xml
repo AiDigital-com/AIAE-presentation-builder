@@ -20,12 +20,13 @@
 	<packaging>jar</packaging>
 
 	<dependencies>
+		<!-- Liquibase runs inside application; this module only ships the changelogs. -->
 		<dependency>
 			<groupId>org.liquibase</groupId>
 			<artifactId>liquibase-core</artifactId>
+			<scope>runtime</scope>
 		</dependency>
-		<!-- Declared in every backend module per the backend hard rules, so any custom-change Java class
-			 added here later follows the same Lombok conventions as the rest of the backend. -->
+		<!-- Declared in every backend module per the backend hard rules. -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
