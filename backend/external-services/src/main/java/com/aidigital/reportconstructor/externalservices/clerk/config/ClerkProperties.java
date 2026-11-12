@@ -1,4 +1,4 @@
-package com.aidigital.reportconstructor.externalservices.clerk;
+package com.aidigital.reportconstructor.externalservices.clerk.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

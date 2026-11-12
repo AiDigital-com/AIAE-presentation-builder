@@ -101,6 +101,18 @@ reads admin emails via `AdminEmailDirectory`). Converging is planned one provide
 onboarding-platform shape (provider-level client + `model/` records, `service` maps): Clerk, Drive,
 Sheets, then Claude and Slides.
 
+Converted providers follow `externalservices/<provider>/`: `<Provider>Client` (interface, provider
+terms only), `<Provider>ExternalException`, `impl/<Provider>ClientImpl`, `model/` records, and
+`config/<Provider>Properties` + `<Provider>Config`; these packages import nothing from `service`.
+The port implementations that translate between a `service` port and a provider client live in
+`externalservices/bridge/` — the only place a converted provider meets `service` types. When every
+provider is converted, the bridges move into `service` and the module edge flips.
+
+- Converted: **Clerk** (`ClerkClient.googleOAuthAccessTokens` → `bridge.ClerkUserGoogleTokenProvider`
+  implements `UserGoogleTokenProvider`; both beans exist only when `app.clerk.secret-key` is set,
+  otherwise callers use the Google service account).
+- Not yet converted: `google` (Drive, Sheets, Slides, charts), `anthropic`.
+
 Controllers implement generated OpenAPI interfaces and delegate to services.
 Repositories are accessed only through their paired entity services.
 

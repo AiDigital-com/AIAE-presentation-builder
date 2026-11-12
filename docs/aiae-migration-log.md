@@ -2,6 +2,24 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Clerk provider converged (P8 / D6, branch `PDI_240`)
+
+- `externalservices.clerk` now has the onboarding-platform shape and **no `service` imports**:
+  `ClerkClient` (`googleOAuthAccessTokens(clerkUserId)` → `List<ClerkOAuthAccessToken>`),
+  `ClerkExternalException` (non-2xx, transport, unparseable body), `impl/ClerkClientImpl` (was
+  `ClerkOAuthTokenService`, `git mv`), `model/ClerkOAuthAccessToken`, `config/ClerkProperties` +
+  `config/ClerkConfig` (was `ExternalServicesClerkConfig`).
+- New `externalservices.bridge.ClerkUserGoogleTokenProvider` implements the `UserGoogleTokenProvider`
+  port: blank user id → no call; failure or no/blank token → warn + `null` (service-account fallback).
+  Behaviour unchanged; the five consumers (`SheetQueryServiceImpl`, `SheetAdoptionServiceImpl`,
+  `SheetSummaryQueryServiceImpl`, `DirectReportWorkflow`, `SlidesFromSheetWorkflow`) are untouched.
+- Wiring unchanged: client and bridge exist only when `app.clerk.secret-key` is set. New
+  `ClerkConfigTest` (`ApplicationContextRunner`) pins both cases — nothing tested the key-present
+  wiring before. `spring-boot-test` declared at `test` scope for it (dependency analysis).
+- Tests: `ClerkClientImplTest` 5 (bare array, `data` envelope, empty, 404, non-JSON),
+  `ClerkUserGoogleTokenProviderTest` 5, `ClerkConfigTest` 2. `mvn -Pmvp verify`: BUILD SUCCESS.
+- Gates: **3 of 21 failing** (unchanged; structure-lint still on the module edge, D6).
+
 ## 2026-11-12 — Module direction step 1 (P8 / D6, branch `PDI_240`)
 
 - Measured before: `external-services` main code pulled a closure of 102 `service`/`domain` types; the

@@ -191,6 +191,12 @@
 			<artifactId>spring-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- ApplicationContextRunner for conditional-wiring tests (ClerkConfigTest) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-test</artifactId>
+			<scope>test</scope>
+		</dependency>
 		<!-- Bean Validation provider (Hibernate Validator + EL) for PooledHttpClientProperties tests; -->
 		<!-- at runtime application supplies it through spring-boot-starter-validation. -->
 		<dependency>
