@@ -1,4 +1,4 @@
-package com.aidigital.reportconstructor.externalservices.bridge;
+package com.aidigital.reportconstructor.service.integration;
 
 import com.aidigital.reportconstructor.service.reports.claude.PromptTokenEstimator;
 import com.aidigital.reportconstructor.service.reports.diagnostics.ClaudeFailureLog;

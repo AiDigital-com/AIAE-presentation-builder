@@ -17,9 +17,10 @@
 - **`application`** declares the libraries its own code compiles against at
   compile scope, and every starter (`web`, `security`, `oauth2-resource-server`,
   `aop`, `data-jpa`, `validation`, `actuator`, springdoc, Logbook, logstash) at
-  `runtime` scope. `external-services`, `observability` and `migrations` are
-  `runtime` too: no application class references them, but their beans and the
-  Liquibase changelogs must be in the fat jar.
+  `runtime` scope. `observability` and `migrations` are `runtime` too: no
+  application class references them, but their beans and the Liquibase changelogs
+  must be in the fat jar. `external-services` is not declared at all: it is a leaf
+  that `service` depends on, so it reaches the fat jar through `service`.
 - **`jakarta.servlet-api`** is `provided` where it is compiled against; the servlet
   container (Tomcat) arrives at runtime through `spring-boot-starter-web`.
 - **`migrations`** ships only changelogs; `liquibase-core` is `runtime`.
@@ -36,8 +37,9 @@
   Every module declares it per the backend hard rules.
 - `${project.groupId}:event-logging-to-db-feature` — the AIAE contract
   (`scripts/structure-lint.sh`) requires `service` to attach the MVP usage-telemetry
-  module while it exists, so services can use `@LogUsage` / `UsageAttributes`. No
-  service class references it yet. Remove this entry together with the module at
+  module while it exists, so services can use `@LogUsage` / `UsageAttributes`.
+  `service.integration.SheetQueryServiceImpl` uses `@LogUsage` today; the entry stays
+  so removing that use never breaks the build. Remove it together with the module at
   engineering handoff.
 
 Runtime and test dependencies are excluded by scope (`ignoreNonCompile=true`);

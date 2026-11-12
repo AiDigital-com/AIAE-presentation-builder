@@ -1,4 +1,4 @@
-package com.aidigital.reportconstructor.externalservices.bridge;
+package com.aidigital.reportconstructor.service.integration;
 
 import com.aidigital.reportconstructor.externalservices.google.charts.SlidesChartClient;
 import com.aidigital.reportconstructor.externalservices.google.charts.model.TacticChartsRequest;

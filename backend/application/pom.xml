@@ -42,9 +42,9 @@
 
 	<dependencies>
 		<!-- REQUIRED edges: application → service / domain (compiled against) and the
-			 runtime-only modules below. No application class references external-services,
-			 observability or migrations, but their beans (outbound clients, metrics,
-			 usage-logging aspect) and the Liquibase changelogs MUST be in the fat jar. -->
+			 runtime-only modules below. external-services reaches the fat jar through service, never
+			 directly. No application class references observability or migrations, but their beans
+			 (metrics, usage-logging aspect) and the Liquibase changelogs MUST be in the fat jar. -->
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>service</artifactId>
@@ -52,11 +52,6 @@
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>domain</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>${project.groupId}</groupId>
-			<artifactId>external-services</artifactId>
-			<scope>runtime</scope>
 		</dependency>
 		<dependency>
 			<groupId>${project.groupId}</groupId>

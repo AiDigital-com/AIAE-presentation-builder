@@ -1,4 +1,4 @@
-package com.aidigital.reportconstructor.externalservices.bridge;
+package com.aidigital.reportconstructor.service.integration;
 
 import com.aidigital.reportconstructor.externalservices.google.GoogleApiException;
 import com.aidigital.reportconstructor.externalservices.google.slides.SlidesDeckClient;

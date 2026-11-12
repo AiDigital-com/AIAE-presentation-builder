@@ -36,6 +36,11 @@
 			<groupId>${project.groupId}</groupId>
 			<artifactId>domain</artifactId>
 		</dependency>
+		<!-- Provider clients (Google, Clerk, Anthropic); service.integration implements the ports on top of them. -->
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>external-services</artifactId>
+		</dependency>
 		<!-- Usage telemetry (@LogUsage / UsageAttributes) for services; allowlisted in DEPENDENCY-ANALYSIS.md. -->
 		<dependency>
 			<groupId>${project.groupId}</groupId>
@@ -54,6 +59,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot</artifactId>
+		</dependency>
+		<!-- HttpStatus: integration.SheetsFailureTranslator words a Sheets 403/404 for the user -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-web</artifactId>
 		</dependency>
 		<!-- @ConditionalOnExpression: the Claude logic is wired only when an Anthropic API key is configured -->
 		<dependency>
@@ -108,6 +118,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- ApplicationContextRunner for conditional-wiring tests (ClerkUserGoogleTokenProviderWiringTest) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

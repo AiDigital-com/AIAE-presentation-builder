@@ -32,17 +32,10 @@
 	</properties>
 
 	<dependencies>
-		<dependency>
-			<groupId>${project.groupId}</groupId>
-			<artifactId>service</artifactId>
-		</dependency>
+		<!-- A leaf: provider clients only. The service depends on this module, never the other way round. -->
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>observability</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>${project.groupId}</groupId>
-			<artifactId>event-logging-to-db-feature</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
@@ -62,9 +55,11 @@
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-core</artifactId>
 		</dependency>
+		<!-- Test-only since the bridges moved to the service (ObjectProvider was their only main-code use). -->
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-beans</artifactId>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>

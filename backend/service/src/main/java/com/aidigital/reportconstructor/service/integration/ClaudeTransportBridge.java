@@ -1,4 +1,4 @@
-package com.aidigital.reportconstructor.externalservices.bridge;
+package com.aidigital.reportconstructor.service.integration;
 
 import com.aidigital.reportconstructor.externalservices.anthropic.AnthropicClient;
 import com.aidigital.reportconstructor.service.reports.ports.ClaudeReply;

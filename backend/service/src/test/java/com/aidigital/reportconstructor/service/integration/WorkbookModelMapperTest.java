@@ -1,4 +1,4 @@
-package com.aidigital.reportconstructor.externalservices.bridge;
+package com.aidigital.reportconstructor.service.integration;
 
 import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookAudienceAgeRow;
 import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookAudienceSegmentRow;

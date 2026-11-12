@@ -87,81 +87,48 @@ across all modules. Maven modules (`backend/pom.xml`), in build order:
 | `backend/migrations` | Liquibase changelogs | No production Java modules |
 | `backend/observability` | `ExternalClientMetricsInterceptor` and `ExternalCallTimer` (`observability.external`), recording `external.client.requests` tagged `client` / `operation` / `outcome` | Metrics APIs only |
 | `backend/event-logging-to-db-feature` | Temporary MVP feedback telemetry (`usage_events`); removed at engineering handoff | Application service annotations and PostgreSQL during MVP only |
-| `backend/service` | Report engine, sheet/deck orchestration, admin statistics, entity services | `domain`, outbound integration ports |
-| `backend/external-services` | Outbound integrations: `anthropic`, `google`, `clerk`, `common.http`; implements the ports in `service` | `service` (ports, their request/result types, `admin.services.AdminEmailDirectory`), `observability`; never `domain` |
-| `backend/application` | Runtime composition, security, OpenAPI controllers, exception translation, Logbook, SPA hosting | `service`, `external-services`, `observability` |
+| `backend/service` | Report engine, sheet/deck orchestration, admin statistics, entity services; the Claude prompt and reply logic (`reports.claude`); the adapters that implement its ports over the provider clients (`integration`) | `domain`, `external-services`, `event-logging-to-db-feature` |
+| `backend/external-services` | Provider clients only: `anthropic`, `google`, `clerk`, `common.http`. A leaf — imports nothing from `service` or `domain` | `observability` |
+| `backend/application` | Runtime composition, security, OpenAPI controllers, exception translation, Logbook, SPA hosting | `service`, `domain` (compile); `observability`, `migrations` (runtime). Never `external-services` directly |
 
-**Module direction (decision D6, deliberate divergence).** The standard wants a leaf
-`external-services` with `service → external-services`. Here the outbound ports live in `service`
-(`service.reports.ports`) and `external-services` implements them, so the arrow points the other way
-and `application` depends on `external-services` to put the adapters on the classpath. The rule
-kept regardless: `external-services` never depends on `domain` or on entity/admin services — data it
-needs from the business side arrives through a narrow `service` interface (e.g. Drive auto-share
-reads admin emails via `AdminEmailDirectory`). Converging is planned one provider per branch, in the
-onboarding-platform shape (provider-level client + `model/` records, `service` maps): Clerk, Drive,
-Sheets, then Claude and Slides.
+**Module direction (AIAE standard; decision D6 resolved 2026-11-12).** `service → external-services`, and
+`external-services` is a leaf. Each provider follows the onboarding-platform shape: a client interface in
+provider terms, its real and stub implementations, Google/Anthropic/Clerk-owned `model/` records and
+exceptions, and its own configuration. The service owns every business rule; `service.integration` holds the
+classes that implement a service port on top of a provider client — they map types, translate failures into
+`AppException`, and are the only service classes that touch provider types.
 
-Converted providers follow `externalservices/<provider>/`: `<Provider>Client` (interface, provider
-terms only), `<Provider>ExternalException`, `impl/<Provider>ClientImpl`, `model/` records, and
-`config/<Provider>Properties` + `<Provider>Config`; these packages import nothing from `service`.
-The port implementations that translate between a `service` port and a provider client live in
-`externalservices/bridge/` — the only place a converted provider meets `service` types. When every
-provider is converted, the bridges move into `service` and the module edge flips.
+- **Clerk** — `ClerkClient.googleOAuthAccessTokens`; `integration.ClerkUserGoogleTokenProvider` implements
+  `UserGoogleTokenProvider`. Both exist only when `app.clerk.secret-key` is set; otherwise callers use the
+  Google service account.
+- **Google Drive** — `google.drive` (`DriveCopier`, `DriveSharer`, `ChartFileSharer`, `DriveShareRecipients`).
+  Who gets auto-shared comes from the Drive-owned `DriveShareAudience`, implemented by
+  `integration.AdminDriveShareAudience` over `AdminEmailDirectory`.
+- **Google Sheets reads** — `google.sheets.SheetsClient.readTab` (real `SheetsClientImpl` when Google credentials
+  exist, `StubSheetsClient` otherwise); `integration.SheetQueryServiceImpl` implements `SheetQueryService`
+  (URL validation, `SheetData` shaping, user-facing errors via `integration.SheetsFailureTranslator`).
+- **Google Slides** — `google.slides.SlidesDeckClient` (12 deck operations; `RealSlidesProvider` /
+  `StubSlidesProvider`), sharing the deck vocabulary in `google.deck` (`DeckBreakdown`, `DeckTemplate`,
+  `DeckMarkers`, paid-slide types — copies of the service's, pinned by `DeckModelMapperTest`).
+  `integration.SlidesProviderBridge` implements `SlidesProvider` and applies the service's
+  `BreakdownThoughtsGate`.
+- **Workbook writer** — `google.sheets.SheetWorkbookClient` (`RealSheetDeckProvider` / `StubSheetDeckProvider`,
+  tables read back as `google.sheets.model.Workbook*`); `integration.SheetDeckProviderBridge` implements
+  `SheetDeckProvider`.
+- **Charts and pacing** — the service pivots the BigQuery export (`reports.engine.TacticPivotAssembler` over
+  `ChartPivot` and `TacticLineItemGrouper`); the Google code only draws or writes the pivots it is given
+  (`google.deck.model.TacticPacing`). `google.charts.SlidesChartClient` (`RealChartProvider` /
+  `StubChartProvider`); `integration.ChartProviderBridge` implements `ChartProvider`.
+- **Anthropic** — `anthropic.AnthropicClient` (`AnthropicMessagesClient`: auth, pooling, concurrency, retries,
+  truncation salvage, JSON repair) reports usage and rejected replies through `AnthropicCallListener`
+  (`integration.ClaudeCallRecorder` → `ClaudeUsageTracker`, `ClaudeFailureLog`). The prompts and reply checks
+  are service code in `reports.claude` (`RealClaudeClient`, the prompt builders, `ClaudeResponseNormalizer`,
+  `ClaudePromptProperties`), reaching the model only through the port `ClaudeTransport`, implemented by
+  `integration.ClaudeTransportBridge`.
 
-- Converted: **Clerk** (`ClerkClient.googleOAuthAccessTokens` → `bridge.ClerkUserGoogleTokenProvider`
-  implements `UserGoogleTokenProvider`; both beans exist only when `app.clerk.secret-key` is set,
-  otherwise callers use the Google service account).
-- Converted: **Drive** (`google.drive`: `DriveCopier`, `DriveSharer`, `ChartFileSharer`,
-  `DriveShareRecipients`). Who gets auto-shared comes from the Drive-owned `DriveShareAudience`
-  interface, implemented by `bridge.AdminDriveShareAudience` over `AdminEmailDirectory`. These helpers
-  still take the SDK's `Drive` client as a parameter because the Sheets/Slides/chart code builds it per
-  request (user token or service account); hiding it goes with the Sheets/Slides conversion.
-- Converted: **Sheets reads** (`google.sheets`: `SheetsClient.readTab(spreadsheetId, tab, userToken)` →
-  `model.SheetsTabValues`; `SheetsExternalException` with status + Google message,
-  `SheetsTabNotFoundException` with the visible tabs; `impl.SheetsClientImpl` is `@Primary` when Google
-  credentials exist, `impl.StubSheetsClient` otherwise). `bridge.SheetQueryServiceImpl` implements the
-  `SheetQueryService` port: URL validation, `SheetData` shaping, and user-facing errors through
-  `bridge.SheetsFailureTranslator`.
-- Converted: **Slides** (`google.slides.SlidesDeckClient`, the 12 deck operations in Google terms, implemented
-  by `RealSlidesProvider` / `StubSlidesProvider`; failures are `google.GoogleApiException`). The deck
-  vocabulary the Google code shares lives in `google.deck`: `DeckBreakdown`, `DeckTemplate`, `DeckMarkers`,
-  `PaidDeckChannel`, `PaidDeckTableMarker`, `model.PaidDeckFill` / `PaidDeckTable` — copies of the service's
-  types, kept identical by `DeckModelMapperTest`. `bridge.SlidesProviderBridge` implements `SlidesProvider`:
-  maps types through `bridge.DeckModelMapper`, applies `BreakdownThoughtsGate` and hands the qualifying
-  tactics down, and turns `GoogleApiException` into `AppException(C000)` with the same message. The Slides
-  classes stay in package `google` (they share package-private helpers with the workbook and chart code);
-  they move into `google.slides` once those are converted.
-- Converted: **workbook writer** (`google.sheets.SheetWorkbookClient`, implemented by
-  `RealSheetDeckProvider` / `StubSheetDeckProvider`; the breakdown tables read back are the copies in
-  `google.sheets.model.Workbook*`, kept identical to the service records by `WorkbookModelMapperTest`).
-  `bridge.SheetDeckProviderBridge` implements `SheetDeckProvider` and maps through `DeckModelMapper` /
-  `bridge.WorkbookModelMapper`. Pacing tables arrive as a `google.sheets.model.WorkbookPacingRequest` with
-  every tactic's pivots already computed.
-- Converted: **charts and pacing pivots**. Pivoting the BigQuery export is the service's job:
-  `service.reports.engine.TacticPivotAssembler` (over `ChartPivot` and `TacticLineItemGrouper`, which moved
-  from `external-services` into `service`) computes every tactic's daily and monthly pivots. The bridges call
-  it — `bridge.ChartProviderBridge` (implements `ChartProvider`) for the deck charts, and
-  `SheetDeckProviderBridge` for the workbook's pacing tables — and hand `google.deck.model.TacticPacing`
-  (`PacingPivot` / `PacingSeries` copies) down; the sheet flow's pivots, read back from the workbook, pass
-  through untouched. `google.charts.SlidesChartClient` (implemented by `RealChartProvider` /
-  `StubChartProvider`) and its request records, `DeckBreakdownSeries`, `PaidChartKind`, `PaidChartShape`
-  are the chart vocabulary, kept identical to the service's by `ChartModelMapperTest`.
-- The whole `google`, `clerk` and `common` tree now imports nothing from `service`; only `bridge` does.
-- Converted: **Anthropic transport** (`anthropic.AnthropicClient` — `callJsonObject`, `callJsonArray`,
-  `callRaw`, `replyText` — implemented by `AnthropicMessagesClient`, which owns auth, pooling, concurrency,
-  retries, truncation salvage and JSON repair). It reports token usage and rejected replies through the
-  Anthropic-owned `AnthropicCallListener`, implemented by `bridge.ClaudeCallRecorder` over the service's
-  `ClaudeUsageTracker` and `ClaudeFailureLog`.
-- The Claude **prompt and reply logic** is service code: `service.reports.claude` holds `RealClaudeClient`,
-  `StubClaudeClient`, `ClaudeBatchPromptBuilder`, `EomPromptBuilder`, `ClaudeResponseNormalizer`, the flavour
-  config (`AnthropicClaudeClientFlavors`, `EomClaudeClientConfig`), `RealLineItemMatchAssistant` /
-  `StubLineItemMatchAssistant`, compression, `PromptTokenEstimator` and `ClaudePromptProperties`
-  (`breakdown-chunk-size`, `section-retries`, still under `external.anthropic.*`). It reaches the model only
-  through the service port `ClaudeTransport` (`callJsonObject`, `callJsonArray`, `callText` → `ClaudeReply`,
-  `CACHE_BREAKPOINT`), implemented by `bridge.ClaudeTransportBridge` over `AnthropicClient` when an API key is
-  configured.
-- **Status:** nothing in `external-services` outside `bridge` imports `service`. What remains is the module
-  edge itself — moving `bridge` into `service` and flipping the poms to `service → external-services`.
+Where the service and a provider share a vocabulary (deck breakdowns, template variants, paid tables, chart
+series, pacing pivots, workbook tables), the provider keeps its own copy and `service.integration` maps by
+name; the `*ModelMapperTest`s fail when the two drift apart.
 
 Controllers implement generated OpenAPI interfaces and delegate to services.
 Repositories are accessed only through their paired entity services.

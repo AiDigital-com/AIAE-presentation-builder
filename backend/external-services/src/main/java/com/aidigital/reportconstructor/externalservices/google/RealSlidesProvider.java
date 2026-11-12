@@ -202,14 +202,6 @@ public class RealSlidesProvider implements SlidesDeckClient {
 	 */
 	private static final List<String> PERCENT_SUFFIXES = List.of(" " + PERCENT, PERCENT);
 
-	/**
-	 * Matches the standalone tactic variable {@code n} inside a token: a single {@code n} or {@code N}
-	 * bounded on both sides by a token delimiter ({@code _}, {@code .}, whitespace, or a brace), so the
-	 * {@code n} in words like {@code name} or {@code imps} is never touched. Both cases are accepted
-	 * because master templates use either (e.g. {@code {{tactic n}}} vs {@code {{tactic N}}}). Replaced
-	 * with the tactic number.
-	 */
-	private static final Pattern N_VARIABLE = Pattern.compile("(?<=[_.\\s{])[nN](?=[_.\\s}])");
 
 	private final GoogleCredentialsFactory creds;
 	private final GoogleRequestRetrier retrier;
@@ -1898,7 +1890,7 @@ public class RealSlidesProvider implements SlidesDeckClient {
 	 * @return the renumbered token (e.g. {@code {{publisher_3.1}}}); unchanged when it carries no {@code n}
 	 */
 	String renumber(String token, int tacticNum) {
-		return N_VARIABLE.matcher(token).replaceAll(String.valueOf(tacticNum));
+		return breakdownSlideNaming.renumberToken(token, tacticNum);
 	}
 
 	/**

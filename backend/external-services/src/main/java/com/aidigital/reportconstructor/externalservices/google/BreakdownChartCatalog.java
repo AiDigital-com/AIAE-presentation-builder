@@ -8,7 +8,7 @@ import java.util.Map;
 /**
  * Chart-source spreadsheet ids and in-sheet chart ids for the per-tactic audience/device breakdown
  * charts — bound from {@code external.google.breakdown-charts.*} and keyed by {@link
- * com.aidigital.reportconstructor.service.reports.dto.BreakdownType} wire code ({@code "aud"},
+ * com.aidigital.reportconstructor.externalservices.google.deck.DeckBreakdown} wire code ({@code "aud"},
  * {@code "dev"}).
  *
  * <p>Separate from {@link ChartTemplateCatalog}: the main-deck charts share one in-sheet chart id, but

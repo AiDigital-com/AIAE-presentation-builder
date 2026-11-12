@@ -20,6 +20,27 @@ public class BreakdownSlideNaming {
 	private static final Pattern EOM_TACTIC_COPY = Pattern.compile("^eom_m(\\d{1,2})_t(\\d{1,2})$");
 
 	/**
+	 * Matches the standalone tactic variable {@code n} inside a token: a single {@code n} or {@code N}
+	 * bounded on both sides by a token delimiter ({@code _}, {@code .}, whitespace, or a brace), so the
+	 * {@code n} in words like {@code name} or {@code imps} is never touched. Both cases are accepted
+	 * because master templates use either (e.g. {@code {{tactic n}}} vs {@code {{tactic N}}}).
+	 */
+	private static final Pattern N_VARIABLE = Pattern.compile("(?<=[_.\\s{])[nN](?=[_.\\s}])");
+
+	/**
+	 * Renumbers the standalone tactic variable {@code n} in a master token to the given tactic number, leaving
+	 * every other character (including an {@code n} inside a word) untouched. This is the token a duplicated
+	 * per-tactic slide carries, so the service's placeholder values must be keyed by exactly this form.
+	 *
+	 * @param token     the generic master token (e.g. {@code {{publisher_n.1}}})
+	 * @param tacticNum the 1-based tactic number to substitute for {@code n}
+	 * @return the renumbered token (e.g. {@code {{publisher_3.1}}}); unchanged when it carries no {@code n}
+	 */
+	public String renumberToken(String token, int tacticNum) {
+		return N_VARIABLE.matcher(token).replaceAll(String.valueOf(tacticNum));
+	}
+
+	/**
 	 * Builds the deterministic object id for a duplicated breakdown slide, unique per
 	 * {@code (breakdown type, tactic)} pair, e.g. {@code bd_dev_3}.
 	 *

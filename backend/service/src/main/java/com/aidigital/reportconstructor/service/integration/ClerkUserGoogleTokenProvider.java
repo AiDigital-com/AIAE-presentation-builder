@@ -1,4 +1,4 @@
-package com.aidigital.reportconstructor.externalservices.bridge;
+package com.aidigital.reportconstructor.service.integration;
 
 import com.aidigital.reportconstructor.externalservices.clerk.ClerkClient;
 import com.aidigital.reportconstructor.externalservices.clerk.ClerkExternalException;

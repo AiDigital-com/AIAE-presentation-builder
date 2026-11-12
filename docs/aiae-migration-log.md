@@ -2,6 +2,28 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Module edge flipped: `service → external-services` (P8, D6 resolved, branch `PDI_240`)
+
+- The 12 port adapters and their 12 tests moved from `externalservices.bridge` to `service.integration`
+  (`git mv`). They are the only service classes that touch provider types.
+- Poms: `service` declares `external-services`; `external-services` no longer declares `service` or
+  `event-logging-to-db-feature` (its only user, `SheetQueryServiceImpl`, moved) and keeps `spring-beans` at
+  `test` scope (its main-code use left with the adapters); `application` no longer declares
+  `external-services` — it reaches the fat jar through `service`. `service` additionally declares `spring-web`
+  (`HttpStatus` in `SheetsFailureTranslator`) and `spring-boot-test` (test). Reactor order is now
+  `external-services` before `service`.
+- Tests that crossed the new boundary: `ClerkConfigTest` split — the client half stays in
+  `external-services`, the adapter wiring half is `service.integration.ClerkUserGoogleTokenProviderWiringTest`;
+  the creative-token contract test left `RealSlidesProviderTest` for
+  `service.reports.helpers.impl.CreativeBreakdownSlideTokenContractTest`, renumbering through the new public
+  `BreakdownSlideNaming.renumberToken` (the `n`-variable rule moved there; `RealSlidesProvider.renumber`
+  delegates, unchanged behaviour). `BreakdownChartCatalog`'s JavaDoc link now names `DeckBreakdown`.
+- `external-services` main and test sources: **no reference to `service` or `domain`**.
+- `mvn -Pmvp verify`: BUILD SUCCESS, every module's coverage floor met. Tests: `service` 801 → 850,
+  `external-services` 303 → 256, `application` 93 (+2 overall: the new adapter wiring test).
+- **Gates: 2 of 21 failing** — `structure-lint.sh` now **passes**; remaining: `verify-gates.sh` (D2 `.replit` port,
+  D3 Vitest pin, Logbook literal) and `check-liquibase-preconditions` (D4).
+
 ## 2026-11-12 — Claude prompt and reply logic moved into the service (P8 / D6, step A2, branch `PDI_240`)
 
 - `git mv`'d from `externalservices.anthropic` to `service.reports.claude`: 19 classes
