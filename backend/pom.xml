@@ -349,6 +349,9 @@
 								<ignoredUnusedDeclaredDependencies>
 									<!-- Consumed only by javac's annotation processor. -->
 									<ignoredUnusedDeclaredDependency>org.projectlombok:lombok</ignoredUnusedDeclaredDependency>
+									<!-- AIAE contract (structure-lint): service attaches the MVP usage-telemetry
+										 module so services can use @LogUsage; no service bytecode references it yet. -->
+									<ignoredUnusedDeclaredDependency>${project.groupId}:event-logging-to-db-feature</ignoredUnusedDeclaredDependency>
 								</ignoredUnusedDeclaredDependencies>
 							</configuration>
 						</execution>

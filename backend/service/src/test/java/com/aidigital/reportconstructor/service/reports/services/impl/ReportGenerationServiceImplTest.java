@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.services.impl;
 
+import com.aidigital.reportconstructor.service.reports.usage.mappers.ClaudeUsageEventEntityMapperImpl;
 import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimitsResolver;
 import com.aidigital.reportconstructor.service.reports.enums.PaidCopySlotResolver;
 import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
@@ -159,7 +160,7 @@ class ReportGenerationServiceImplTest {
 				claudeClients, slides, userGoogleTokens, self, claudeDefaults, fileNamer,
 				new ReportNumberParserImpl(), new Fmt(),
 				new EomDashboardResolver(new ReportNumberParserImpl(), new Fmt(), new RatePlanCalculator()), new SimpleAsyncTaskExecutor(),
-				new ClaudeUsageTrackerImpl(new NoOpClaudeUsageEventService(), new CurrentTimeImpl()), new ClaudeFailureLogImpl(),
+				new ClaudeUsageTrackerImpl(new NoOpClaudeUsageEventService(), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new ClaudeFailureLogImpl(),
 				new BreakdownSelectionResolverImpl(), new BreakdownThoughtsGateImpl(),
 				new TacticConclusionAssemblerImpl(), sheetChartData, tacticExtraction,
 				new ImpressionContributionHelperImpl(new ReportNumberParserImpl(), new Fmt()), resumeState,

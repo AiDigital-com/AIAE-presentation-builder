@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.anthropic;
 
+import com.aidigital.reportconstructor.service.reports.usage.mappers.ClaudeUsageEventEntityMapperImpl;
 import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.externalservices.common.http.PooledRestClientFactory;
 import com.aidigital.reportconstructor.service.reports.diagnostics.impl.ClaudeFailureLogImpl;
@@ -43,7 +44,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 		String truncated = "{\"tactic_1\": [\"First bullet.\", \"Second bullet.\", \"Third bullet.\", \"Fourth bul";
 
 		// When:
@@ -60,7 +61,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 		String reply = "{\"thoughts_on_performance\": [\"The \"Netflix\" line never activated.\", \"Video beat plan.\"]}";
 
 		// When:
@@ -78,7 +79,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 		String reply = "{\"aud_take_1\": \"Scale \"Noventra Meta - LAL\", the top converter at $93.80.\", "
 				+ "\"aud_take_2\": \"Retargeting held a $65.14 CPA.\"}";
 
@@ -97,7 +98,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 		String reply = "{\"results_overviews\": {\"1\": \"Six tactics delivered 4.47M impressions.\nNetflix never activated.\"}}";
 
 		// When:
@@ -115,7 +116,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 
 		// When:
 		String repaired = client.repairTruncatedJson("{\"tactic_1\": [\"Done.\"], \"tactic_2\"");
@@ -131,7 +132,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 
 		// When:
 		String repaired = client.repairTruncatedJson("{\"a\": [1,2], \"b\": {\"c\": 1");
@@ -146,7 +147,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 
 		// When:
 		String repaired = client.repairTruncatedJson("{\"tactic_1\": [\"Cell still reads {{cr_live_n}}.\", \"Sec");
@@ -161,7 +162,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 
 		// When:
 		String repaired = client.repairTruncatedJson("{\"tactic_1\": [\"Unfinished bul");
@@ -178,7 +179,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 		String wrapped = "Here are the observations:\n\n{\"tactic_1\": [\"First.\", \"Second.\"]}\n\nThese show the mix.";
 
 		// When:
@@ -195,7 +196,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 		String wrapped = "Sure! {\"tactic_1\": [\"First.\", \"Second.\", \"Third.\", \"Fourth bul";
 
 		// When:
@@ -212,7 +213,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 
 		// When-Then: a non-object never masquerades as a usable reply.
 		assertThat(client.parseJsonObject("[\"a\", \"b\"]", true)).isNull();
@@ -224,7 +225,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 
 		// When-Then:
 		assertThat(client.parseJsonObject("I can't help with that request.", true)).isNull();
@@ -236,7 +237,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 		String reply = "line one\n\n   line two".repeat(60);
 
 		// When:
@@ -255,7 +256,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 		String unclosed = "[[\"Modrinth anchored reach.\", \"Five destinations held 25%.\", "
 				+ "\"Brand-safe gaming mix.\", \"We steered weight to strong publishers.\"]";
 
@@ -277,7 +278,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 
 		// When:
 		JsonNode parsed = client.parseJsonArray("[\"First.\", \"Second.\", \"Thi", true);
@@ -293,7 +294,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 
 		// When-Then: strict parsing is unchanged — nothing repaired slips into a caller that did not ask for it
 		assertThat(client.parseJsonArray("[\"First.\", \"Second.\", \"Thi", false)).isNull();
@@ -305,7 +306,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 
 		// When:
 		JsonNode parsed = client.parseJsonArray("Here you go:\n[\"First.\", \"Second.\"]\nLet me know.", true);
@@ -323,7 +324,7 @@ class AnthropicMessagesClientTest {
 		props.setApiKey("key");
 		props.setReplySnippetLimit(1200);
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 
 		// When:
 		String snippet = client.snippet("x".repeat(2000));
@@ -339,7 +340,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 
 		// When-Then: every transient upstream status is retried.
 		assertThat(client.isTransientStatus(522)).isTrue();
@@ -356,7 +357,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 
 		// When-Then: permanent statuses are never retried.
 		assertThat(client.isTransientStatus(400)).isFalse();
@@ -372,7 +373,7 @@ class AnthropicMessagesClientTest {
 		props.setApiKey("key");
 		props.setRetryBackoffMillis(0);
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
-				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
+				props, new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 
 		// When: the backoff for a failed attempt is applied.
 		long start = System.nanoTime();
@@ -388,7 +389,7 @@ class AnthropicMessagesClientTest {
 		// Given: a run's accounting scope, and a Messages API reply carrying a usage block
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl());
+		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl());
 		var scope = tracker.begin(7L, null, null);
 		AnthropicMessagesClient client =
 				new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, new ClaudeResponseNormalizer(), tracker, new PromptTokenEstimator(), new ClaudeFailureLogImpl());
@@ -416,7 +417,7 @@ class AnthropicMessagesClientTest {
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class),
 				props, new ClaudeResponseNormalizer(),
-				new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(),
+				new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(),
 				new ClaudeFailureLogImpl());
 
 		// When: the request's message list is built
@@ -432,7 +433,7 @@ class AnthropicMessagesClientTest {
 		// Given: a reply with no usage block — accounting must never break a request
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
-		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl());
+		ClaudeUsageTrackerImpl tracker = new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl());
 		var scope = tracker.begin(7L, null, null);
 		AnthropicMessagesClient client =
 				new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, new ClaudeResponseNormalizer(), tracker, new PromptTokenEstimator(), new ClaudeFailureLogImpl());
@@ -451,7 +452,7 @@ class AnthropicMessagesClientTest {
 		AnthropicProperties props = new AnthropicProperties();
 		props.setApiKey("key");
 		AnthropicMessagesClient client = new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props,
-				new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()),
+				new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()),
 				new PromptTokenEstimator(), new ClaudeFailureLogImpl());
 		RestClient.Builder builder = RestClient.builder().baseUrl("https://api.anthropic.com");
 		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
@@ -481,7 +482,7 @@ class AnthropicMessagesClientTest {
 		props.setMaxRetries(2);
 		props.setRetryBackoffMillis(0);
 		AnthropicMessagesClient client = spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props,
-				new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()),
+				new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()),
 				new PromptTokenEstimator(), new ClaudeFailureLogImpl()));
 		RestClient restClient = mock(RestClient.class);
 		byte[] body = "{}".getBytes(StandardCharsets.UTF_8);
@@ -505,7 +506,7 @@ class AnthropicMessagesClientTest {
 		props.setMaxRetries(3);
 		props.setRetryBackoffMillis(0);
 		AnthropicMessagesClient client = spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props,
-				new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()),
+				new ClaudeResponseNormalizer(), new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()),
 				new PromptTokenEstimator(), new ClaudeFailureLogImpl()));
 		RestClient restClient = mock(RestClient.class);
 		byte[] body = "{}".getBytes(StandardCharsets.UTF_8);
@@ -555,7 +556,7 @@ class AnthropicMessagesClientTest {
 		when(factory.createClient("anthropic", "https://api.anthropic.com", Duration.ofSeconds(30))).thenReturn(thirty);
 		when(factory.createClient("anthropic", "https://api.anthropic.com", Duration.ofSeconds(60))).thenReturn(sixty);
 		AnthropicMessagesClient client = new AnthropicMessagesClient(factory, props, new ClaudeResponseNormalizer(),
-				new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl()), new PromptTokenEstimator(),
+				new ClaudeUsageTrackerImpl(mock(ClaudeUsageEventService.class), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new PromptTokenEstimator(),
 				new ClaudeFailureLogImpl());
 
 		// When:

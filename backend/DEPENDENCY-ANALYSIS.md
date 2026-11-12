@@ -29,11 +29,16 @@
 
 ## Allowlist
 
-`ignoredUnusedDeclaredDependencies` contains exactly one coordinate:
+`ignoredUnusedDeclaredDependencies` contains exactly two coordinates:
 
 - `org.projectlombok:lombok` — required at compile time for its annotation
   processor, while the compiled classes no longer reference the Lombok JAR.
   Every module declares it per the backend hard rules.
+- `${project.groupId}:event-logging-to-db-feature` — the AIAE contract
+  (`scripts/structure-lint.sh`) requires `service` to attach the MVP usage-telemetry
+  module while it exists, so services can use `@LogUsage` / `UsageAttributes`. No
+  service class references it yet. Remove this entry together with the module at
+  engineering handoff.
 
 Runtime and test dependencies are excluded by scope (`ignoreNonCompile=true`);
 never copy them into this allowlist. If a library is legitimately reached only

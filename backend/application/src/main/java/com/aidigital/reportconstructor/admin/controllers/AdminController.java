@@ -1,16 +1,14 @@
 package com.aidigital.reportconstructor.admin.controllers;
 
 import com.aidigital.reportconstructor.admin.mappers.AdminManagementApiMapper;
+import com.aidigital.reportconstructor.admin.mappers.AdminReportsApiMapper;
 import com.aidigital.reportconstructor.admin.mappers.AdminStatsApiMapper;
 import com.aidigital.reportconstructor.api.v1.AdminApi;
 import com.aidigital.reportconstructor.api.v1.model.AddAdminRequestV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminListV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminReportPageV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminStatsV1;
-import com.aidigital.reportconstructor.api.v1.model.ReportSummaryV1;
-import com.aidigital.reportconstructor.reports.mappers.ReportsApiMapper;
 import com.aidigital.reportconstructor.security.AppUserFactory;
-import com.aidigital.reportconstructor.service.admin.dto.AdminReportPage;
 import com.aidigital.reportconstructor.service.admin.services.AdminFailuresService;
 import com.aidigital.reportconstructor.service.admin.services.AdminManagementService;
 import com.aidigital.reportconstructor.service.admin.services.AdminReportsService;
@@ -22,7 +20,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
-import java.util.List;
 
 /**
  * REST controller for the admin dashboard: statistics, team-wide report history, and
@@ -39,7 +36,7 @@ public class AdminController implements AdminApi {
 	private final AdminFailuresService adminFailures;
 	private final AdminStatsApiMapper statsMapper;
 	private final AdminManagementApiMapper adminMapper;
-	private final ReportsApiMapper reportsMapper;
+	private final AdminReportsApiMapper reportsPageMapper;
 	private final AppUserFactory appUserFactory;
 
 	@Override
@@ -62,29 +59,23 @@ public class AdminController implements AdminApi {
 	@Override
 	public ResponseEntity<AdminReportPageV1> listAllReports(
 			Integer page, Integer size, String sort, String dir) {
-		AdminReportPage found = adminReports.allReports(caller().email(), page, size, sort, dir);
-		List<ReportSummaryV1> reports = reportsMapper.toSummaries(found.reports());
-		return ResponseEntity.ok(new AdminReportPageV1()
-				.total(found.total())
-				.page(found.page())
-				.size(found.size())
-				.hasMore(found.hasMore())
-				.reports(reports));
+		return ResponseEntity.ok(reportsPageMapper.toReportPage(
+				adminReports.allReports(caller().email(), page, size, sort, dir)));
 	}
 
 	@Override
 	public ResponseEntity<AdminListV1> listAdmins() {
-		return ResponseEntity.ok(toList(adminManagement.listAdmins(caller().email())));
+		return ResponseEntity.ok(adminMapper.toList(adminManagement.listAdmins(caller().email())));
 	}
 
 	@Override
 	public ResponseEntity<AdminListV1> addAdmin(AddAdminRequestV1 body) {
-		return ResponseEntity.ok(toList(adminManagement.addAdmin(caller().email(), body.getEmail())));
+		return ResponseEntity.ok(adminMapper.toList(adminManagement.addAdmin(caller().email(), body.getEmail())));
 	}
 
 	@Override
 	public ResponseEntity<AdminListV1> removeAdmin(String email) {
-		return ResponseEntity.ok(toList(adminManagement.removeAdmin(caller().email(), email)));
+		return ResponseEntity.ok(adminMapper.toList(adminManagement.removeAdmin(caller().email(), email)));
 	}
 
 	/**
@@ -94,15 +85,5 @@ public class AdminController implements AdminApi {
 	 */
 	AppUser caller() {
 		return appUserFactory.from(SecurityContextHolder.getContext().getAuthentication());
-	}
-
-	/**
-	 * Wraps mapped admin entries in the V1 list envelope.
-	 *
-	 * @param entries the service admin entries
-	 * @return the V1 admin list
-	 */
-	AdminListV1 toList(List<com.aidigital.reportconstructor.service.admin.dto.AdminEntry> entries) {
-		return new AdminListV1().admins(adminMapper.toEntries(entries));
 	}
 }

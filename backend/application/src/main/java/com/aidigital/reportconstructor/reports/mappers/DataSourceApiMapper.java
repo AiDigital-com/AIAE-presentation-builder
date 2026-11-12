@@ -9,6 +9,7 @@ import com.aidigital.reportconstructor.service.reports.dto.GoogleConnectionStatu
 import com.aidigital.reportconstructor.service.reports.dto.SheetData;
 import com.aidigital.reportconstructor.service.reports.dto.SheetSummary;
 import com.aidigital.reportconstructor.service.reports.dto.SheetSummaryRow;
+import com.aidigital.reportconstructor.service.reports.dto.SheetTabRead;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -51,6 +52,18 @@ public interface DataSourceApiMapper {
 		SheetReadResultV1 r = new SheetReadResultV1(false, tab, tabs, 0, 0, List.of(), List.of(), List.of());
 		r.setError("tab_not_found");
 		return r;
+	}
+
+	/**
+	 * Converts the outcome of a tab read: the tab's data when it was found, otherwise the tab-not-found
+	 * result echoing the workbook's visible tabs.
+	 *
+	 * @param tab  the requested tab name
+	 * @param read the service read outcome
+	 * @return the V1 sheet read result
+	 */
+	default SheetReadResultV1 toReadResult(String tab, SheetTabRead read) {
+		return read.found() ? toSuccess(read.data()) : tabNotFound(tab, read.visibleTabs());
 	}
 
 	/**

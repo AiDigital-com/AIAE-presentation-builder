@@ -36,6 +36,11 @@
 			<groupId>${project.groupId}</groupId>
 			<artifactId>domain</artifactId>
 		</dependency>
+		<!-- Usage telemetry (@LogUsage / UsageAttributes) for services; allowlisted in DEPENDENCY-ANALYSIS.md. -->
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>event-logging-to-db-feature</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>

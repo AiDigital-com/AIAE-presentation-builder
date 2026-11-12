@@ -3,6 +3,7 @@ package com.aidigital.reportconstructor.service.admin.impl;
 import com.aidigital.reportconstructor.domain.admin.entities.AdminUserEntity;
 import com.aidigital.reportconstructor.domain.admin.repositories.AdminUserRepository;
 import com.aidigital.reportconstructor.service.admin.AdminUserService;
+import com.aidigital.reportconstructor.service.admin.mappers.AdminUserEntityMapper;
 import com.aidigital.reportconstructor.service.common.time.CurrentTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
 	private final AdminUserRepository adminUsers;
 	private final CurrentTime currentTime;
+	private final AdminUserEntityMapper adminUserMapper;
 
 	@Override
 	@Transactional(readOnly = true)
@@ -37,13 +39,10 @@ public class AdminUserServiceImpl implements AdminUserService {
 	@Transactional
 	public AdminUserEntity add(String email, String addedByEmail) {
 		String normalized = normalize(email);
-		return adminUsers.findByEmailIgnoreCase(normalized).orElseGet(() -> {
-			AdminUserEntity entity = new AdminUserEntity();
-			entity.setEmail(normalized);
-			entity.setAddedByEmail(addedByEmail == null ? null : normalize(addedByEmail));
-			entity.setCreatedAt(currentTime.nowOffsetDateTime());
-			return adminUsers.save(entity);
-		});
+		return adminUsers.findByEmailIgnoreCase(normalized).orElseGet(() -> adminUsers.save(adminUserMapper.toEntity(
+				normalized,
+				addedByEmail == null ? null : normalize(addedByEmail),
+				currentTime.nowOffsetDateTime())));
 	}
 
 	@Override

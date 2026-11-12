@@ -1,6 +1,7 @@
 package com.aidigital.reportconstructor.admin.mappers;
 
 import com.aidigital.reportconstructor.api.v1.model.AdminEntryV1;
+import com.aidigital.reportconstructor.api.v1.model.AdminListV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminSourceV1;
 import com.aidigital.reportconstructor.config.ApplicationMapperConfig;
 import com.aidigital.reportconstructor.service.admin.dto.AdminEntry;
@@ -32,6 +33,16 @@ public interface AdminManagementApiMapper {
 	 * @return the V1 admin entries
 	 */
 	List<AdminEntryV1> toEntries(List<AdminEntry> entries);
+
+	/**
+	 * Wraps mapped admin entries in the V1 list envelope.
+	 *
+	 * @param entries the service admin entries
+	 * @return the V1 admin list
+	 */
+	default AdminListV1 toList(List<AdminEntry> entries) {
+		return new AdminListV1().admins(toEntries(entries));
+	}
 
 	/**
 	 * Maps a source wire code to the V1 {@link AdminSourceV1} enum.

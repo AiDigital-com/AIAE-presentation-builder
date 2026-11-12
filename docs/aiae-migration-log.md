@@ -2,6 +2,36 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Thin controllers (P11 slice, branch `PDI_240`)
+
+- `DataSourceController.readSheet`: the try/catch + tab-not-found detection moved to the new
+  `SheetTabReadService` (returns `SheetTabRead`: data, or the visible tabs); the mapper's
+  `toReadResult` builds the response. **Carried quirk, unchanged on purpose:** every `C001`
+  message reads "Resource not found: …", so any `C001` from the sheet read (e.g. a missing
+  spreadsheet) is answered as `tab_not_found` with no tabs — now pinned by
+  `SheetTabReadServiceImplTest`. Worth a product decision.
+- `ReportsController` / `AdminController`: `*V1` envelopes are built in mappers
+  (`ReportsApiMapper.toReportList`, `AdminManagementApiMapper.toList`, new
+  `AdminReportsApiMapper.toReportPage` using `ReportsApiMapper` for rows).
+- `service` → `event-logging-to-db-feature` restored (structure-lint requires it while the
+  module exists) and allowlisted in `DEPENDENCY-ANALYSIS.md`; P3b had removed it as unused.
+- `check-thin-controllers`: FAIL → PASS. **10 of 21 failing.** `structure-lint.sh` now gets past
+  controllers and stops at the mapper layout rule (`mappers/<aggregate>/` instead of
+  `<aggregate>/mappers/`) — a package move across `application`, not done here.
+- `mvn verify`: BUILD SUCCESS, 1,185 tests, 0 failures (tab-picker tests moved from
+  `application` to `service`, +4 new).
+
+## 2026-11-12 — Manual entity mapping → MapStruct (P11 slice, branch `PDI_240`)
+
+- New service-layer MapStruct mappers on `ServiceMapperConfig` (unmapped target = ERROR),
+  each `@BeanMapping(ignoreByDefault = true)` with every field mapped explicitly:
+  `AdminUserEntityMapper.toEntity`, `ReportJobEntityMapper.toQueuedJob` (queued / step 0 of 7 /
+  "Queued…" as named constants), `ClaudeUsageEventEntityMapper.toEntity` (null scope → null
+  job/owner, as before). Defaulting logic (email normalisation, `"unknown"` label) stays in
+  the services.
+- `check-production-manual-mapping`: FAIL → PASS. **11 of 21 failing.**
+- `mvn verify`: BUILD SUCCESS, 1,180 tests (+4 mapper tests), 0 failures.
+
 ## 2026-11-12 — Static factories and direct `now()` (P11 slice, branch `PDI_240`)
 
 - New `service.common.time.CurrentTime` / `CurrentTimeImpl` (standard interface plus

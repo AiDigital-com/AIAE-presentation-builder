@@ -1,11 +1,11 @@
 package com.aidigital.reportconstructor.service.reports.usage.impl;
 
-import com.aidigital.reportconstructor.domain.reports.entities.ClaudeUsageEventEntity;
 import com.aidigital.reportconstructor.service.common.time.CurrentTime;
 import com.aidigital.reportconstructor.service.reports.enums.ClaudeUsageStatus;
 import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageEventService;
 import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageScope;
 import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageTracker;
+import com.aidigital.reportconstructor.service.reports.usage.mappers.ClaudeUsageEventEntityMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -26,6 +26,7 @@ public class ClaudeUsageTrackerImpl implements ClaudeUsageTracker {
 
 	private final ClaudeUsageEventService events;
 	private final CurrentTime currentTime;
+	private final ClaudeUsageEventEntityMapper eventMapper;
 
 	@Override
 	public ClaudeUsageScope begin(Long jobId, String ownerUserId, String ownerEmail) {
@@ -77,19 +78,10 @@ public class ClaudeUsageTrackerImpl implements ClaudeUsageTracker {
 			ClaudeUsageScope scope, String label, ClaudeUsageStatus status,
 			long input, long output, long cacheWrite, long cacheRead, String model) {
 		try {
-			ClaudeUsageEventEntity event = new ClaudeUsageEventEntity();
-			event.setJobId(scope == null ? null : scope.getJobId());
-			event.setOwnerUserId(scope == null ? null : scope.getOwnerUserId());
-			event.setOwnerEmail(scope == null ? null : scope.getOwnerEmail());
-			event.setLabel(label == null || label.isBlank() ? "unknown" : label);
-			event.setStatus(status.getCode());
-			event.setInputTokens(input);
-			event.setOutputTokens(output);
-			event.setCacheWriteTokens(cacheWrite);
-			event.setCacheReadTokens(cacheRead);
-			event.setModel(model);
-			event.setCreatedAt(currentTime.nowOffsetDateTime());
-			events.save(event);
+			String eventLabel = label == null || label.isBlank() ? "unknown" : label;
+			events.save(eventMapper.toEntity(
+					scope, eventLabel, status, input, output, cacheWrite, cacheRead, model,
+					currentTime.nowOffsetDateTime()));
 		} catch (Exception ex) {
 			log.warn("[claude:{}] usage event could not be recorded: {}", label, ex.getMessage());
 		}

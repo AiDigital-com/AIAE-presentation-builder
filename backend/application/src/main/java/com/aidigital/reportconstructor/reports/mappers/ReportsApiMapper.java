@@ -1,6 +1,7 @@
 package com.aidigital.reportconstructor.reports.mappers;
 
 import com.aidigital.reportconstructor.api.v1.model.ReportJobStatusV1;
+import com.aidigital.reportconstructor.api.v1.model.ReportListV1;
 import com.aidigital.reportconstructor.api.v1.model.ReportResumeV1;
 import com.aidigital.reportconstructor.api.v1.model.ReportSummaryV1;
 import com.aidigital.reportconstructor.api.v1.model.ReportTypeV1;
@@ -37,6 +38,17 @@ public interface ReportsApiMapper {
 	 * @return the V1 report summaries
 	 */
 	List<ReportSummaryV1> toSummaries(List<ReportSummary> summaries);
+
+	/**
+	 * Wraps a caller's history rows in the V1 list envelope with their count.
+	 *
+	 * @param summaries the service history rows
+	 * @return the V1 report list
+	 */
+	default ReportListV1 toReportList(List<ReportSummary> summaries) {
+		List<ReportSummaryV1> reports = toSummaries(summaries);
+		return new ReportListV1().total(reports.size()).reports(reports);
+	}
 
 	/**
 	 * Converts a resumable draft into its V1 DTO, flattening the stored wizard state onto the

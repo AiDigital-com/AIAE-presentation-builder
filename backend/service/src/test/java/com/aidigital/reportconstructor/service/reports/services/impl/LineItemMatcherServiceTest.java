@@ -1,5 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.services.impl;
 
+import com.aidigital.reportconstructor.service.reports.usage.mappers.ClaudeUsageEventEntityMapperImpl;
 import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.service.reports.engine.TacticCatalog;
 import com.aidigital.reportconstructor.service.reports.helpers.MediaPlanTacticExtractor;
@@ -25,7 +26,7 @@ class LineItemMatcherServiceTest {
 	 * @return a tracker backed by a no-op event sink
 	 */
 	ClaudeUsageTrackerImpl tracker() {
-		return new ClaudeUsageTrackerImpl(new NoOpClaudeUsageEventService(), new CurrentTimeImpl());
+		return new ClaudeUsageTrackerImpl(new NoOpClaudeUsageEventService(), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl());
 	}
 
 	private final MediaPlanTacticExtractor extractor =
