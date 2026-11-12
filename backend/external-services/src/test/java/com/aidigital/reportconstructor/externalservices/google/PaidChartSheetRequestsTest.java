@@ -1,7 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.enums.PaidChartMarker;
-import com.aidigital.reportconstructor.service.reports.model.PaidSlideChart;
+import com.aidigital.reportconstructor.externalservices.google.charts.PaidChartKind;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.PaidChart;
 import com.google.api.services.sheets.v4.model.BasicChartSpec;
 import com.google.api.services.sheets.v4.model.CellData;
 import com.google.api.services.sheets.v4.model.Request;
@@ -22,7 +22,7 @@ class PaidChartSheetRequestsTest {
 	@Test
 	void shouldWriteTheMonthlyDataAndAComboChartWithCtrOnTheRightAxisTest() {
 		// Given:
-		PaidSlideChart chart = new PaidSlideChart(PaidChartMarker.SEARCH_CLICKS_CTR, List.of("Oct", "Nov"),
+		PaidChart chart = new PaidChart(PaidChartKind.SEARCH_CLICKS_CTR, List.of("Oct", "Nov"),
 				List.of(400d, 500d), List.of(0.04, 0.025), null);
 
 		// When:
@@ -52,7 +52,7 @@ class PaidChartSheetRequestsTest {
 	@Test
 	void shouldDrawADonutWhoseSliceColoursAreTheThemeAccentsInLegendOrderTest() {
 		// Given: a placement donut with an "Other" slice past the five-colour palette
-		PaidSlideChart chart = new PaidSlideChart(PaidChartMarker.SOCIAL_PLACEMENT_DONUT,
+		PaidChart chart = new PaidChart(PaidChartKind.SOCIAL_PLACEMENT_DONUT,
 				List.of("Reels", "Feed", "Stories", "Explore", "Audience Network", "Other"),
 				List.of(60d, 20d, 10d, 5d, 3d, 2d), List.of(), "100");
 

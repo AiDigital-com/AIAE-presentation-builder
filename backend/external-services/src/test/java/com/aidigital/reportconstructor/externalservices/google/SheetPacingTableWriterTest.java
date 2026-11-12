@@ -2,9 +2,10 @@ package com.aidigital.reportconstructor.externalservices.google;
 
 import com.aidigital.reportconstructor.observability.external.ExternalCallTimer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import com.aidigital.reportconstructor.service.reports.engine.ChartPivot;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PacingSeries;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.TacticPacing;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookPacingRequest;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,8 +16,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SheetPacingTableWriterTest {
 
 	private final SheetPacingTableWriter writer = new SheetPacingTableWriter(
-			Mockito.mock(ChartPivot.class), new TacticLineItemGrouper(), new ChartSheetWriter(new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry()))),
+			new ChartSheetWriter(new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry()))),
 			new GoogleCallTimer(new ExternalCallTimer(new SimpleMeterRegistry())));
+
+	@Test
+	void shouldSkipEveryTableWhenTheExportLacksTheRequiredColumnsTest() throws Exception {
+		// Given: the service found no Date/Impressions column, so it pivoted nothing
+		WorkbookPacingRequest request = new WorkbookPacingRequest(2,
+				new TacticPacing(false, Map.of(), new PacingSeries(false, Map.of()), new PacingSeries(false, Map.of())),
+				Map.of(), Map.of(), 0, Map.of(), null);
+
+		// When: no Sheets client is needed, because nothing is read or written
+		List<String> errors = writer.writeAll(null, "wb-1", "Report", request);
+
+		// Then:
+		assertThat(errors).containsExactly("Pacing tables skipped — BQ sheet Date or Impressions column not found");
+	}
 
 	@Test
 	void findNumberedAnchorsTest_locatesEachTacticsOwnAnchorCell() {

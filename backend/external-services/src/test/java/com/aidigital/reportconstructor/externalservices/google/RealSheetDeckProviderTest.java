@@ -45,7 +45,8 @@ class RealSheetDeckProviderTest {
 		GoogleRequestRetrier retrier = Mockito.mock(GoogleRequestRetrier.class);
 		DriveSharer driveSharer = Mockito.mock(DriveSharer.class);
 		DriveShareRecipients shareRecipients = Mockito.mock(DriveShareRecipients.class);
-		return new RealSheetDeckProvider(creds, props, retrier, driveSharer, shareRecipients);
+		return new RealSheetDeckProvider(creds, props, Mockito.mock(SheetPacingTableWriter.class), retrier, driveSharer,
+				shareRecipients);
 	}
 
 	@Test

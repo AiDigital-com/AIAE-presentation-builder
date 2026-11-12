@@ -2,7 +2,7 @@ package com.aidigital.reportconstructor.externalservices.google;
 
 import com.aidigital.reportconstructor.observability.external.ExternalCallTimer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import com.aidigital.reportconstructor.service.reports.engine.Pivot;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PacingPivot;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import org.junit.jupiter.api.Test;
 
@@ -75,21 +75,21 @@ class ChartSheetWriterTest {
 
 	@Test
 	void rateColumnValuesForPivot_emptyWhenTemplateOwnsFormula() {
-		Pivot pivot = pivotRow(1000, 25, 0);
+		PacingPivot pivot = pivotRow(1000, 25, 0);
 		assertThat(writer.rateColumnValuesForPivot(pivot, true)).isEmpty();
 	}
 
 	@Test
 	void rateColumnValuesForPivot_whenForcedWriteUsesRatioNotTimes100() {
-		Pivot pivot = pivotRow(1000, 25, 0);
+		PacingPivot pivot = pivotRow(1000, 25, 0);
 		Optional<List<List<Object>>> rates = writer.rateColumnValuesForPivot(pivot, true, true);
 		assertThat(rates).isPresent();
 		assertThat(rates.get().getFirst().getFirst()).isEqualTo(0.025);
 	}
 
-	private static Pivot pivotRow(double imps, double clicks, double completions) {
+	private static PacingPivot pivotRow(double imps, double clicks, double completions) {
 		LinkedHashMap<String, double[]> data = new LinkedHashMap<>();
 		data.put("2026-01-01", new double[]{imps, clicks, completions});
-		return new Pivot(data, clicks > 0, completions > 0);
+		return new PacingPivot(data, clicks > 0, completions > 0);
 	}
 }

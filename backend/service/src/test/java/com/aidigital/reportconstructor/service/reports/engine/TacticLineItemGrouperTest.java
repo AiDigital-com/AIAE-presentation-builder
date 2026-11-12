@@ -1,4 +1,4 @@
-package com.aidigital.reportconstructor.externalservices.google;
+package com.aidigital.reportconstructor.service.reports.engine;
 
 import com.aidigital.reportconstructor.service.reports.dto.LineItemMapping;
 import org.junit.jupiter.api.Test;

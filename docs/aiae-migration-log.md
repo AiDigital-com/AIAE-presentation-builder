@@ -2,6 +2,46 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Charts and pacing pivots converged (P8 / D6, branch `PDI_240`)
+
+- Measured first: pivoting the BigQuery export ran inside the integration — `TacticChartBuilder` and
+  `SheetPacingTableWriter` called the service's `ChartPivot` (`parseBqHeaders`, `buildDailyPivot`,
+  `buildMonthlyPivot`, `isMultiYear`) and `TacticLineItemGrouper` (in `external-services`, on the service's
+  `LineItemMapping`). The chart request already had a "pivots supplied" mode (sheet flow). Pivot building is
+  pure and lenient (rows it cannot use are skipped, nothing throws), so computing every tactic's pivots up
+  front yields the same values.
+- **Business calculation moved to the service:** `TacticLineItemGrouper` (+ test) `git mv`'d to
+  `service.reports.engine`; new `TacticPivotAssembler` (+ `model.TacticPivots`, + test) computes daily and
+  monthly pivots for tactics 1..N, or reports that the Date/Impressions columns are missing.
+- The Google code only draws/writes pivots it is given: `google.deck.model.PacingPivot` (copy of `Pivot`),
+  `PacingSeries` (fromSheet + per-tactic pivots), `TacticPacing` (columns-found flag, line item ids for the
+  "no data" message, daily, monthly). `TacticChartBuilder` and `SheetPacingTableWriter` lost `ChartPivot`,
+  `Headers`, `FlightDates` and the grouper; every message and its ordering is unchanged (the "BQ columns not
+  found" checks still sit where they were — after the workbook-has-tabs check, after the monthly-placeholder
+  check — driven by the flag).
+- Chart vocabulary generated from the service sources into `google.charts` / `charts.model`:
+  `SlidesChartClient` (was the `ChartProvider` port's shape), `TacticChartsRequest` (hand-written: pacing
+  instead of BigQuery rows), `BreakdownChartsRequest`, `BreakdownChart`, `ChartSlice`, `PaidChartsRequest`,
+  `PaidChart`, `DeckBreakdownSeries` (section is a `DeckBreakdown` — the Slides slice's by-name conversion in
+  `BreakdownChartBuilder` is gone), `PaidChartKind`, `PaidChartShape`.
+- Bridges: new `ChartProviderBridge` (only `ChartProvider`; BigQuery flow → `TacticPivotAssembler` over the
+  flight window for both granularities, exactly as the builder did; sheet flow → pivots passed through, no
+  pivoting) and `ChartModelMapper`. `SheetDeckProviderBridge.writePacingTables` pivots with the monthly window
+  falling back to the flight window, as the writer did. The workbook slice's interim `WorkbookTabWriter`
+  callback (`648cada`) is deleted: `RealSheetDeckProvider` calls `SheetPacingTableWriter` with a
+  `WorkbookPacingRequest` again.
+- `GoogleRequestRetrier`'s interrupt-only `AppException` is now `GoogleApiException`; both its callers sit
+  behind bridges that translate it to the same `AppException(C000, message)`.
+- Tests: new `TacticPivotAssemblerTest` 2, `ChartModelMapperTest` 4, `ChartProviderBridgeTest` 2; reworked
+  `SheetDeckProviderBridgeTest` (pacing pivots, monthly-window fallback) 4; `SheetPacingTableWriterTest` +1
+  (columns missing → skip without a Sheets call), `TacticChartBuilderTest` +2 (columns missing; empty pivot names
+  the line items). Before this slice nothing exercised the pivot → chart/table hand-off. Chart builder, paid
+  chart and style tests switched to the copies. Totals: `service` 624 → 629, `external-services` 462 → 469.
+  `mvn -Pmvp verify`: BUILD SUCCESS.
+- `service` import lines in `external-services` main outside `bridge`: 141 in 23 files → 110 in 11 — all in
+  `anthropic`. `google`, `clerk` and `common` import nothing from `service`. Gates: **3 of 21 failing**
+  (unchanged).
+
 ## 2026-11-12 — Workbook writer converged (P8 / D6, branch `PDI_240`)
 
 - Measured first: `SheetDeckProvider` has 11 operations; `RealSheetDeckProvider` (1,935 lines) used 15

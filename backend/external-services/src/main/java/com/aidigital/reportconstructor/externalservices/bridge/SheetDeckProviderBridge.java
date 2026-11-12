@@ -1,16 +1,20 @@
 package com.aidigital.reportconstructor.externalservices.bridge;
 
 import com.aidigital.reportconstructor.externalservices.google.GoogleApiException;
-import com.aidigital.reportconstructor.externalservices.google.SheetPacingTableWriter;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.TacticPacing;
 import com.aidigital.reportconstructor.externalservices.google.sheets.SheetWorkbookClient;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookPacingRequest;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
 import com.aidigital.reportconstructor.service.reports.dto.AudienceTable;
 import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
 import com.aidigital.reportconstructor.service.reports.dto.CreativeTable;
+import com.aidigital.reportconstructor.service.reports.dto.FlightDates;
 import com.aidigital.reportconstructor.service.reports.dto.DeviceTable;
 import com.aidigital.reportconstructor.service.reports.dto.GeoTable;
 import com.aidigital.reportconstructor.service.reports.dto.PublisherRow;
+import com.aidigital.reportconstructor.service.reports.engine.TacticPivotAssembler;
+import com.aidigital.reportconstructor.service.reports.model.TacticPivots;
 import com.aidigital.reportconstructor.service.reports.ports.PacingTablesRequest;
 import com.aidigital.reportconstructor.service.reports.ports.SheetDeckProvider;
 import lombok.RequiredArgsConstructor;
@@ -25,15 +29,16 @@ import java.util.function.Supplier;
  * Implements the service's {@link SheetDeckProvider} port on top of the Google integration's
  * {@link SheetWorkbookClient} (real or stub): maps the breakdown sections and the tables read back, and turns
  * a {@link GoogleApiException} into the {@link AppException} the report pipeline records, with the same
- * message. The pacing tables are still computed by {@link SheetPacingTableWriter}, which this bridge hands to
- * the client as the tab writer.
+ * message. The pacing tables' pivots are computed here by the service's {@link TacticPivotAssembler}; the client
+ * only places them.
  */
 @Component
 @RequiredArgsConstructor
 public class SheetDeckProviderBridge implements SheetDeckProvider {
 
 	private final SheetWorkbookClient workbook;
-	private final SheetPacingTableWriter pacingTableWriter;
+	private final TacticPivotAssembler pivots;
+	private final ChartModelMapper chartMapper;
 	private final DeckModelMapper deckMapper;
 	private final WorkbookModelMapper tableMapper;
 
@@ -59,8 +64,16 @@ public class SheetDeckProviderBridge implements SheetDeckProvider {
 
 	@Override
 	public List<String> writePacingTables(String spreadsheetId, PacingTablesRequest request) {
-		return call(() -> workbook.writePacingTables(spreadsheetId, request.userGoogleAccessToken(),
-				(sheets, id, tabName) -> pacingTableWriter.writeAll(sheets, id, tabName, request)));
+		// The monthly blocks may span a wider window than the daily ones (EOM reports on a single month but
+		// charts every month since campaign start), so they are pivoted over their own window.
+		FlightDates monthlyTs = request.monthlyTs() != null ? request.monthlyTs() : request.flightTs();
+		TacticPivots computed = pivots.assemble(request.bqRows(), request.lineItemMapping(), request.tacticCount(),
+				request.flightTs(), monthlyTs);
+		TacticPacing pacing = new TacticPacing(computed.columnsFound(), computed.lineItemIds(),
+				chartMapper.series(false, computed.daily()), chartMapper.series(false, computed.monthly()));
+		return call(() -> workbook.writePacingTables(spreadsheetId, new WorkbookPacingRequest(
+				request.tacticCount(), pacing, request.distTacticNames(), request.distTacticImps(),
+				request.distTotalImps(), request.tacticKpiTypes(), request.userGoogleAccessToken())));
 	}
 
 	@Override

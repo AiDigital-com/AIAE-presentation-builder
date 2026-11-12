@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.enums.PaidChartMarker;
+import com.aidigital.reportconstructor.externalservices.google.charts.PaidChartKind;
 import org.springframework.stereotype.Component;
 
 /**
@@ -16,7 +16,7 @@ public class PaidChartStyleResolver {
 	 * @param marker a paid chart of the template
 	 * @return the style that chart is drawn with
 	 */
-	public PaidChartStyle of(PaidChartMarker marker) {
+	public PaidChartStyle of(PaidChartKind marker) {
 		return switch (marker) {
 			case SEARCH_CLICKS_CTR, SOCIAL_CLICKS_CTR -> PaidChartStyle.CLICKS_CTR;
 			case SEARCH_SPEND, SOCIAL_SPEND -> PaidChartStyle.SPEND;

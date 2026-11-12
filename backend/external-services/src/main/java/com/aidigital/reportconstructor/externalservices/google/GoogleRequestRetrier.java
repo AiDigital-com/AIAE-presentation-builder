@@ -1,7 +1,5 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.common.error.AppException;
-import com.aidigital.reportconstructor.service.common.error.ErrorReason;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.googleapis.services.AbstractGoogleClientRequest;
 import lombok.RequiredArgsConstructor;
@@ -97,7 +95,7 @@ public class GoogleRequestRetrier {
 			Thread.sleep(millis);
 		} catch (InterruptedException ie) {
 			Thread.currentThread().interrupt();
-			throw new AppException(ErrorReason.C000, "Interrupted while retrying a Google API request");
+			throw new GoogleApiException("Interrupted while retrying a Google API request");
 		}
 	}
 }

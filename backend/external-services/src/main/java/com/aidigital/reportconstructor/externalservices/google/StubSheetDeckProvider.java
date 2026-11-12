@@ -6,7 +6,7 @@ import com.aidigital.reportconstructor.externalservices.google.sheets.model.Work
 import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookDeviceTable;
 import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookGeoTable;
 import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookPublisherRow;
-import com.aidigital.reportconstructor.externalservices.google.sheets.WorkbookTabWriter;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookPacingRequest;
 import com.aidigital.reportconstructor.externalservices.google.sheets.SheetWorkbookClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -51,8 +51,7 @@ public class StubSheetDeckProvider implements SheetWorkbookClient {
 	}
 
 	@Override
-	public List<String> writePacingTables(
-			String spreadsheetId, String userGoogleAccessToken, WorkbookTabWriter writer) {
+	public List<String> writePacingTables(String spreadsheetId, WorkbookPacingRequest request) {
 		// No-op: the stub never clones a real workbook, so there are no tables to write.
 		return List.of();
 	}

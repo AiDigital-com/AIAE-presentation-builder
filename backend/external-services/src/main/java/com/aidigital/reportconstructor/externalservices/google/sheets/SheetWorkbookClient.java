@@ -5,6 +5,7 @@ import com.aidigital.reportconstructor.externalservices.google.sheets.model.Work
 import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookCreativeTable;
 import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookDeviceTable;
 import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookGeoTable;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookPacingRequest;
 import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookPublisherRow;
 
 import java.util.List;
@@ -79,16 +80,14 @@ public interface SheetWorkbookClient {
 	 * Slides chart pipeline's tactic pivot/distribution data. Per-tactic failures are
 	 * collected and returned rather than aborting the rest of the workbook.
 	 *
-	 * <p>The tables themselves are produced by the {@code writer} the caller supplies; this client resolves the
-	 * caller's identity, finds the workbook's first tab and turns a Google failure into a returned message.
+	 * <p>The pacing values arrive already pivoted per tactic; this client only places them. A Google failure is
+	 * returned as a message rather than thrown.
 	 *
-	 * @param spreadsheetId         the cloned workbook to write into
-	 * @param userGoogleAccessToken optional signed-in user's Google OAuth token; falls back to the service
-	 *                              account when blank
-	 * @param writer                writes the tables into the first tab
+	 * @param spreadsheetId the cloned workbook to write into
+	 * @param request       the pacing-table inputs, including the caller's Google token
 	 * @return human-readable error strings for any per-tactic failures (empty on full success)
 	 */
-	List<String> writePacingTables(String spreadsheetId, String userGoogleAccessToken, WorkbookTabWriter writer);
+	List<String> writePacingTables(String spreadsheetId, WorkbookPacingRequest request);
 
 	/**
 	 * Reads the workbook's first tab back as a rectangular-tolerant grid of trimmed cell

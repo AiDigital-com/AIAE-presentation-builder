@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.engine.Pivot;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PacingPivot;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest;
 import com.google.api.services.sheets.v4.model.BatchUpdateValuesRequest;
@@ -76,7 +76,7 @@ public class ChartSheetWriter {
 	 * @return cell values per row, or empty when column C must not be overwritten
 	 */
 	Optional<List<List<Object>>> rateColumnValuesForPivot(
-			Pivot pivot, boolean hasClicks, boolean forceWrite) {
+			PacingPivot pivot, boolean hasClicks, boolean forceWrite) {
 		if (!forceWrite && !shouldWriteDailyRateColumn()) {
 			return Optional.empty();
 		}
@@ -98,9 +98,9 @@ public class ChartSheetWriter {
 	 * @param pivot     pivoted series
 	 * @param hasClicks whether the numerator is clicks (else completions)
 	 * @return cell values per row, or empty when column C must not be overwritten
-	 * @see #rateColumnValuesForPivot(Pivot, boolean, boolean)
+	 * @see #rateColumnValuesForPivot(PacingPivot, boolean, boolean)
 	 */
-	Optional<List<List<Object>>> rateColumnValuesForPivot(Pivot pivot, boolean hasClicks) {
+	Optional<List<List<Object>>> rateColumnValuesForPivot(PacingPivot pivot, boolean hasClicks) {
 		return rateColumnValuesForPivot(pivot, hasClicks, false);
 	}
 
@@ -124,7 +124,7 @@ public class ChartSheetWriter {
 	 *                      metric from the pivot's clicks/completions presence
 	 * @throws IOException when a Sheets API call fails
 	 */
-	void writePivot(Sheets sheets, String spreadsheetId, String tabName, Pivot pivot, String kpiType)
+	void writePivot(Sheets sheets, String spreadsheetId, String tabName, PacingPivot pivot, String kpiType)
 			throws IOException {
 		if (pivot.isEmpty()) {
 			return;

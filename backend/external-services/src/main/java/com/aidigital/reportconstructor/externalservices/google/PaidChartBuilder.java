@@ -2,8 +2,8 @@ package com.aidigital.reportconstructor.externalservices.google;
 
 import com.aidigital.reportconstructor.externalservices.google.drive.DriveCopier;
 import com.aidigital.reportconstructor.externalservices.google.drive.ChartFileSharer;
-import com.aidigital.reportconstructor.service.reports.model.PaidSlideChart;
-import com.aidigital.reportconstructor.service.reports.ports.PaidChartRequest;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.PaidChart;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.PaidChartsRequest;
 import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest;
 import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetResponse;
 import com.google.api.services.sheets.v4.model.Response;
@@ -55,7 +55,7 @@ public class PaidChartBuilder {
 	 * @param req     the deck and its paid charts
 	 * @return one message per chart that could not be linked; empty when all were
 	 */
-	public List<String> buildPaidCharts(ChartClients clients, PaidChartRequest req) {
+	public List<String> buildPaidCharts(ChartClients clients, PaidChartsRequest req) {
 		List<String> errors = new ArrayList<>();
 		if (req.charts() == null || req.charts().isEmpty()) {
 			return errors;
@@ -71,7 +71,7 @@ public class PaidChartBuilder {
 			return errors;
 		}
 		String folderId = null;
-		for (PaidSlideChart chart : req.charts()) {
+		for (PaidChart chart : req.charts()) {
 			PaidChartSlot slot = slots.get(chart.marker().marker());
 			if (slot == null) {
 				// The deck has no such chart: the EOM deck carries no overview slides.
@@ -106,7 +106,7 @@ public class PaidChartBuilder {
 	 * @param folderId the folder holding the deck's chart spreadsheets, or empty when it could not be created
 	 * @throws IOException if a Google call fails
 	 */
-	void linkChart(ChartClients clients, PaidChartRequest req, PaidSlideChart chart, PaidChartSlot slot,
+	void linkChart(ChartClients clients, PaidChartsRequest req, PaidChart chart, PaidChartSlot slot,
 			String folderId) throws IOException {
 		PaidChartStyle style = styleResolver.of(chart.marker());
 		String spreadsheetId = driveCopier.createSpreadsheet(clients.drive(),

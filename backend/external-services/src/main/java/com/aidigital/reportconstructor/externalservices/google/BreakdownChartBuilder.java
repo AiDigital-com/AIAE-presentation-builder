@@ -3,10 +3,10 @@ package com.aidigital.reportconstructor.externalservices.google;
 import com.aidigital.reportconstructor.externalservices.google.drive.DriveCopier;
 import com.aidigital.reportconstructor.externalservices.google.drive.ChartFileSharer;
 import com.aidigital.reportconstructor.externalservices.google.deck.DeckBreakdown;
-import com.aidigital.reportconstructor.service.reports.dto.BreakdownChartSeries;
-import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartJob;
-import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartRequest;
-import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartSlice;
+import com.aidigital.reportconstructor.externalservices.google.charts.DeckBreakdownSeries;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.BreakdownChart;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.BreakdownChartsRequest;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.ChartSlice;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.EmbeddedChart;
 import com.google.api.services.sheets.v4.model.Sheet;
@@ -92,7 +92,7 @@ public class BreakdownChartBuilder {
 	 * @param req     the breakdown chart request describing the deck and per-tactic slices
 	 * @return human-readable error strings for any per-chart failures (empty on full success)
 	 */
-	List<String> buildBreakdownCharts(ChartClients clients, BreakdownChartRequest req) {
+	List<String> buildBreakdownCharts(ChartClients clients, BreakdownChartsRequest req) {
 		List<String> errors = new ArrayList<>();
 		if (req.jobs() == null || req.jobs().isEmpty()) {
 			return errors;
@@ -108,7 +108,7 @@ public class BreakdownChartBuilder {
 		}
 		chartFileSharer.shareFolder(clients.drive(), folderId);
 
-		for (BreakdownChartJob job : req.jobs()) {
+		for (BreakdownChart job : req.jobs()) {
 			try {
 				renderBreakdownChart(clients, req, job, chartsBySlide, folderId, errors);
 			} catch (IOException | RuntimeException ex) {
@@ -134,18 +134,16 @@ public class BreakdownChartBuilder {
 	 * @throws IOException when a Google API call fails irrecoverably
 	 */
 	void renderBreakdownChart(
-			ChartClients clients, BreakdownChartRequest req, BreakdownChartJob job,
+			ChartClients clients, BreakdownChartsRequest req, BreakdownChart job,
 			Map<String, Map<String, ChartElementRef>> chartsBySlide, String folderId, List<String> errors)
 			throws IOException {
 		String seriesCode = job.seriesCode();
-		BreakdownChartSeries series = seriesCode == null || seriesCode.isBlank()
-				? null : BreakdownChartSeries.BY_CODE.get(seriesCode.trim().toLowerCase());
+		DeckBreakdownSeries series = seriesCode == null || seriesCode.isBlank()
+				? null : DeckBreakdownSeries.BY_CODE.get(seriesCode.trim().toLowerCase());
 		if (series == null) {
 			return;
 		}
-		// The slide naming speaks the deck's own breakdown vocabulary; this chart code still receives the service's
-		// type until the chart provider is converted, so the two are matched by constant name here.
-		DeckBreakdown type = DeckBreakdown.valueOf(series.section().name());
+		DeckBreakdown type = series.section();
 		String tag = "Breakdown " + series.code() + " tactic " + job.tacticNum();
 		String sourceSheetId = catalog.getSourceSheetIds().get(series.code());
 		Integer chartIdInSheet = parseChartId(catalog.getChartIdInSheet().get(series.code()));
@@ -297,12 +295,12 @@ public class BreakdownChartBuilder {
 	 * @param labelsFromData whether the labels are written into the workbook rather than matched against it
 	 * @return label &rarr; value (positive only), in slice order
 	 */
-	Map<String, Double> valuesByLabel(List<BreakdownChartSlice> slices, boolean labelsFromData) {
+	Map<String, Double> valuesByLabel(List<ChartSlice> slices, boolean labelsFromData) {
 		Map<String, Double> byLabel = new LinkedHashMap<>();
 		if (slices == null) {
 			return byLabel;
 		}
-		for (BreakdownChartSlice slice : slices) {
+		for (ChartSlice slice : slices) {
 			if (slice == null || slice.value() <= 0 || slice.label() == null || slice.label().isBlank()) {
 				continue;
 			}

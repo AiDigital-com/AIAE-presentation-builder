@@ -2,10 +2,8 @@ package com.aidigital.reportconstructor.externalservices.google;
 
 import com.aidigital.reportconstructor.externalservices.google.drive.DriveCopier;
 import com.aidigital.reportconstructor.externalservices.google.drive.ChartFileSharer;
-import com.aidigital.reportconstructor.service.reports.engine.ChartPivot;
-import com.aidigital.reportconstructor.service.reports.engine.Headers;
-import com.aidigital.reportconstructor.service.reports.engine.Pivot;
-import com.aidigital.reportconstructor.service.reports.ports.ChartRequest;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PacingPivot;
+import com.aidigital.reportconstructor.externalservices.google.charts.model.TacticChartsRequest;
 import com.google.api.services.sheets.v4.model.ChartSpec;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -26,49 +24,43 @@ import java.util.Map;
 @Component
 public class TacticChartBuilder {
 
-	private final ChartPivot chartPivot;
 	private final ChartSheetWriter chartSheetWriter;
 	private final ChartSpecBuilder chartSpecBuilder;
 	private final SlideChartSwapper slideChartSwapper;
 	private final DriveCopier driveCopier;
 	private final ChartErrorTranslator chartErrors;
 	private final ChartTemplateCatalog templates;
-	private final TacticLineItemGrouper lineItemGrouper;
 	private final ChartFileSharer chartFileSharer;
 	private final TacticChartLocator chartLocator;
 
 	public TacticChartBuilder(
-			ChartPivot chartPivot,
 			ChartSheetWriter chartSheetWriter,
 			ChartSpecBuilder chartSpecBuilder,
 			SlideChartSwapper slideChartSwapper,
 			DriveCopier driveCopier,
 			ChartErrorTranslator chartErrors,
 			ChartTemplateCatalog templates,
-			TacticLineItemGrouper lineItemGrouper,
 			ChartFileSharer chartFileSharer,
 			TacticChartLocator chartLocator) {
-		this.chartPivot = chartPivot;
 		this.chartSheetWriter = chartSheetWriter;
 		this.chartSpecBuilder = chartSpecBuilder;
 		this.slideChartSwapper = slideChartSwapper;
 		this.driveCopier = driveCopier;
 		this.chartErrors = chartErrors;
 		this.templates = templates;
-		this.lineItemGrouper = lineItemGrouper;
 		this.chartFileSharer = chartFileSharer;
 		this.chartLocator = chartLocator;
 	}
 
 	/**
-	 * Creates the chart output folder, parses the BigQuery header row, then builds the daily,
-	 * monthly and distribution charts for the requested tactics and swaps them onto the deck.
+	 * Creates the chart output folder, then builds the daily, monthly and distribution charts for the requested
+	 * tactics from the pivots the request carries and swaps them onto the deck.
 	 *
 	 * @param clients the Drive/Sheets/Slides clients to use for this request
-	 * @param req     the chart request describing the deck, tactic count and BigQuery rows
+	 * @param req     the chart request describing the deck, tactic count and pacing pivots
 	 * @return human-readable error strings for any per-chart failures (empty on full success)
 	 */
-	List<String> buildAllCharts(ChartClients clients, ChartRequest req) {
+	List<String> buildAllCharts(ChartClients clients, TacticChartsRequest req) {
 		List<String> errors = new ArrayList<>();
 
 		String folderId = null;
@@ -79,7 +71,6 @@ public class TacticChartBuilder {
 		}
 		chartFileSharer.shareFolder(clients.drive(), folderId);
 
-		Headers headers = chartPivot.parseBqHeaders(req.bqRows());
 
 		// Under the master model the tactic slides are runtime copies whose chart element ids exist nowhere in
 		// configuration, so they are read back from the deck once and shared by all three chart passes. An empty
@@ -87,8 +78,8 @@ public class TacticChartBuilder {
 		Map<Integer, Map<String, ChartElementRef>> tacticCharts =
 				chartLocator.load(clients.slides(), req.presentationId(), req.tacticCount(), errors);
 
-		errors.addAll(buildDailyCharts(clients, req, headers, folderId, tacticCharts));
-		errors.addAll(buildMonthlyCharts(clients, req, headers, folderId, tacticCharts));
+		errors.addAll(buildDailyCharts(clients, req, folderId, tacticCharts));
+		errors.addAll(buildMonthlyCharts(clients, req, folderId, tacticCharts));
 		errors.addAll(buildDistributionCharts(clients, req, folderId, tacticCharts));
 		return errors;
 	}
@@ -125,23 +116,21 @@ public class TacticChartBuilder {
 	 *
 	 * @param clients  the Google clients for this request
 	 * @param req      the chart request
-	 * @param headers  parsed BigQuery column indices
 	 * @param folderId the Drive output folder id, or {@code null} for the root
 	 * @param tacticCharts tactic number &rarr; its scanned chart elements by source workbook; empty for a
 	 *                     legacy deck
 	 * @return per-chart error strings (empty on full success)
 	 */
 	List<String> buildDailyCharts(
-			ChartClients clients, ChartRequest req, Headers headers, String folderId,
+			ChartClients clients, TacticChartsRequest req, String folderId,
 			Map<Integer, Map<String, ChartElementRef>> tacticCharts) {
 		List<String> errors = new ArrayList<>();
-		boolean fromSheet = req.dailyPivots() != null;
-		if (!fromSheet && !headers.valid()) {
+		boolean fromSheet = req.pacing().daily().fromSheet();
+		if (!fromSheet && !req.pacing().bqColumnsFound()) {
 			errors.add("Daily: BQ sheet — Date or Impressions column not found");
 			return errors;
 		}
-		Map<Integer, List<String>> tacticLineItems =
-				fromSheet ? Map.of() : lineItemGrouper.groupByTactic(req.lineItemMapping());
+		Map<Integer, List<String>> tacticLineItems = fromSheet ? Map.of() : req.pacing().lineItemIds();
 		// The scan already captured every copy's chart geometry, so the deck-wide transform read is only made
 		// for a legacy deck — where the placeholder ids come from configuration and carry no geometry.
 		Map<String, ElementTransform> transforms = tacticCharts.isEmpty()
@@ -151,9 +140,7 @@ public class TacticChartBuilder {
 		for (int n = 1; n <= req.tacticCount(); n++) {
 			List<String> liIds = tacticLineItems.getOrDefault(n, List.of());
 			try {
-				Pivot pivot = fromSheet
-						? req.dailyPivots().getOrDefault(n, emptyPivot())
-						: chartPivot.buildDailyPivot(req.bqRows(), liIds, headers, req.flightTs());
+				PacingPivot pivot = req.pacing().daily().byTactic().getOrDefault(n, emptyPivot());
 				if (pivot.isEmpty()) {
 					errors.add("Tactic " + n + ": no pacing data"
 							+ (fromSheet ? " in sheet" : " (line item ids: " + String.join(",", liIds) + ")"));
@@ -211,14 +198,13 @@ public class TacticChartBuilder {
 	 *
 	 * @param clients  the Google clients for this request
 	 * @param req      the chart request
-	 * @param headers  parsed BigQuery column indices
 	 * @param folderId the Drive output folder id, or {@code null} for the root
 	 * @param tacticCharts tactic number &rarr; its scanned chart elements by source workbook; empty for a
 	 *                     legacy deck
 	 * @return per-chart error strings (empty on full success)
 	 */
 	List<String> buildMonthlyCharts(
-			ChartClients clients, ChartRequest req, Headers headers, String folderId,
+			ChartClients clients, TacticChartsRequest req, String folderId,
 			Map<Integer, Map<String, ChartElementRef>> tacticCharts) {
 		List<String> errors = new ArrayList<>();
 		Map<String, ElementTransform> transforms = tacticCharts.isEmpty()
@@ -231,21 +217,17 @@ public class TacticChartBuilder {
 					req.presentationId());
 			return errors;
 		}
-		boolean fromSheet = req.monthlyPivots() != null;
-		if (!fromSheet && !headers.valid()) {
+		boolean fromSheet = req.pacing().monthly().fromSheet();
+		if (!fromSheet && !req.pacing().bqColumnsFound()) {
 			errors.add("Monthly: BQ sheet — Date or Impressions column not found");
 			return errors;
 		}
-		Map<Integer, List<String>> tacticLineItems =
-				fromSheet ? Map.of() : lineItemGrouper.groupByTactic(req.lineItemMapping());
-		boolean multiYear = !fromSheet && chartPivot.isMultiYear(req.bqRows(), headers, req.flightTs());
+		Map<Integer, List<String>> tacticLineItems = fromSheet ? Map.of() : req.pacing().lineItemIds();
 
 		for (int n = 1; n <= req.tacticCount(); n++) {
 			List<String> liIds = tacticLineItems.getOrDefault(n, List.of());
 			try {
-				Pivot pivot = fromSheet
-						? req.monthlyPivots().getOrDefault(n, emptyPivot())
-						: chartPivot.buildMonthlyPivot(req.bqRows(), liIds, headers, req.flightTs(), multiYear);
+				PacingPivot pivot = req.pacing().monthly().byTactic().getOrDefault(n, emptyPivot());
 				if (pivot.isEmpty()) {
 					errors.add("Monthly Tactic " + n + ": no data"
 							+ (fromSheet ? " in sheet" : " (line item ids: " + String.join(",", liIds) + ")"));
@@ -280,7 +262,7 @@ public class TacticChartBuilder {
 	 * @return per-chart error strings (empty on full success)
 	 */
 	List<String> buildDistributionCharts(
-			ChartClients clients, ChartRequest req, String folderId,
+			ChartClients clients, TacticChartsRequest req, String folderId,
 			Map<Integer, Map<String, ChartElementRef>> tacticCharts) {
 		List<String> errors = new ArrayList<>();
 		Map<String, ElementTransform> transforms = tacticCharts.isEmpty()
@@ -398,13 +380,13 @@ public class TacticChartBuilder {
 	}
 
 	/**
-	 * Builds an empty pivot, used as the fallback for a sheet-sourced tactic whose pacing block
-	 * was absent so it is skipped rather than charted.
+	 * Builds an empty pivot, used as the fallback for a tactic the request carries no pivot for, so it is
+	 * skipped rather than charted.
 	 *
 	 * @return a pivot with no data and no clicks/completions series
 	 */
-	Pivot emptyPivot() {
-		return new Pivot(new LinkedHashMap<>(), false, false);
+	PacingPivot emptyPivot() {
+		return new PacingPivot(new LinkedHashMap<>(), false, false);
 	}
 
 }

@@ -135,14 +135,20 @@ provider is converted, the bridges move into `service` and the module edge flips
   `RealSheetDeckProvider` / `StubSheetDeckProvider`; the breakdown tables read back are the copies in
   `google.sheets.model.Workbook*`, kept identical to the service records by `WorkbookModelMapperTest`).
   `bridge.SheetDeckProviderBridge` implements `SheetDeckProvider` and maps through `DeckModelMapper` /
-  `bridge.WorkbookModelMapper`. Pacing tables: the client resolves identity and the first tab and runs a
-  `google.sheets.WorkbookTabWriter` the bridge supplies, which still calls `SheetPacingTableWriter`.
-- Not yet converted — the **chart/pacing pivot path**: the service's `ChartPivot` engine (BigQuery rows →
-  pivots) is injected into `SheetPacingTableWriter` and `TacticChartBuilder`, so business calculation runs
-  inside the integration. The target is the service computing pivots and the Google code only writing them;
-  that slice covers `SheetPacingTableWriter`, `RealChartProvider`, the chart builders, `ChartSheetWriter`.
-  Also open: `GoogleRequestRetrier` (shared; its rare "interrupted" `AppException` passes through the bridges
-  unchanged until then) and `anthropic`.
+  `bridge.WorkbookModelMapper`. Pacing tables arrive as a `google.sheets.model.WorkbookPacingRequest` with
+  every tactic's pivots already computed.
+- Converted: **charts and pacing pivots**. Pivoting the BigQuery export is the service's job:
+  `service.reports.engine.TacticPivotAssembler` (over `ChartPivot` and `TacticLineItemGrouper`, which moved
+  from `external-services` into `service`) computes every tactic's daily and monthly pivots. The bridges call
+  it — `bridge.ChartProviderBridge` (implements `ChartProvider`) for the deck charts, and
+  `SheetDeckProviderBridge` for the workbook's pacing tables — and hand `google.deck.model.TacticPacing`
+  (`PacingPivot` / `PacingSeries` copies) down; the sheet flow's pivots, read back from the workbook, pass
+  through untouched. `google.charts.SlidesChartClient` (implemented by `RealChartProvider` /
+  `StubChartProvider`) and its request records, `DeckBreakdownSeries`, `PaidChartKind`, `PaidChartShape`
+  are the chart vocabulary, kept identical to the service's by `ChartModelMapperTest`.
+- The whole `google`, `clerk` and `common` tree now imports nothing from `service`; only `bridge` does.
+- Not yet converted: `anthropic` (prompt building on service types, `ClaudeClient` /
+  `LineItemMatchAssistant` ports).
 
 Controllers implement generated OpenAPI interfaces and delegate to services.
 Repositories are accessed only through their paired entity services.

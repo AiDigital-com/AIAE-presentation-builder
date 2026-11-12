@@ -12,8 +12,8 @@ import com.aidigital.reportconstructor.externalservices.google.sheets.model.Work
 import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookDeviceTable;
 import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookGeoRow;
 import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookGeoTable;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookPacingRequest;
 import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookPublisherRow;
-import com.aidigital.reportconstructor.externalservices.google.sheets.WorkbookTabWriter;
 import com.aidigital.reportconstructor.externalservices.google.sheets.SheetWorkbookClient;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.services.drive.Drive;
@@ -290,15 +290,17 @@ public class RealSheetDeckProvider implements SheetWorkbookClient {
 	private final String sheetsTemplateId;
 	private final String eomSheetsTemplateId;
 	private final String targetFolderId;
+	private final SheetPacingTableWriter pacingTableWriter;
 	private final DriveSharer driveSharer;
 	private final DriveShareRecipients shareRecipients;
 
 	public RealSheetDeckProvider(
-			GoogleCredentialsFactory creds, GoogleProperties props,
+			GoogleCredentialsFactory creds, GoogleProperties props, SheetPacingTableWriter pacingTableWriter,
 			GoogleRequestRetrier retrier, DriveSharer driveSharer, DriveShareRecipients shareRecipients) {
 		this.creds = creds;
 		this.retrier = retrier;
 		this.driveSharer = driveSharer;
+		this.pacingTableWriter = pacingTableWriter;
 		this.shareRecipients = shareRecipients;
 		this.sheets = new Sheets.Builder(creds.transport(), creds.jsonFactory(), creds.initializer())
 				.setApplicationName(APPLICATION_NAME)
@@ -443,17 +445,16 @@ public class RealSheetDeckProvider implements SheetWorkbookClient {
 	}
 
 	@Override
-	public List<String> writePacingTables(
-			String spreadsheetId, String userGoogleAccessToken, WorkbookTabWriter writer) {
-		boolean asUser = userGoogleAccessToken != null && !userGoogleAccessToken.isBlank();
-		Sheets sheetsClient = asUser ? buildSheets(userGoogleAccessToken) : sheets;
+	public List<String> writePacingTables(String spreadsheetId, WorkbookPacingRequest request) {
+		boolean asUser = request.userGoogleAccessToken() != null && !request.userGoogleAccessToken().isBlank();
+		Sheets sheetsClient = asUser ? buildSheets(request.userGoogleAccessToken()) : sheets;
 		try {
 			Map<String, Integer> tabSheetIds = fetchSheetIds(sheetsClient, spreadsheetId);
 			if (tabSheetIds.isEmpty()) {
 				return List.of("Pacing tables skipped — workbook has no tabs");
 			}
 			String tabName = tabSheetIds.keySet().iterator().next();
-			return writer.write(sheetsClient, spreadsheetId, tabName);
+			return pacingTableWriter.writeAll(sheetsClient, spreadsheetId, tabName, request);
 		} catch (IOException ex) {
 			log.error("[sheets] writePacingTables failed for {}", spreadsheetId, ex);
 			return List.of("Pacing tables failed: " + ex.getMessage());
