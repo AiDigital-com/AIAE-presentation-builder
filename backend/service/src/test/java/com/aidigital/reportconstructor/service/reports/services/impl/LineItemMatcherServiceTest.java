@@ -1,5 +1,8 @@
 package com.aidigital.reportconstructor.service.reports.services.impl;
 
+import com.aidigital.reportconstructor.service.reports.helpers.LineItemAiDisambiguator;
+import com.aidigital.reportconstructor.service.reports.helpers.PlanLineIdMatcher;
+import com.aidigital.reportconstructor.service.reports.helpers.TacticChannelCatalog;
 import com.aidigital.reportconstructor.service.mappers.reports.ClaudeUsageEventEntityMapperImpl;
 import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.service.reports.engine.TacticCatalog;
@@ -32,12 +35,15 @@ class LineItemMatcherServiceTest {
 	private final MediaPlanTacticExtractor extractor =
 			new MediaPlanTacticExtractorImpl(new TacticCatalog(), new SheetRowHelperImpl(new CurrentTimeImpl()));
 	private final LineItemMatcherServiceImpl matcher =
-			new LineItemMatcherServiceImpl(new LineItemNamingHelperImpl(), (tactics, options) -> Map.of(), extractor, tracker());
+			new LineItemMatcherServiceImpl(new LineItemNamingHelperImpl(), extractor, tracker(),
+				new TacticChannelCatalog(),
+				new PlanLineIdMatcher(new LineItemNamingHelperImpl(), new TacticChannelCatalog()),
+				new LineItemAiDisambiguator((tactics, options) -> Map.of(), new TacticChannelCatalog()));
 
 	@Test
 	void extractLineItemId_readsIndexEight() {
-		assertThat(matcher.extractLineItemId("a_b_c_d_e_f_g_h_42_tail")).isEqualTo("42");
-		assertThat(matcher.extractLineItemId("short_name")).isNull();
+		assertThat(new LineItemNamingHelperImpl().extractLineItemId("a_b_c_d_e_f_g_h_42_tail")).isEqualTo("42");
+		assertThat(new LineItemNamingHelperImpl().extractLineItemId("short_name")).isNull();
 	}
 
 	@Test
@@ -72,7 +78,10 @@ class LineItemMatcherServiceTest {
 				List.of("Programmatic Display", "Whitelist Strategy", "Curated List")
 		);
 		LineItemMatchAssistant assistant = (tactics, options) -> Map.of(1, "616641", 2, "616642");
-		var aiMatcher = new LineItemMatcherServiceImpl(new LineItemNamingHelperImpl(), assistant, extractor, tracker());
+		var aiMatcher = new LineItemMatcherServiceImpl(new LineItemNamingHelperImpl(), extractor, tracker(),
+				new TacticChannelCatalog(),
+				new PlanLineIdMatcher(new LineItemNamingHelperImpl(), new TacticChannelCatalog()),
+				new LineItemAiDisambiguator(assistant, new TacticChannelCatalog()));
 
 		// When
 		MatchResult result = aiMatcher.match(bq, plan, null);
@@ -98,8 +107,10 @@ class LineItemMatcherServiceTest {
 				List.of("8", "Programmatic Display"),
 				List.of("7", "Programmatic Display")
 		);
-		var aiMatcher = new LineItemMatcherServiceImpl(new LineItemNamingHelperImpl(),
-				(tactics, options) -> Map.of(1, "616641", 2, "616642"), extractor, tracker());
+		var aiMatcher = new LineItemMatcherServiceImpl(new LineItemNamingHelperImpl(), extractor, tracker(),
+				new TacticChannelCatalog(),
+				new PlanLineIdMatcher(new LineItemNamingHelperImpl(), new TacticChannelCatalog()),
+				new LineItemAiDisambiguator((tactics, options) -> Map.of(1, "616641", 2, "616642"), new TacticChannelCatalog()));
 
 		// When
 		MatchResult result = aiMatcher.match(bq, plan, null);
@@ -189,7 +200,10 @@ class LineItemMatcherServiceTest {
 				List.of("Programmatic Display", "Whitelist Strategy")
 		);
 		LineItemMatchAssistant assistant = (tactics, options) -> Map.of(1, "999", 2, "616642");
-		var aiMatcher = new LineItemMatcherServiceImpl(new LineItemNamingHelperImpl(), assistant, extractor, tracker());
+		var aiMatcher = new LineItemMatcherServiceImpl(new LineItemNamingHelperImpl(), extractor, tracker(),
+				new TacticChannelCatalog(),
+				new PlanLineIdMatcher(new LineItemNamingHelperImpl(), new TacticChannelCatalog()),
+				new LineItemAiDisambiguator(assistant, new TacticChannelCatalog()));
 
 		// When
 		MatchResult result = aiMatcher.match(bq, plan, null);

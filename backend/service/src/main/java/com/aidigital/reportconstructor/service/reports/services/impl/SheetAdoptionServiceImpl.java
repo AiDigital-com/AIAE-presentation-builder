@@ -1,19 +1,15 @@
 package com.aidigital.reportconstructor.service.reports.services.impl;
 
-import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
 import com.aidigital.reportconstructor.service.reports.dto.BreakdownSelection;
 import com.aidigital.reportconstructor.service.reports.dto.CampaignData;
-import com.aidigital.reportconstructor.service.reports.dto.GenerationTarget;
 import com.aidigital.reportconstructor.service.reports.dto.ReportResume;
 import com.aidigital.reportconstructor.service.reports.dto.ReportResumeState;
 import com.aidigital.reportconstructor.service.reports.dto.Tactic;
 import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
+import com.aidigital.reportconstructor.service.reports.helpers.AdoptedDraftRecorder;
 import com.aidigital.reportconstructor.service.reports.helpers.BreakdownInferenceHelper;
-import com.aidigital.reportconstructor.service.reports.helpers.ReportFileNamer;
-import com.aidigital.reportconstructor.service.reports.helpers.ReportJobProgressHelper;
-import com.aidigital.reportconstructor.service.reports.helpers.ReportResumeStateHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportSheetHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.SheetCampaignReader;
 import com.aidigital.reportconstructor.service.reports.helpers.SheetPlaceholderReader;
@@ -52,9 +48,7 @@ public class SheetAdoptionServiceImpl implements SheetAdoptionService {
 	private final SheetCampaignReader sheetCampaign;
 	private final SheetTacticCountHelper tacticCounter;
 	private final BreakdownInferenceHelper breakdownInference;
-	private final ReportJobProgressHelper jobProgress;
-	private final ReportResumeStateHelper resumeState;
-	private final ReportFileNamer fileNamer;
+	private final AdoptedDraftRecorder draftRecorder;
 	private final ObjectProvider<UserGoogleTokenProvider> userGoogleTokens;
 
 	@Override
@@ -96,18 +90,9 @@ public class SheetAdoptionServiceImpl implements SheetAdoptionService {
 				tacticNames(data, tacticCount),
 				templateVariant == null ? TemplateVariant.STANDARD : templateVariant);
 
-		ReportJobEntity job = jobProgress.createQueuedJob(userId, reportType);
-		// Recorded as a finished SHEET build because that is exactly what it is from here on: a
-		// reviewed workbook waiting to become a deck. The draft policy and the resume endpoint then
-		// treat it like any workbook this app built itself.
-		jobProgress.recordJobContext(job.getId(), userEmail, GenerationTarget.SHEET.name(), null, null);
-		jobProgress.recordResumeState(job.getId(), resumeState.serialize(state));
-		jobProgress.recordArtifact(
-				job.getId(), fileNamer.buildFileName(reportType, data.client(), userEmail), sheetUrl);
-		jobProgress.markJobDone(job.getId(), sheetUrl, null);
-		log.info("[adopt] job {} adopted sheet {} for {} with {} tactic(s)",
-				job.getId(), sheetUrl, userEmail, tacticCount);
-		return new ReportResume(job.getId(), sheetUrl, null, null, state);
+		Long jobId = draftRecorder.record(userId, userEmail, reportType, sheetUrl, data.client(), state);
+		log.info("[adopt] job {} adopted sheet {} for {} with {} tactic(s)", jobId, sheetUrl, userEmail, tacticCount);
+		return new ReportResume(jobId, sheetUrl, null, null, state);
 	}
 
 	/**

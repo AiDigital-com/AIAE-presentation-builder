@@ -17,6 +17,7 @@ import com.aidigital.reportconstructor.service.reports.helpers.ReportSheetHelper
 import com.aidigital.reportconstructor.service.reports.helpers.SheetCampaignReader;
 import com.aidigital.reportconstructor.service.reports.helpers.SheetPlaceholderReader;
 import com.aidigital.reportconstructor.service.reports.helpers.SheetTacticCountHelper;
+import com.aidigital.reportconstructor.service.reports.helpers.impl.AdoptedDraftRecorderImpl;
 import com.aidigital.reportconstructor.service.reports.ports.UserGoogleTokenProvider;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -58,7 +59,7 @@ class SheetAdoptionServiceImplTest {
 		ObjectProvider<UserGoogleTokenProvider> tokens = mock(ObjectProvider.class);
 		when(tokens.getIfAvailable()).thenReturn(null);
 		return new SheetAdoptionServiceImpl(sheetHelper, placeholderReader, sheetCampaign, tacticCounter,
-				breakdownInference, jobProgress, resumeState, fileNamer, tokens);
+				breakdownInference, new AdoptedDraftRecorderImpl(jobProgress, resumeState, fileNamer), tokens);
 	}
 
 	/**
