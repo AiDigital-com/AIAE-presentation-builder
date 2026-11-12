@@ -106,7 +106,9 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 					kpiTypes,
 					userGoogleToken,
 					null,
-					null
+					null,
+					payload.templateVariant(),
+					payload.reportType()
 			));
 		} catch (RuntimeException ex) {
 			log.error("[charts] chart step failed for presentation {}", presentationId, ex);
@@ -120,6 +122,8 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 			List<List<String>> grid,
 			Map<String, String> flatReplacements,
 			int tacticCount,
+			String reportType,
+			TemplateVariant templateVariant,
 			String userGoogleToken
 	) {
 		String presentationId = extractPresentationId(slideUrl);
@@ -157,7 +161,9 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 					kpiTypes,
 					userGoogleToken,
 					chartData.dailyPivots(),
-					chartData.monthlyPivots()
+					chartData.monthlyPivots(),
+					templateVariant,
+					reportType
 			));
 			log.info("[charts] sheet flow finished for presentation {} with {} warning(s): {}",
 					presentationId, chartWarnings.size(), chartWarnings);

@@ -34,6 +34,7 @@ public class TacticChartBuilder {
 	private final TacticLineItemGrouper lineItemGrouper;
 	private final ChartFileSharer chartFileSharer;
 	private final TacticChartLocator chartLocator;
+	private final TacticChartSources chartSources;
 
 	public TacticChartBuilder(
 			ChartPivot chartPivot,
@@ -45,7 +46,8 @@ public class TacticChartBuilder {
 			ChartTemplateCatalog templates,
 			TacticLineItemGrouper lineItemGrouper,
 			ChartFileSharer chartFileSharer,
-			TacticChartLocator chartLocator) {
+			TacticChartLocator chartLocator,
+			TacticChartSources chartSources) {
 		this.chartPivot = chartPivot;
 		this.chartSheetWriter = chartSheetWriter;
 		this.chartSpecBuilder = chartSpecBuilder;
@@ -56,6 +58,7 @@ public class TacticChartBuilder {
 		this.lineItemGrouper = lineItemGrouper;
 		this.chartFileSharer = chartFileSharer;
 		this.chartLocator = chartLocator;
+		this.chartSources = chartSources;
 	}
 
 	/**
@@ -157,13 +160,13 @@ public class TacticChartBuilder {
 							+ (fromSheet ? " in sheet" : " (line item ids: " + String.join(",", liIds) + ")"));
 					continue;
 				}
-				String templateId = templates.dailyTemplateFor(n);
+				String templateId = chartSources.dailyTemplateFor(req, n);
 				renderComboChart(clients, req.presentationId(), folderId, errors,
 						new ComboChartJob(
 								templateId,
 								resolveTarget(tacticCharts, transforms,
 										templates.getDailySlideObjectIds().get(n), n, templateId,
-									templates.dailyChartId()),
+									chartSources.dailyChartId(req)),
 								"Chart Tactic " + n + " — " + req.campaignTitle(),
 								pivot,
 								"Tactic " + n,
@@ -180,18 +183,19 @@ public class TacticChartBuilder {
 	 * chart linked to the tactic's monthly source workbook (master model), or the configured per-slot
 	 * placeholder id among the deck's elements (legacy model).
 	 *
+	 * @param req          the chart request, giving the tactic count and the deck design whose monthly source
+	 *                     workbook the scanned charts are keyed by
 	 * @param tacticCharts tactic number &rarr; its scanned chart elements by source workbook; empty for a
 	 *                     legacy deck
 	 * @param transforms   the deck's element transforms by object id (legacy model only)
-	 * @param tacticCount  the number of requested tactics
 	 * @return {@code true} when at least one tactic has a monthly placeholder to swap into
 	 */
 	boolean monthlyPlaceholderOnDeck(
-			Map<Integer, Map<String, ChartElementRef>> tacticCharts, Map<String, ElementTransform> transforms,
-			int tacticCount) {
-		for (int n = 1; n <= tacticCount; n++) {
+			ChartRequest req, Map<Integer, Map<String, ChartElementRef>> tacticCharts,
+			Map<String, ElementTransform> transforms) {
+		for (int n = 1; n <= req.tacticCount(); n++) {
 			if (!tacticCharts.isEmpty()) {
-				if (tacticCharts.getOrDefault(n, Map.of()).containsKey(templates.monthlyTemplateFor(n))) {
+				if (tacticCharts.getOrDefault(n, Map.of()).containsKey(chartSources.monthlyTemplateFor(req, n))) {
 					return true;
 				}
 			} else {
@@ -222,7 +226,7 @@ public class TacticChartBuilder {
 		Map<String, ElementTransform> transforms = tacticCharts.isEmpty()
 				? slideChartSwapper.loadTransforms(clients.slides(), req.presentationId(), errors, "Monthly")
 				: Map.of();
-		if (!monthlyPlaceholderOnDeck(tacticCharts, transforms, req.tacticCount())) {
+		if (!monthlyPlaceholderOnDeck(req, tacticCharts, transforms)) {
 			// An EOM deck drops the "Monthly Impressions Distribution" card before charts are built, so there is
 			// nothing to swap a chart into; warning per tactic would only report a block removed on purpose.
 			log.info("[charts] deck {} carries no monthly chart placeholder — monthly pass skipped",
@@ -249,13 +253,13 @@ public class TacticChartBuilder {
 							+ (fromSheet ? " in sheet" : " (line item ids: " + String.join(",", liIds) + ")"));
 					continue;
 				}
-				String templateId = templates.monthlyTemplateFor(n);
+				String templateId = chartSources.monthlyTemplateFor(req, n);
 				renderComboChart(clients, req.presentationId(), folderId, errors,
 						new ComboChartJob(
 								templateId,
 								resolveTarget(tacticCharts, transforms,
 										templates.getMonthlySlideObjectIds().get(n), n, templateId,
-									templates.monthlyChartId()),
+									chartSources.monthlyChartId(req)),
 								"Monthly Chart Tactic " + n + " — " + req.campaignTitle(),
 								pivot,
 								"Monthly Tactic " + n,
@@ -286,13 +290,13 @@ public class TacticChartBuilder {
 				: Map.of();
 
 		for (int n = 1; n <= req.tacticCount(); n++) {
-			String templateId = templates.distTemplateFor(n);
+			String templateId = chartSources.distTemplateFor(req, n);
 			if (templateId == null) {
 				errors.add("Distribution Tactic " + n + ": no chart-template spreadsheet id configured");
 				continue;
 			}
 			ChartTarget target = resolveTarget(tacticCharts, transforms,
-					templates.getDistSlideObjectIds().get(n), n, templateId, templates.distChartId());
+					templates.getDistSlideObjectIds().get(n), n, templateId, chartSources.distChartId(req));
 			if (target == null) {
 				// Worded like the combo-chart miss above, and naming the workbook: on a master-model deck the
 				// placeholder is found by the workbook its chart links to, so "not configured" would send the

@@ -1,10 +1,12 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
+import com.aidigital.reportconstructor.service.reports.ports.ChartRequest;
 import com.google.api.services.slides.v1.model.AffineTransform;
 import com.google.api.services.slides.v1.model.Size;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,7 +24,8 @@ class TacticChartBuilderTest {
 				templates,
 				Mockito.mock(TacticLineItemGrouper.class),
 				Mockito.mock(ChartFileSharer.class),
-				new TacticChartLocator(new BreakdownSlideNaming()));
+				new TacticChartLocator(new BreakdownSlideNaming()),
+				new TacticChartSources(templates, new MpoDeckPolicy(new MpoDeckProperties())));
 	}
 
 	@Test
@@ -93,11 +96,13 @@ class TacticChartBuilderTest {
 		Map<String, ElementTransform> eomDeck = Map.of("daily_1", xform, "daily_2", xform);
 		Map<Integer, Map<String, ChartElementRef>> scanned =
 				Map.of(1, Map.of("book_monthly", new ChartElementRef("el_monthly_1", xform)));
+		ChartRequest twoTactics = new ChartRequest("deck", List.of(), List.of(), null, 2, "Campaign", Map.of(),
+				Map.of(), 0.0, Map.of(), null, null, null, null, null);
 
 		// When:
-		boolean onEocDeck = builder.monthlyPlaceholderOnDeck(Map.of(), eocDeck, 2);
-		boolean onEomDeck = builder.monthlyPlaceholderOnDeck(Map.of(), eomDeck, 2);
-		boolean onScannedDeck = builder.monthlyPlaceholderOnDeck(scanned, Map.of(), 2);
+		boolean onEocDeck = builder.monthlyPlaceholderOnDeck(twoTactics, Map.of(), eocDeck);
+		boolean onEomDeck = builder.monthlyPlaceholderOnDeck(twoTactics, Map.of(), eomDeck);
+		boolean onScannedDeck = builder.monthlyPlaceholderOnDeck(twoTactics, scanned, Map.of());
 
 		// Then: one surviving placeholder keeps the pass running; a deck with none skips it
 		assertThat(onEocDeck).isTrue();

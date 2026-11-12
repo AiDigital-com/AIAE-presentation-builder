@@ -73,6 +73,15 @@ public class MpoDeckPolicy {
 	}
 
 	/**
+	 * Returns the configured pacing-chart source workbooks of the MPO tactic slides.
+	 *
+	 * @return the MPO tactic chart sources, never {@code null}
+	 */
+	public MpoDeckChartSources tacticChartSources() {
+		return props.getTacticCharts() == null ? new MpoDeckChartSources() : props.getTacticCharts();
+	}
+
+	/**
 	 * Returns the configured MPO template id for a report type.
 	 *
 	 * @param reportType report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}

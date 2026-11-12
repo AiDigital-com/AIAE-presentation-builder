@@ -41,6 +41,9 @@ public interface ReportGenerationChartHelper {
 	 * @param grid             the filled sheet's first tab, as trimmed cell strings, carrying the pacing blocks
 	 * @param flatReplacements resolved placeholder values read back from the sheet
 	 * @param tacticCount      number of active tactics (clamped 1..28)
+	 * @param reportType       report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
+	 * @param templateVariant  requested deck design, may be {@code null} (read as standard); an MPO deck takes
+	 *                         its pacing charts from the MPO template's own source workbooks
 	 * @param userGoogleToken  OAuth token for Google APIs, or null when unavailable
 	 * @return chart warnings collected during rendering, or skip/failure messages as strings
 	 */
@@ -49,6 +52,8 @@ public interface ReportGenerationChartHelper {
 			List<List<String>> grid,
 			Map<String, String> flatReplacements,
 			int tacticCount,
+			String reportType,
+			TemplateVariant templateVariant,
 			String userGoogleToken
 	);
 

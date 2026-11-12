@@ -378,7 +378,8 @@ class ReportGenerationChartHelperImplTest {
 
 		// When: charts are built from the sheet
 		List<String> warnings = helper.buildChartsFromSheet(
-				"https://docs.google.com/presentation/d/deck-id/edit", grid, flat, 1, "token");
+				"https://docs.google.com/presentation/d/deck-id/edit", grid, flat, 1, "EOC", TemplateVariant.MPO,
+				"token");
 
 		// Then: the request carries the sheet pivots and no BigQuery rows
 		assertThat(warnings).isEmpty();
@@ -392,6 +393,9 @@ class ReportGenerationChartHelperImplTest {
 		assertThat(req.monthlyPivots()).containsKey(1);
 		assertThat(req.tacticKpiTypes()).containsEntry(1, "ctr");
 		assertThat(req.distTacticNames()).containsEntry(1, "Display");
+		// And: the deck design travels with it, so an MPO deck's charts are built from the MPO workbooks
+		assertThat(req.templateVariant()).isEqualTo(TemplateVariant.MPO);
+		assertThat(req.reportType()).isEqualTo("EOC");
 	}
 
 	@Test
@@ -400,7 +404,7 @@ class ReportGenerationChartHelperImplTest {
 
 		// When: sheet charts are requested
 		List<String> warnings = helper.buildChartsFromSheet(
-				"https://example.com/no-id", List.of(), Map.of(), 1, "token");
+				"https://example.com/no-id", List.of(), Map.of(), 1, null, null, "token");
 
 		// Then: a skip warning is returned and no chart provider call is made
 		assertThat(warnings).containsExactly(
