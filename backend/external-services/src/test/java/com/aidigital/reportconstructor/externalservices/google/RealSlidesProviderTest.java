@@ -75,7 +75,9 @@ class RealSlidesProviderTest {
 				new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
+				new DeviceTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new CreativeTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new PaidSlidesWriter());
 	}
 
 	private RealSlidesProvider newMasterTacticProvider(String tacticMasterId, String thoughtsMasterId) {
@@ -102,7 +104,9 @@ class RealSlidesProviderTest {
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
+				new DeviceTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new CreativeTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new PaidSlidesWriter());
 	}
 
 	private RealSlidesProvider newTitleProvider(List<String> eomDropSlideTitles) {
@@ -131,7 +135,9 @@ class RealSlidesProviderTest {
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
+				new DeviceTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new CreativeTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new PaidSlidesWriter());
 	}
 
 	private Page slide(String objectId) {
@@ -238,7 +244,9 @@ class RealSlidesProviderTest {
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
+				new DeviceTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new CreativeTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new PaidSlidesWriter());
 
 		List<TableRow> rows = new java.util.ArrayList<>();
 		rows.add(tableRow("Platforms"));
@@ -795,7 +803,9 @@ class RealSlidesProviderTest {
 				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()), locator, new TacticSlideRelayout(locator),
-				new DeviceTableCompactor(locator), new CreativeTableCompactor(), new PaidSlidesWriter());
+				new DeviceTableCompactor(locator, new LooseTableColumnRemover(locator)),
+				new CreativeTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new PaidSlidesWriter());
 
 		// When:
 		List<Request> requests = provider.buildBlockDeleteRequests(List.of(kept, dropped), Set.of("gone"));
@@ -839,13 +849,17 @@ class RealSlidesProviderTest {
 				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()), new SlideBlockLocator(), relayout,
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
+				new DeviceTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new CreativeTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new PaidSlidesWriter());
 		RealSlidesProvider noAnchorProvider = new RealSlidesProvider(
 				creds, props, Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class),
 				Mockito.mock(GoogleRequestRetrier.class), new BreakdownSlideNaming(), new BreakdownThoughtsGateImpl(),
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(noAnchorProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()), new SlideBlockLocator(), relayout,
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
+				new DeviceTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new CreativeTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new PaidSlidesWriter());
 
 		// When:
 		List<Request> requests = provider.buildRelayoutRequests(List.of(kept, dropped), Set.of("gone"));
@@ -1092,7 +1106,9 @@ class RealSlidesProviderTest {
 				new SummaryTableRowTrimmer(), new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
+				new DeviceTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new CreativeTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new PaidSlidesWriter());
 	}
 
 	private Page eomSlide(String objectId, String... texts) {
@@ -1239,7 +1255,9 @@ class RealSlidesProviderTest {
 				new MpoDeckPolicy(mpoDeckProps), new EomSlideFinder(),
 				new DeckMarkupRequestBuilder(new SlideBlockLocator()),
 				new SlideBlockLocator(), new TacticSlideRelayout(new SlideBlockLocator()),
-				new DeviceTableCompactor(new SlideBlockLocator()), new CreativeTableCompactor(), new PaidSlidesWriter());
+				new DeviceTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new CreativeTableCompactor(new SlideBlockLocator(), new LooseTableColumnRemover(new SlideBlockLocator())),
+				new PaidSlidesWriter());
 
 		// When-Then: only the MPO EOM deck takes the EOM model; a standard EOM deck and any EOC deck do not
 		assertThat(provider.eomDeck("EOM", TemplateVariant.MPO)).isTrue();

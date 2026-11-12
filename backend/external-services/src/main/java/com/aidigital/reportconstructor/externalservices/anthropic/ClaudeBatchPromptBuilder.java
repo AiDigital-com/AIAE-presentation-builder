@@ -272,10 +272,10 @@ public class ClaudeBatchPromptBuilder {
 						"expectations\", "
 						+ "\"we recommend monitoring\", \"this tactic requires further optimization\". "
 						+ "If a sentence could appear in any other campaign report unchanged — rewrite it.\n"
-						+ "3. EXPLAIN THE WHY. Don't write \"X had a high CTR.\" Write WHY: creative format, " +
-								"placement" +
-						" type, "
-						+ "audience intent level, message-to-moment alignment, competitive bid landscape, etc.\n"
+						+ "3. EXPLAIN THE WHY FROM THE DATA. Use only causes the data below shows (tactic mix, " +
+								"audience," +
+						" geo, spend, KPI vs plan). Never cite creative lengths, formats, placements, brand safety, "
+						+ "IVT or viewability unless the data lists them; no creative data means no creative claim.\n"
 						+ "4. SPECIFICITY IS MANDATORY. Name the specific tactic, channel, audience segment, or geo. "
 						+ "Name the specific cause. Name the specific action or outcome.\n\n"
 						+ "Read the campaign data below and return a JSON object with EXACTLY these keys:\n\n"
@@ -387,10 +387,10 @@ public class ClaudeBatchPromptBuilder {
 						"expectations\", "
 						+ "\"we recommend monitoring\", \"this tactic requires further optimization\". "
 						+ "If a sentence could appear in any other campaign report unchanged — rewrite it.\n"
-						+ "3. EXPLAIN THE WHY. Don't write \"X had a high CTR.\" Write WHY: creative format, " +
-								"placement" +
-						" type, "
-						+ "audience intent level, message-to-moment alignment, competitive bid landscape, etc.\n"
+						+ "3. EXPLAIN THE WHY FROM THE DATA. Use only causes the data below shows (tactic mix, " +
+								"audience," +
+						" geo, spend, KPI vs plan). Never cite creative lengths, formats, placements, brand safety, "
+						+ "IVT or viewability unless the data lists them; no creative data means no creative claim.\n"
 						+ "4. SPECIFICITY IS MANDATORY. Name the specific tactic, channel, audience segment, or geo. "
 						+ "Name the specific cause. Name the specific action or outcome.\n\n"
 						+ "Read the campaign data below and return a JSON object with EXACTLY these keys:\n\n"
@@ -1095,9 +1095,9 @@ public class ClaudeBatchPromptBuilder {
 						+ "2) AUDIENCE FIT — why these publishers matched the audience we were chasing (we run an "
 						+ "AUDIENCE-FIRST approach: we chase the audience, not sites), at most " + prompt
 						+ " characters;\n"
-						+ "3) PREMIUM AND BRAND SUITABILITY — state that WE BLACKLISTED a large number of PUBLISHERS "
-						+ "(hundreds to a few thousand, kept qualitative — never a precise count) to hold delivery on "
-						+ "premium, brand-safe inventory, at most " + prompt + " characters;\n"
+						+ "3) PREMIUM AND BRAND SUITABILITY — what the named publishers say about inventory quality; "
+						+ "never claim blacklisting, IVT, fraud or brand-safety results unless the change log or data "
+						+ "records them, at most " + prompt + " characters;\n"
 						+ "4) STEERING WEIGHT — how delivery weight should sit across the strongest publishers, at "
 						+ "most " + prompt + " characters. "
 						+ changeLogGroundedActionRule("this tactic's publisher weighting",
@@ -2017,8 +2017,8 @@ public class ClaudeBatchPromptBuilder {
 						+ "  \"optimization_recommendations\": array, // EXACTLY 4 objects {\"title\": ≤"
 						+ recTitlePrompt
 						+ " chars Title Case imperative, \"text\": ≤" + recTextPrompt
-						+ " chars one sentence}. Distinct forward-looking levers grounded "
-						+ "in the results; proactive optimisations, never a fix for past error.\n"
+						+ " chars one sentence}. Distinct forward-looking levers grounded in the results and the "
+						+ "RECOMMENDATION RULES below; proactive optimisations, never a fix for past error.\n"
 						+ (hasFrequencies
 								? "  \"f_opportunity\": string, // ≤" + fOpportunityPrompt
 								+ " chars. Name the client's industry (infer it) and "
@@ -2122,8 +2122,8 @@ public class ClaudeBatchPromptBuilder {
 		return "  \"thoughts_on_performance\": string, // EXACTLY 4 short paragraphs joined by \" | \" "
 				+ "(exactly 3 separators), ≤" + thoughtsLimit
 				+ " chars total. (1) best tactic/channel + WHY; (2) why the "
-				+ "campaign succeeded — name the mechanism; (3) one creative/format insight; (4) an efficiency "
-				+ "or reach insight.\n";
+				+ "campaign succeeded — name the mechanism; (3) one breakdown insight the data supports (never a "
+				+ "creative or format comparison the data does not list); (4) an efficiency or reach insight.\n";
 	}
 
 	/**

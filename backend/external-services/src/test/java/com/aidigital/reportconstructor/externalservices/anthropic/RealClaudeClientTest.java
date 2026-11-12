@@ -74,7 +74,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -103,7 +103,7 @@ class RealClaudeClientTest {
 		List<ClaudeCompressionField> expectedFields = List.of(
 				new ClaudeCompressionField(
 						"1_overview", "CTV delivered 1M impressions at 98% VCR, driven by premium inventory.", 210));
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(700), eq(90), eq("BatchConclusions"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(700), eq(90), eq("BatchConclusions"), eq(true)))
 				.thenReturn(response);
 		when(compressionService.compress(eq(expectedFields), eq("BatchD-Conclusions")))
 				.thenAnswer(invocation -> {
@@ -137,7 +137,8 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, new ClaudeBatchPromptBuilder(normalizer, new Fmt()), normalizer, compressionService,
 				new ReportClaudeDefaults(), new WorkbookGeoFilter(), new PromptTokenEstimator(),
-				new ClaudeFailureLogImpl(), new TacticThoughtsCompleteness(), new AnthropicProperties());
+				new ClaudeFailureLogImpl(), new TacticThoughtsCompleteness(),
+				new NarrativeGrounding(new AnthropicProperties()), new AnthropicProperties());
 
 		// When:
 		List<Integer> limits = List.of(
@@ -160,7 +161,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -182,7 +183,7 @@ class RealClaudeClientTest {
 		List<ClaudeCompressionField> expectedFields = List.of(
 				new ClaudeCompressionField(
 						"1_overview", "CTV delivered 1M impressions at 98% VCR, driven by premium inventory.", 210));
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(700), eq(90), eq("BatchConclusions"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(700), eq(90), eq("BatchConclusions"), eq(true)))
 				.thenReturn(bareResponse);
 		when(compressionService.compress(eq(expectedFields), eq("BatchD-Conclusions")))
 				.thenAnswer(invocation -> {
@@ -214,7 +215,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -238,7 +239,7 @@ class RealClaudeClientTest {
 				new ClaudeCompressionField("1_1", "Long tail carried reach.", 115),
 				new ClaudeCompressionField("1_2", "Premium brand-safe mix.", 115),
 				new ClaudeCompressionField("1_3", "We steered weight to strong publishers.", 115));
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(1500), eq(90), eq("PublisherSection"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1500), eq(90), eq("PublisherSection"), eq(true)))
 				.thenReturn(wrapped);
 		when(compressionService.compress(eq(expectedFields), eq("PublisherSection")))
 				.thenAnswer(invocation -> {
@@ -258,7 +259,7 @@ class RealClaudeClientTest {
 				"Hulu led delivery.", "Long tail carried reach.",
 				"Premium brand-safe mix.", "We steered weight to strong publishers.");
 		verify(messagesClient, times(1))
-				.callJsonObject(eq(expectedPrompt), eq(1500), eq(90), eq("PublisherSection"), eq(true));
+				.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1500), eq(90), eq("PublisherSection"), eq(true));
 	}
 
 	@Test
@@ -270,7 +271,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -288,9 +289,9 @@ class RealClaudeClientTest {
 		String retryPrompt =
 				expectedPrompt + client.sectionRetrySuffix("field(s) [2, 3, 4] of 4 were missing or blank", 4);
 		JsonNode oneField = json.createObjectNode().put("field_1", "Only one bullet.");
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(1500), eq(90), eq("PublisherSection"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1500), eq(90), eq("PublisherSection"), eq(true)))
 				.thenReturn(oneField);
-		when(messagesClient.callJsonObject(eq(retryPrompt), eq(1500), eq(90), eq("PublisherSection"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(retryPrompt)), eq(1500), eq(90), eq("PublisherSection"), eq(true)))
 				.thenReturn(oneField);
 		List<ClaudeCompressionField> expectedFields = List.of(
 				new ClaudeCompressionField("1_0", "Only one bullet.", 115),
@@ -313,11 +314,11 @@ class RealClaudeClientTest {
 		// Then: the one field the model did answer reaches its own slot; the three it never answered dash
 		assertThat(bullets).containsExactly("Only one bullet.", "", "", "");
 		verify(messagesClient, times(1))
-				.callJsonObject(eq(expectedPrompt), eq(1500), eq(90), eq("PublisherSection"), eq(true));
+				.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1500), eq(90), eq("PublisherSection"), eq(true));
 
 		// Then: the retry is not the same prompt again — it names which fields the first reply left out
 		verify(messagesClient, times(1))
-				.callJsonObject(eq(retryPrompt), eq(1500), eq(90), eq("PublisherSection"), eq(true));
+				.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(retryPrompt)), eq(1500), eq(90), eq("PublisherSection"), eq(true));
 		assertThat(retryPrompt).contains("your previous reply was incomplete", "[2, 3, 4] of 4");
 	}
 
@@ -331,7 +332,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -356,7 +357,7 @@ class RealClaudeClientTest {
 				new ClaudeCompressionField("1_1", "Long tail carried reach.", 115),
 				new ClaudeCompressionField("1_2", "Premium brand-safe mix.", 115),
 				new ClaudeCompressionField("1_3", "We steered weight to strong publishers.", 115));
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(1500), eq(90), eq("PublisherSection"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1500), eq(90), eq("PublisherSection"), eq(true)))
 				.thenReturn(overLong);
 		when(compressionService.compress(eq(expectedFields), eq("PublisherSection")))
 				.thenAnswer(invocation -> {
@@ -377,7 +378,7 @@ class RealClaudeClientTest {
 				"Hulu led delivery.", "Long tail carried reach.",
 				"Premium brand-safe mix.", "We steered weight to strong publishers.");
 		verify(messagesClient, times(1))
-				.callJsonObject(eq(expectedPrompt), eq(1500), eq(90), eq("PublisherSection"), eq(true));
+				.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1500), eq(90), eq("PublisherSection"), eq(true));
 	}
 
 	@Test
@@ -392,7 +393,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), failureLog,
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -407,7 +408,7 @@ class RealClaudeClientTest {
 				1, "CTV", List.of(new PublisherRow("Hulu", "400,000", "40%")), 400_000, 1_000_000);
 		String brief = "Drive awareness.";
 		String expectedPrompt = promptBuilder.buildPublisherSectionPrompt(input, data, brief, 115).orElseThrow();
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(1500), eq(90), eq("PublisherSection"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1500), eq(90), eq("PublisherSection"), eq(true)))
 				.thenReturn(json.createObjectNode());
 
 		// When:
@@ -430,7 +431,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		String brief = "Drive awareness for the Spring Launch.";
@@ -450,7 +451,7 @@ class RealClaudeClientTest {
 				new ClaudeCompressionField("2_thought_3", "The opportunity.", 220),
 				new ClaudeCompressionField(
 						"2_story", "CTV was asked to build reach and it did, start to finish.", 470));
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true)))
 				.thenReturn(response);
 		when(compressionService.compress(eq(expectedFields), eq("BatchD-TacticThoughts")))
 				.thenAnswer(invocation -> {
@@ -481,7 +482,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		String brief = "Drive awareness for the Spring Launch.";
 		TacticThoughtsInput input = new TacticThoughtsInput(
@@ -498,7 +499,7 @@ class RealClaudeClientTest {
 				new ClaudeCompressionField("2_thought_2", "A watch-out.", 120),
 				new ClaudeCompressionField("2_thought_3", "The opportunity.", 120),
 				new ClaudeCompressionField("2_story", "CTV was asked to build reach and it did.", 230));
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true)))
 				.thenReturn(response);
 		when(compressionService.compress(eq(expectedFields), eq("BatchD-TacticThoughts")))
 				.thenAnswer(invocation -> {
@@ -530,7 +531,8 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), failureLog,
-				new TacticThoughtsCompleteness(), new AnthropicProperties());
+				new TacticThoughtsCompleteness(),
+				new NarrativeGrounding(new AnthropicProperties()), new AnthropicProperties());
 
 		String brief = "Drive awareness for the Spring Launch.";
 		TacticThoughtsInput input = new TacticThoughtsInput(
@@ -549,7 +551,7 @@ class RealClaudeClientTest {
 				new ClaudeCompressionField("4_thought_3", "The opportunity.", 220),
 				new ClaudeCompressionField(
 						"4_story", "Display was asked to hold frequency and it held it.", 470));
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true)))
 				.thenReturn(blank, complete);
 		when(compressionService.compress(eq(retryFields), eq("BatchD-TacticThoughts")))
 				.thenAnswer(invocation -> {
@@ -571,7 +573,7 @@ class RealClaudeClientTest {
 				"Headline result.", "What worked best.", "A watch-out.", "The opportunity.",
 				"Display was asked to hold frequency and it held it.");
 		verify(messagesClient, times(2))
-				.callJsonObject(eq(expectedPrompt), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true));
+				.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true));
 		assertThat(failures.snapshot()).isNotEmpty();
 		assertThat(failures.snapshot().getFirst()).contains("tactic 4", "no non-blank thought");
 		failureLog.clear();
@@ -586,7 +588,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		String brief = "Drive awareness for the Spring Launch.";
@@ -601,7 +603,7 @@ class RealClaudeClientTest {
 				new ClaudeCompressionField("7_thought_2", "", 220),
 				new ClaudeCompressionField("7_thought_3", "", 220),
 				new ClaudeCompressionField("7_story", "", 470));
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true)))
 				.thenReturn(partial);
 		when(compressionService.compress(eq(expectedFields), eq("BatchD-TacticThoughts")))
 				.thenAnswer(invocation -> {
@@ -621,7 +623,7 @@ class RealClaudeClientTest {
 		assertThat(thoughts).isNotNull();
 		assertThat(thoughts.thoughts()).containsExactly("Headline result.", "A watch-out.", null, null, null);
 		verify(messagesClient, times(2))
-				.callJsonObject(eq(expectedPrompt), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true));
+				.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1800), eq(90), eq("BatchTacticThoughts"), eq(true));
 	}
 
 	@Test
@@ -634,7 +636,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -682,7 +684,7 @@ class RealClaudeClientTest {
 				new ClaudeCompressionField("rec_title_3", "Add Measurement", 30),
 				new ClaudeCompressionField("rec_text_3", "Introduce a brand-lift study to prove impact.", 130));
 		// One tactic → budget 4000 + 80 = 4080, 180s timeout, allowPartial.
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(4080), eq(180), eq("BatchCampaign"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(4080), eq(180), eq("BatchCampaign"), eq(true)))
 				.thenReturn(response);
 		when(compressionService.compress(eq(expectedFields), eq("BatchD-Campaign")))
 				.thenAnswer(invocation -> {
@@ -718,7 +720,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -757,9 +759,9 @@ class RealClaudeClientTest {
 				new ClaudeCompressionField("rec_title_3", "", 30),
 				new ClaudeCompressionField("rec_text_3", "", 130));
 		// The first send gets the tactic-sized budget; the retry is re-sent with the full cap.
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(4080), eq(180), eq("BatchCampaign"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(4080), eq(180), eq("BatchCampaign"), eq(true)))
 				.thenReturn(empty);
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(8000), eq(180), eq("BatchCampaign"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(8000), eq(180), eq("BatchCampaign"), eq(true)))
 				.thenReturn(good);
 		when(compressionService.compress(eq(expectedFields), eq("BatchD-Campaign")))
 				.thenAnswer(invocation -> {
@@ -780,9 +782,9 @@ class RealClaudeClientTest {
 		// The reply carried no performance_story, so slot 5 stays null rather than borrowing a thought
 		assertThat(results.thoughtsOnPerformance()).containsExactly("T1.", "T2.", "T3.", "T4.", null);
 		verify(messagesClient, times(1))
-				.callJsonObject(eq(expectedPrompt), eq(4080), eq(180), eq("BatchCampaign"), eq(true));
+				.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(4080), eq(180), eq("BatchCampaign"), eq(true));
 		verify(messagesClient, times(1))
-				.callJsonObject(eq(expectedPrompt), eq(8000), eq(180), eq("BatchCampaign"), eq(true));
+				.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(8000), eq(180), eq("BatchCampaign"), eq(true));
 		verify(compressionService, times(1)).compress(eq(expectedFields), eq("BatchD-Campaign"));
 	}
 
@@ -795,7 +797,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		Tactic ctv = new Tactic(
@@ -811,9 +813,9 @@ class RealClaudeClientTest {
 				new TacticNarrativeDigest(1, "CTV", "CTV overview.", List.of("t1"), List.of()));
 		String expectedPrompt =
 				promptBuilder.buildCampaignResultsPrompt(data, "Brief.", frequencies, perTactic).orElseThrow();
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(4080), eq(180), eq("BatchCampaign"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(4080), eq(180), eq("BatchCampaign"), eq(true)))
 				.thenReturn(null);
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(8000), eq(180), eq("BatchCampaign"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(8000), eq(180), eq("BatchCampaign"), eq(true)))
 				.thenReturn(null);
 
 		// When:
@@ -823,9 +825,9 @@ class RealClaudeClientTest {
 		// job warning
 		assertThat(results.resultsOverviews()).isEmpty();
 		verify(messagesClient, times(1))
-				.callJsonObject(eq(expectedPrompt), eq(4080), eq(180), eq("BatchCampaign"), eq(true));
+				.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(4080), eq(180), eq("BatchCampaign"), eq(true));
 		verify(messagesClient, times(1))
-				.callJsonObject(eq(expectedPrompt), eq(8000), eq(180), eq("BatchCampaign"), eq(true));
+				.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(8000), eq(180), eq("BatchCampaign"), eq(true));
 		verifyNoInteractions(compressionService);
 	}
 
@@ -839,7 +841,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		JsonNode node = json.readTree("""
@@ -865,7 +867,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		// When-Then: a null node and a non-object node both yield an empty map
@@ -883,7 +885,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		CampaignData data = new CampaignData(
@@ -913,7 +915,7 @@ class RealClaudeClientTest {
 				new ClaudeCompressionField("overview_2", "Evening dayparts.", 240),
 				new ClaudeCompressionField("point_3", "Efficiency", 22),
 				new ClaudeCompressionField("overview_3", "Strong CPM outcome.", 240));
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(3500), eq(60), eq("BatchAStrategic"), eq(false)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(3500), eq(60), eq("BatchAStrategic"), eq(false)))
 				.thenReturn(response);
 		when(compressionService.compress(eq(expectedFields), eq("BatchD-Strategic")))
 				.thenAnswer(invocation -> {
@@ -947,7 +949,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		CampaignData data = new CampaignData(
@@ -971,7 +973,7 @@ class RealClaudeClientTest {
 				  ]
 				}
 				""");
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(3500), eq(60), eq("BatchAStrategic"), eq(false)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(3500), eq(60), eq("BatchAStrategic"), eq(false)))
 				.thenReturn(response);
 		List<ClaudeCompressionField> expectedFields = List.of(
 				new ClaudeCompressionField("point_0", "Precision", 22),
@@ -1010,7 +1012,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		CampaignData data = new CampaignData(
@@ -1029,7 +1031,7 @@ class RealClaudeClientTest {
 				  "strategic_insights": []
 				}
 				""");
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(3500), eq(60), eq("BatchAStrategic"), eq(false)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(3500), eq(60), eq("BatchAStrategic"), eq(false)))
 				.thenReturn(response);
 		when(compressionService.compress(eq(List.of(
 				new ClaudeCompressionField("point_0", "", 22),
@@ -1063,7 +1065,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		ClaudeStrategic strategic = new ClaudeStrategic(
@@ -1096,7 +1098,7 @@ class RealClaudeClientTest {
 		// 400 base + 220 proposal + 160 insight + 220 overview + 140 thought, no frequency copy in this draft
 		int expectedBudget = 1140;
 		when(messagesClient.callJsonObject(
-				eq(expectedPrompt), eq(expectedBudget), eq(90), eq("AlignNarrative"), eq(true)))
+				eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(expectedBudget), eq(90), eq("AlignNarrative"), eq(true)))
 				.thenReturn(response);
 		when(compressionService.compress(eq(expectedFields), eq("BatchE-Align")))
 				.thenAnswer(invocation -> {
@@ -1135,7 +1137,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		ClaudeStrategic strategic = new ClaudeStrategic(
@@ -1175,7 +1177,7 @@ class RealClaudeClientTest {
 		// columns add to the reply
 		int expectedBudget = 2140;
 		when(messagesClient.callJsonObject(
-				eq(expectedPrompt), eq(expectedBudget), eq(90), eq("AlignNarrative"), eq(true)))
+				eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(expectedBudget), eq(90), eq("AlignNarrative"), eq(true)))
 				.thenReturn(response);
 		when(compressionService.compress(eq(expectedFields), eq("BatchE-Align")))
 				.thenAnswer(invocation -> {
@@ -1221,7 +1223,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		ClaudeStrategic strategic = new ClaudeStrategic(
@@ -1252,7 +1254,7 @@ class RealClaudeClientTest {
 				new ClaudeCompressionField("results_overview_1", "Aligned results overview.", 200),
 				new ClaudeCompressionField("thought_0", "Aligned thought.", 220),
 				new ClaudeCompressionField("proposal_overview", "Aligned proposal copy.", 400));
-		when(messagesClient.callJsonObject(eq(firstPrompt), eq(1140), eq(90), eq("AlignNarrative"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(firstPrompt)), eq(1140), eq(90), eq("AlignNarrative"), eq(true)))
 				.thenReturn(null);
 		ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
 		when(compressionService.compress(eq(expectedFields), eq("BatchE-Align")))
@@ -1267,7 +1269,7 @@ class RealClaudeClientTest {
 
 		// When: the retried prompt — the original plus the JSON-only reminder — comes back parseable
 		when(messagesClient.callJsonObject(
-				eq(firstPrompt + retrySuffix), eq(1140), eq(90), eq("AlignNarrative"), eq(true)))
+				eq(new NarrativeGrounding(new AnthropicProperties()).withRules(firstPrompt + retrySuffix)), eq(1140), eq(90), eq("AlignNarrative"), eq(true)))
 				.thenReturn(response);
 		ClaudeNarrative aligned = client.batchAlignNarrative(strategic, results, List.of(), brief, null);
 
@@ -1276,8 +1278,9 @@ class RealClaudeClientTest {
 		assertThat(aligned.results().resultsOverviews()).containsEntry(1, "Aligned results overview.");
 		verify(messagesClient, times(2)).callJsonObject(
 				promptCaptor.capture(), eq(1140), eq(90), eq("AlignNarrative"), eq(true));
-		assertThat(promptCaptor.getAllValues().get(0)).isEqualTo(firstPrompt);
-		assertThat(promptCaptor.getAllValues().get(1)).endsWith(retrySuffix);
+		assertThat(promptCaptor.getAllValues().get(0)).isEqualTo(new NarrativeGrounding(new AnthropicProperties()).withRules(firstPrompt));
+		assertThat(promptCaptor.getAllValues().get(1))
+				.isEqualTo(new NarrativeGrounding(new AnthropicProperties()).withRules(firstPrompt + retrySuffix));
 	}
 
 	@Test
@@ -1288,7 +1291,8 @@ class RealClaudeClientTest {
 				messagesClient, new ClaudeBatchPromptBuilder(normalizer, new Fmt()), normalizer,
 				compressionService, new ReportClaudeDefaults(), new WorkbookGeoFilter(),
 				new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(), new AnthropicProperties());
+				new TacticThoughtsCompleteness(),
+				new NarrativeGrounding(new AnthropicProperties()), new AnthropicProperties());
 
 		ClaudeStrategic strategic = new ClaudeStrategic(
 				"25-44", "Auto intenders", "Proposal.",
@@ -1325,7 +1329,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, defaults,
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		ClaudeStrategic strategic = new ClaudeStrategic(
@@ -1340,7 +1344,7 @@ class RealClaudeClientTest {
 		// 400 base + 220 proposal + 160 insight + 220 overview + 140 thought, no frequency copy in this draft
 		int expectedBudget = 1140;
 		when(messagesClient.callJsonObject(
-				eq(expectedPrompt), eq(expectedBudget), eq(90), eq("AlignNarrative"), eq(true)))
+				eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(expectedBudget), eq(90), eq("AlignNarrative"), eq(true)))
 				.thenReturn(null);
 
 		// When:
@@ -1353,8 +1357,9 @@ class RealClaudeClientTest {
 		ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
 		verify(messagesClient, times(2)).callJsonObject(
 				promptCaptor.capture(), eq(expectedBudget), eq(90), eq("AlignNarrative"), eq(true));
-		assertThat(promptCaptor.getAllValues().get(0)).isEqualTo(expectedPrompt);
-		assertThat(promptCaptor.getAllValues().get(1)).startsWith(expectedPrompt);
+		assertThat(promptCaptor.getAllValues().get(0)).isEqualTo(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt));
+		assertThat(promptCaptor.getAllValues().get(1))
+				.isNotEqualTo(promptCaptor.getAllValues().get(0)).contains(NarrativeGrounding.RULES);
 	}
 
 	@Test
@@ -1365,7 +1370,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		List<List<String>> workbook = List.of(
 				List.of("### TAB: Proposal ###"),
@@ -1392,7 +1397,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		List<List<String>> workbook = new java.util.ArrayList<>();
 		for (int i = 0; i < 2000; i++) {
@@ -1415,7 +1420,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		List<String> goals = List.of("Build awareness", "  ", "Drive site visits");
 		String expectedPrompt = promptBuilder.buildFunnelFromGoalsPrompt(goals).orElseThrow();
@@ -1439,7 +1444,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		// When:
@@ -1458,7 +1463,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		String brief = "Acme wants awareness among auto intenders in Texas over Q1 on a $500,000 budget.";
 		String expectedPrompt = promptBuilder.buildBriefDigestPrompt(brief, 2000).orElseThrow();
@@ -1484,7 +1489,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		String changeLog = "Shifted 20% of Display budget to CTV on Jul 3 after CTV VCR held above 95%.";
 		String expectedPrompt = promptBuilder.buildChangeLogDigestPrompt(changeLog, 1500).orElseThrow();
@@ -1510,7 +1515,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		String changeLog = "Shifted budget mid-flight.";
 		String expectedPrompt = promptBuilder.buildChangeLogDigestPrompt(changeLog, 1500).orElseThrow();
@@ -1532,7 +1537,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		String oversized = "Acme wants awareness among auto intenders. ".repeat(80);
 		String compact = "Acme wants awareness among auto intenders in Texas over Q1.";
@@ -1562,7 +1567,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		String oversized = "Acme wants awareness among auto intenders. ".repeat(80);
 		String expectedPrompt = promptBuilder.buildBriefDigestPrompt(oversized, 2000).orElseThrow();
@@ -1583,7 +1588,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		Tactic display = new Tactic(
@@ -1616,7 +1621,7 @@ class RealClaudeClientTest {
 				new ClaudeCompressionField("1_overview", "Display beat its CTR benchmark twelvefold.", 210),
 				new ClaudeCompressionField("2_overview", "Video held a 93.66% VCR against a 60% plan.", 210));
 		// Two tactics → budget is base 400 + 2 × 300 = 1000, sized for two overviews and nothing else.
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(1000), eq(90), eq("BatchConclusions"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1000), eq(90), eq("BatchConclusions"), eq(true)))
 				.thenReturn(response);
 		when(compressionService.compress(eq(expectedFields), eq("BatchD-Conclusions")))
 				.thenAnswer(invocation -> {
@@ -1644,7 +1649,7 @@ class RealClaudeClientTest {
 		assertThat(expectedPrompt).doesNotContain("=== audience");
 		assertThat(expectedPrompt).doesNotContain("=== device");
 		verify(messagesClient, times(1))
-				.callJsonObject(eq(expectedPrompt), eq(1000), eq(90), eq("BatchConclusions"), eq(true));
+				.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(1000), eq(90), eq("BatchConclusions"), eq(true));
 	}
 
 	@Test
@@ -1655,7 +1660,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		Tactic display = new Tactic(
@@ -1679,7 +1684,7 @@ class RealClaudeClientTest {
 		JsonNode response = json.readTree("""
 				{"tactic_1": {"overview": "Display paced steadily to 101% of the month's impression target."}}
 				""");
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(700), eq(90), eq("BatchConclusions"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(700), eq(90), eq("BatchConclusions"), eq(true)))
 				.thenReturn(response);
 		when(compressionService.compress(
 				eq(List.of(new ClaudeCompressionField(
@@ -1696,7 +1701,7 @@ class RealClaudeClientTest {
 				"DAILY PACING (impressions per day, oldest first): Jun 1 8,100 | Jun 2 9,400");
 		assertThat(conclusions).hasSize(1);
 		verify(messagesClient, times(1))
-				.callJsonObject(eq(expectedPrompt), eq(700), eq(90), eq("BatchConclusions"), eq(true));
+				.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(700), eq(90), eq("BatchConclusions"), eq(true));
 	}
 
 	@Test
@@ -1708,7 +1713,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 
 		Tactic display = new Tactic(
@@ -1727,7 +1732,7 @@ class RealClaudeClientTest {
 		JsonNode blank = json.readTree("{\"tactic_1\": {\"overview\": \"\"}}");
 		JsonNode filled = json.readTree(
 				"{\"tactic_1\": {\"overview\": \"Display beat its CTR benchmark twelvefold.\"}}");
-		when(messagesClient.callJsonObject(eq(expectedPrompt), eq(700), eq(90), eq("BatchConclusions"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(700), eq(90), eq("BatchConclusions"), eq(true)))
 				.thenReturn(blank, filled);
 		when(compressionService.compress(
 				eq(List.of(new ClaudeCompressionField("1_overview", "", 210))), eq("BatchD-Conclusions")))
@@ -1745,7 +1750,7 @@ class RealClaudeClientTest {
 		assertThat(conclusions).hasSize(1);
 		assertThat(conclusions.getFirst().overview()).isEqualTo("Display beat its CTR benchmark twelvefold.");
 		verify(messagesClient, times(2))
-				.callJsonObject(eq(expectedPrompt), eq(700), eq(90), eq("BatchConclusions"), eq(true));
+				.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(expectedPrompt)), eq(700), eq(90), eq("BatchConclusions"), eq(true));
 	}
 
 	@Test
@@ -1759,7 +1764,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(), props);
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()), props);
 
 		Map<Integer, Tactic> tactics = new LinkedHashMap<>();
 		for (int n = 1; n <= 4; n++) {
@@ -1780,7 +1785,7 @@ class RealClaudeClientTest {
 		String secondPrompt = promptBuilder.buildTacticConclusionsPrompt(
 				data, tacticNums.subList(2, 4), brief).orElseThrow();
 		CountDownLatch bothInFlight = new CountDownLatch(2);
-		when(messagesClient.callJsonObject(eq(firstPrompt), eq(1000), eq(90), eq("BatchConclusions"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(firstPrompt)), eq(1000), eq(90), eq("BatchConclusions"), eq(true)))
 				.thenAnswer(invocation -> {
 					bothInFlight.countDown();
 					assertThat(bothInFlight.await(5, TimeUnit.SECONDS)).isTrue();
@@ -1789,7 +1794,7 @@ class RealClaudeClientTest {
 							 "tactic_2": {"overview": "Tactic 2 overview."}}
 							""");
 				});
-		when(messagesClient.callJsonObject(eq(secondPrompt), eq(1000), eq(90), eq("BatchConclusions"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(secondPrompt)), eq(1000), eq(90), eq("BatchConclusions"), eq(true)))
 				.thenAnswer(invocation -> {
 					bothInFlight.countDown();
 					assertThat(bothInFlight.await(5, TimeUnit.SECONDS)).isTrue();
@@ -1828,7 +1833,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		TacticPacingInput input = new TacticPacingInput(1, "CTV", "VCR", List.of(
 				new TacticPacingMetric("Impressions", "1,575,000", "1,602,341", "102%", "6,300,000", "6,409,364")));
@@ -1839,7 +1844,7 @@ class RealClaudeClientTest {
 				 "next_month": "Hold CTV weight to reach the 40% goal."}
 				""");
 		when(messagesClient.callJsonObject(
-				eq(promptBuilder.buildTacticPacingPrompt(input, "brief", 230, 140).orElseThrow()),
+				eq(new NarrativeGrounding(new AnthropicProperties()).withRules(promptBuilder.buildTacticPacingPrompt(input, "brief", 230, 140).orElseThrow())),
 				eq(900), eq(90), eq("TacticPacingNarrative"), eq(true)))
 				.thenReturn(response);
 		when(compressionService.compress(org.mockito.ArgumentMatchers.anyList(), eq("TacticPacingNarrative")))
@@ -1872,7 +1877,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		TacticPacingInput input = new TacticPacingInput(1, "CTV", "VCR", List.of(
 				new TacticPacingMetric("Impressions", "1,575,000", "1,602,341", "102%", "6,300,000", "6,409,364")),
@@ -1886,7 +1891,7 @@ class RealClaudeClientTest {
 				 "next_month": "Hold CTV weight to reach the 40%% goal."}
 				""".formatted(longTakeaway));
 		when(messagesClient.callJsonObject(
-				eq(promptBuilder.buildTacticPacingPrompt(input, "brief", 90, 65).orElseThrow()),
+				eq(new NarrativeGrounding(new AnthropicProperties()).withRules(promptBuilder.buildTacticPacingPrompt(input, "brief", 90, 65).orElseThrow())),
 				eq(900), eq(90), eq("TacticPacingNarrative"), eq(true)))
 				.thenReturn(response);
 		when(compressionService.compress(org.mockito.ArgumentMatchers.anyList(), eq("TacticPacingNarrative")))
@@ -1916,7 +1921,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		TacticPacingInput input = new TacticPacingInput(3, "Meta", null, List.of(
 				new TacticPacingMetric("Spend", "$8,000", "$7,200", "90%", "$32,000", "$28,800")));
@@ -1937,7 +1942,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		MpoNarrativeInput input = new MpoNarrativeInput(
 				List.of("Client: Azure Cove"), List.of("Tactic 1 — CTV: impressions 1.06M"),
@@ -1953,7 +1958,7 @@ class RealClaudeClientTest {
 				 "results_overviews": ["Six channels delivered 4.47M impressions.", "", "", ""]}
 				""");
 		when(messagesClient.callJsonObject(
-				eq(promptBuilder.buildMpoNarrativePrompt(input, "brief").orElseThrow()),
+				eq(new NarrativeGrounding(new AnthropicProperties()).withRules(promptBuilder.buildMpoNarrativePrompt(input, "brief").orElseThrow())),
 				eq(1600), eq(90), eq("MpoNarrative"), eq(true)))
 				.thenReturn(response);
 		when(compressionService.compress(org.mockito.ArgumentMatchers.anyList(), eq("MpoNarrative")))
@@ -1992,11 +1997,11 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		MpoNarrativeInput input = new MpoNarrativeInput(List.of("Client: Azure Cove"), List.of(), List.of());
 		when(messagesClient.callJsonObject(
-				eq(promptBuilder.buildMpoNarrativePrompt(input, "brief").orElseThrow()),
+				eq(new NarrativeGrounding(new AnthropicProperties()).withRules(promptBuilder.buildMpoNarrativePrompt(input, "brief").orElseThrow())),
 				eq(1600), eq(90), eq("MpoNarrative"), eq(true)))
 				.thenReturn(json.readTree("{\"audience_hhi\": \"\", \"funnel_stages\": []}"));
 
@@ -2013,7 +2018,7 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, promptBuilder, normalizer, compressionService, new ReportClaudeDefaults(),
 				new WorkbookGeoFilter(), new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(),
+				new TacticThoughtsCompleteness(), new NarrativeGrounding(new AnthropicProperties()),
 				new AnthropicProperties());
 		PaidNarrativeInput input = new PaidNarrativeInput("Paid Search (Google Ads)", "the full flight",
 				List.of("TOTAL: impressions 104K, clicks 1.2K, conversions 100, CPA $10.00"),
@@ -2021,7 +2026,7 @@ class RealClaudeClientTest {
 						new PaidCopyField("pmax_take_1_title", 24, "heading of entry 1"),
 						new PaidCopyField("pmax_take_1", 55, "text of entry 1")));
 		String prompt = client.paidNarrativePrompt(input, "brief").orElseThrow();
-		when(messagesClient.callJsonObject(eq(prompt), eq(3000), eq(90), eq("PaidNarrative"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(prompt)), eq(3000), eq(90), eq("PaidNarrative"), eq(true)))
 				.thenReturn(json.readTree("""
 						{"verdict": "Google Ads delivered 1.2K clicks and 100 conversions at a $10.00 CPA.",
 						 "pmax_take_1_title": "Search Volume Leader", "pmax_take_1": ""}
@@ -2057,11 +2062,12 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, new ClaudeBatchPromptBuilder(normalizer, new Fmt()), normalizer, compressionService,
 				new ReportClaudeDefaults(), new WorkbookGeoFilter(), new PromptTokenEstimator(),
-				new ClaudeFailureLogImpl(), new TacticThoughtsCompleteness(), new AnthropicProperties());
+				new ClaudeFailureLogImpl(), new TacticThoughtsCompleteness(),
+				new NarrativeGrounding(new AnthropicProperties()), new AnthropicProperties());
 		PaidNarrativeInput input = new PaidNarrativeInput("Paid Social (Meta)", "the full flight",
 				List.of("TOTAL: conversions 12"), List.of(new PaidCopyField("verdict", 115, "verdict")));
 		String prompt = client.paidNarrativePrompt(input, "brief").orElseThrow();
-		when(messagesClient.callJsonObject(eq(prompt), eq(3000), eq(90),
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(prompt)), eq(3000), eq(90),
 				eq("PaidNarrative"), eq(true)))
 				.thenReturn(json.readTree("{\"verdict\": \"\"}"));
 
@@ -2077,11 +2083,12 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, new ClaudeBatchPromptBuilder(normalizer, new Fmt()), normalizer, compressionService,
 				new ReportClaudeDefaults(), new WorkbookGeoFilter(), new PromptTokenEstimator(),
-				new ClaudeFailureLogImpl(), new TacticThoughtsCompleteness(), new AnthropicProperties());
+				new ClaudeFailureLogImpl(), new TacticThoughtsCompleteness(),
+				new NarrativeGrounding(new AnthropicProperties()), new AnthropicProperties());
 		PaidNarrativeInput input = new PaidNarrativeInput("Paid Social (Meta)", "the full flight",
 				List.of("TOTAL: conversions 90"), List.of(new PaidCopyField("verdict", 115, "verdict")));
 		String prompt = client.paidNarrativePrompt(input, "brief").orElseThrow();
-		when(messagesClient.callJsonObject(eq(prompt), eq(3000), eq(90), eq("PaidNarrative"), eq(true)))
+		when(messagesClient.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(prompt)), eq(3000), eq(90), eq("PaidNarrative"), eq(true)))
 				.thenReturn(null)
 				.thenReturn(json.readTree("{\"verdict\": \"Meta Ads drove 90 conversions.\"}"));
 		when(compressionService.compress(org.mockito.ArgumentMatchers.anyList(), eq("PaidNarrative")))
@@ -2100,7 +2107,7 @@ class RealClaudeClientTest {
 		// Then: the second reply is used, after exactly two calls
 		assertThat(copy).containsOnly(Map.entry("verdict", "Meta Ads drove 90 conversions."));
 		verify(messagesClient, times(2))
-				.callJsonObject(eq(prompt), eq(3000), eq(90), eq("PaidNarrative"), eq(true));
+				.callJsonObject(eq(new NarrativeGrounding(new AnthropicProperties()).withRules(prompt)), eq(3000), eq(90), eq("PaidNarrative"), eq(true));
 	}
 
 	@Test
@@ -2110,7 +2117,8 @@ class RealClaudeClientTest {
 				messagesClient, new ClaudeBatchPromptBuilder(normalizer, new Fmt()), normalizer,
 				compressionService, new ReportClaudeDefaults(), new WorkbookGeoFilter(),
 				new PromptTokenEstimator(), new ClaudeFailureLogImpl(),
-				new TacticThoughtsCompleteness(), new AnthropicProperties());
+				new TacticThoughtsCompleteness(),
+				new NarrativeGrounding(new AnthropicProperties()), new AnthropicProperties());
 
 		assertThat(client.tacticPacing(null, "brief")).isNull();
 		verifyNoInteractions(messagesClient);
@@ -2123,7 +2131,8 @@ class RealClaudeClientTest {
 		RealClaudeClient client = new RealClaudeClient(
 				messagesClient, new EomPromptBuilder(normalizer, new Fmt()), normalizer, compressionService,
 				new ReportClaudeDefaults(), new WorkbookGeoFilter(), new PromptTokenEstimator(),
-				new ClaudeFailureLogImpl(), new TacticThoughtsCompleteness(), new AnthropicProperties());
+				new ClaudeFailureLogImpl(), new TacticThoughtsCompleteness(),
+				new NarrativeGrounding(new AnthropicProperties()), new AnthropicProperties());
 
 		// When:
 		ClaudeClient same = client.withCopyLimits(NarrativeCopyLimits.STANDARD);

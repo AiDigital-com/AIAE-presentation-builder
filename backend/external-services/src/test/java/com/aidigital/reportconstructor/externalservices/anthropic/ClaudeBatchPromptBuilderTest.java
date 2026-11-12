@@ -69,8 +69,10 @@ class ClaudeBatchPromptBuilderTest {
 				"you MUST NOT claim any action was taken");
 		assertThat(prompt).doesNotContain("WE ALREADY MADE", "WE ALREADY DID");
 
-		// Then: the blacklisting claim and the complimentary framing are still asked for
-		assertThat(prompt).contains("WE BLACKLISTED a large number of PUBLISHERS", "complimentary");
+		// Then: no blacklisting or brand-safety claim is demanded without data, and the framing stays complimentary
+		assertThat(prompt).doesNotContain("WE BLACKLISTED a large number of PUBLISHERS");
+		assertThat(prompt).contains("never claim blacklisting, IVT, fraud or brand-safety results unless the "
+				+ "change log or data records them", "complimentary");
 
 		// Then: coverage is a computed figure to cite, not a licence to estimate one
 		assertThat(prompt).contains(

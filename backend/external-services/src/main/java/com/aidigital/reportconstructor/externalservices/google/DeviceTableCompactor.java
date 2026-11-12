@@ -42,6 +42,9 @@ public class DeviceTableCompactor {
 	/** The table's CTR column header, normalized; it also names the note under the table that explains CTR. */
 	private static final String CTR_HEADER = "CTR";
 
+	/** The table's VCR column header, normalized. */
+	private static final String VCR_HEADER = "VCR";
+
 	/** The "no figure" mark the device helper writes into every cell of a device the sheet did not fill. */
 	private static final String DASH = "—";
 
@@ -65,11 +68,14 @@ public class DeviceTableCompactor {
 
 	private final SlideBlockLocator locator;
 
+	private final LooseTableColumnRemover columnRemover;
+
 	/**
 	 * Builds the requests that tidy a filled device slide's table: absent-device rows are removed and the
-	 * rows under them pulled up ({@link #rowRequests}), and a CTR column with no figure in any row is removed
-	 * and the columns right of it pulled left ({@link #ctrColumnRequests}). The two plans are merged so an
-	 * element both would touch is deleted once and never moved after it is gone.
+	 * rows under them pulled up ({@link #rowRequests}), and a CTR or VCR column with no figure in any row is
+	 * removed and the columns right of it pulled left ({@link #ctrColumnRequests}, {@link #vcrColumnRequests}).
+	 * The plans are merged so an element several would touch is deleted once and never moved after it is gone;
+	 * the moves are relative, so a cell shifted by both a row and a column removal ends up shifted by both.
 	 *
 	 * @param slide the filled device breakdown slide (needs element ids, sizes, transforms, shape text)
 	 * @return the deletes followed by the moves; empty when the table needs no change or is not recognized
@@ -77,7 +83,7 @@ public class DeviceTableCompactor {
 	List<Request> compactRequests(Page slide) {
 		Set<String> deleted = new LinkedHashSet<>();
 		List<Request> moves = new ArrayList<>();
-		for (List<Request> plan : List.of(rowRequests(slide), ctrColumnRequests(slide))) {
+		for (List<Request> plan : List.of(rowRequests(slide), ctrColumnRequests(slide), vcrColumnRequests(slide))) {
 			for (Request request : plan) {
 				if (request.getDeleteObject() != null) {
 					deleted.add(request.getDeleteObject().getObjectId());
@@ -100,82 +106,73 @@ public class DeviceTableCompactor {
 	 * Builds the requests that remove the table's CTR column when no device row carries a CTR figure (every
 	 * CTR cell is a dash): the {@code CTR} header with the pill behind it, every CTR cell, and the note under
 	 * the table that explains CTR ("CTR not applicable to Connected TV"). The columns right of it (VCR, SPEND)
-	 * move left by one column pitch so the table closes up.
+	 * move left by one column pitch so the table closes up (see {@link LooseTableColumnRemover}).
 	 *
 	 * @param slide the filled device breakdown slide
 	 * @return the delete and move requests, or an empty list when some row has a CTR figure or the table and
 	 *         its CTR column cannot be recognized
 	 */
 	List<Request> ctrColumnRequests(Page slide) {
-		if (slide == null || slide.getPageElements() == null) {
-			return List.of();
+		List<Request> requests = columnRequests(slide, CTR_HEADER);
+		if (requests.isEmpty()) {
+			return requests;
 		}
-		List<PageElement> elements = slide.getPageElements();
 		PageElement deviceHeader = locator.findHeading(slide, List.of(DEVICE_HEADER));
-		PageElement ctrHeader = locator.findHeading(slide, List.of(CTR_HEADER));
-		ElementBounds deviceBounds = deviceHeader == null ? null : locator.boundsOf(deviceHeader);
-		ElementBounds ctrBounds = ctrHeader == null ? null : locator.boundsOf(ctrHeader);
-		if (deviceBounds == null || ctrBounds == null) {
-			return List.of();
-		}
-		List<PageElement> separators = separators(elements, deviceBounds);
-		if (separators.size() < 2) {
-			return List.of();
-		}
+		ElementBounds deviceBounds = locator.boundsOf(deviceHeader);
+		List<PageElement> separators = separators(slide.getPageElements(), deviceBounds);
 		double tableBottom = top(separators.getLast());
-		double centerX = (ctrBounds.left() + ctrBounds.right()) / 2;
-		double centerY = (ctrBounds.top() + ctrBounds.bottom()) / 2;
-		Set<String> deleted = new LinkedHashSet<>();
-		double columnLeft = Double.MAX_VALUE;
-		double columnRight = -Double.MAX_VALUE;
-		for (PageElement element : elements) {
-			ElementBounds bounds = locator.boundsOf(element);
-			String text = locator.textOf(element).trim();
-			if (element.getObjectId() == null || bounds == null || text.isEmpty()
-					|| bounds.top() <= ctrBounds.bottom() || bounds.top() >= tableBottom
-					|| bounds.left() > centerX || bounds.right() < centerX) {
-				continue;
-			}
-			if (!DASH.equals(text)) {
-				return List.of();
-			}
-			deleted.add(element.getObjectId());
-			columnLeft = Math.min(columnLeft, bounds.left());
-			columnRight = Math.max(columnRight, bounds.right());
-		}
-		if (deleted.isEmpty()) {
-			return List.of();
-		}
-		deleted.add(ctrHeader.getObjectId());
 		double reach = tableBottom + minRowHeight(separators);
-		double pitch = Double.MAX_VALUE;
-		List<PageElement> rightOfColumn = new ArrayList<>();
-		for (PageElement element : elements) {
+		for (PageElement element : slide.getPageElements()) {
 			ElementBounds bounds = locator.boundsOf(element);
-			if (element.getObjectId() == null || bounds == null || deleted.contains(element.getObjectId())) {
-				continue;
-			}
-			boolean blank = locator.textOf(element).isBlank();
-			if (blank && bounds.left() <= centerX && bounds.right() >= centerX && bounds.top() <= centerY
-					&& bounds.bottom() >= centerY && bounds.bottom() - bounds.top() > SEPARATOR_MAX_HEIGHT_EMU) {
-				deleted.add(element.getObjectId());
-			} else if (!blank && bounds.top() > tableBottom && bounds.top() < reach && inColumn(element, deviceBounds)
+			if (element.getObjectId() != null && bounds != null && !locator.textOf(element).isBlank()
+					&& bounds.top() > tableBottom && bounds.top() < reach && inColumn(element, deviceBounds)
 					&& locator.normalizeLabel(locator.textOf(element)).contains(CTR_HEADER)) {
-				deleted.add(element.getObjectId());
-			} else if (bounds.left() >= columnRight - COLUMN_TOLERANCE_EMU
-					&& bounds.top() >= ctrBounds.top() - COLUMN_TOLERANCE_EMU && bounds.top() < tableBottom) {
-				rightOfColumn.add(element);
-				pitch = Math.min(pitch, bounds.left() - columnLeft);
-			}
-		}
-		List<Request> requests = new ArrayList<>();
-		deleted.forEach(id -> requests.add(new Request().setDeleteObject(new DeleteObjectRequest().setObjectId(id))));
-		if (pitch != Double.MAX_VALUE) {
-			for (PageElement element : rightOfColumn) {
-				requests.add(moveBy(element.getObjectId(), -pitch, 0));
+				requests.add(0, new Request().setDeleteObject(
+						new DeleteObjectRequest().setObjectId(element.getObjectId())));
 			}
 		}
 		return requests;
+	}
+
+	/**
+	 * Builds the requests that remove the table's VCR column when no device row carries a VCR figure (a
+	 * display tactic): the {@code VCR} header, every VCR cell, and a pull-left of the SPEND column.
+	 *
+	 * @param slide the filled device breakdown slide
+	 * @return the delete and move requests, or an empty list when some row has a VCR figure or the table and
+	 *         its VCR column cannot be recognized
+	 */
+	List<Request> vcrColumnRequests(Page slide) {
+		return columnRequests(slide, VCR_HEADER);
+	}
+
+	/**
+	 * Locates the device table (its {@code DEVICE} header and separators) and asks the column remover to drop
+	 * one metric column when it holds no figure.
+	 *
+	 * @param slide       the filled device breakdown slide
+	 * @param columnLabel the normalized header of the column to check
+	 * @return the remover's delete and move requests, or an empty list when the table is not recognized
+	 */
+	List<Request> columnRequests(Page slide, String columnLabel) {
+		if (slide == null || slide.getPageElements() == null) {
+			return new ArrayList<>();
+		}
+		PageElement deviceHeader = locator.findHeading(slide, List.of(DEVICE_HEADER));
+		ElementBounds deviceBounds = deviceHeader == null ? null : locator.boundsOf(deviceHeader);
+		if (deviceBounds == null) {
+			return new ArrayList<>();
+		}
+		List<PageElement> separators = separators(slide.getPageElements(), deviceBounds);
+		if (separators.size() < 2) {
+			return new ArrayList<>();
+		}
+		double tableRight = -Double.MAX_VALUE;
+		for (PageElement separator : separators) {
+			tableRight = Math.max(tableRight, locator.boundsOf(separator).right());
+		}
+		return columnRemover.columnRequests(slide, deviceHeader, columnLabel, top(separators.getLast()),
+				tableRight + COLUMN_TOLERANCE_EMU);
 	}
 
 	/**
