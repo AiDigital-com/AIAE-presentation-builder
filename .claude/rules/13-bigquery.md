@@ -7,7 +7,7 @@ paths:
 
 # BigQuery Rules
 
-- Presentation Builder has no BigQuery SDK code today (delivery data arrives through exported Google Sheets); these rules apply if BigQuery access is added.
+- This file is the authoritative BigQuery rule set. Read it in full before adding or changing any BigQuery-backed feature.
 - Google BigQuery SDK code belongs only in `backend/external-services`.
 - Service code owns the whitelisted SQL builder because it maps business fields, filters, visibility, sorting, and paging.
 - Use a top-level `BqRequest` record plus top-level `BqRequestBuilder` or feature-specific builder. Do not use nested production builders.

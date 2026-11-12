@@ -8,7 +8,7 @@ import { fileURLToPath, URL } from "node:url";
 //  - Build → ../backend/application/src/main/resources/static (Spring serves SPA).
 //  - allowedHosts must include `.replit.dev`/`.repl.co`/`.kirk.replit.dev`
 //    (Vite 5+ blocks unknown Host headers).
-// See `templates/generated-project/frontend/canonical-react-frontend-rules.md`
+// See `.claude/agent_docs/frontend/canonical-react-frontend-rules.md`
 // → "Bootstrap rule" + backend SKILL "Port architecture lock".
 
 export default defineConfig(({ mode }) => {

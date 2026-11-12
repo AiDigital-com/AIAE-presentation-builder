@@ -1,0 +1,34 @@
+# Line endings for the AIAE-managed agent surface and shell scripts.
+#
+# `.claude/.aiae-fixtures-manifest` records a SHA-256 for every file the AIAE
+# installer (`install-claude-fixtures.sh` in AIAE-replit-llm-aux) owns. The
+# installer refuses to upgrade when any of those files differs byte-for-byte,
+# so a Windows checkout with `core.autocrlf=true` rewriting their line endings
+# would block the next template upgrade. The standard itself is mixed (most files
+# LF, a few CRLF), so no single eol policy matches the manifest: `-text` stores
+# and restores the installer's bytes exactly. Do not "tidy" this into eol=lf.
+#
+# Shell scripts are pinned to LF because CRLF breaks them on Linux/Replit
+# ("bad interpreter").
+#
+# Everything else keeps the repository's existing behaviour (no global rule).
+
+.claude/agent_docs/** -text
+.claude/rules/** -text
+.claude/skills/** -text
+.claude/tasks/README.md -text
+.claude/.aiae-fixtures-manifest -text
+.agents/** -text
+CLAUDE.md -text
+AGENTS.md text eol=lf
+replit.md text eol=lf
+AI-DEVELOPMENT-GUIDE.md -text
+GDS-WORKFLOW-README.md -text
+agent-payload.skills -text
+llm-aux.lock text eol=lf
+.template-version text eol=lf
+.template-phase text eol=lf
+
+*.sh text eol=lf
+scripts/lib/*.py text eol=lf
+.husky/* text eol=lf

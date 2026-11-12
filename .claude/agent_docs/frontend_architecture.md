@@ -1,5 +1,11 @@
 # Frontend Architecture
 
+`frontend/src/app/AppRoot.tsx` owns React Router and must mount
+`BrowserRouter`. `main.tsx` only mounts `AppRoot`. Browser history URLs are the
+public contract, so both Spring (`SpaFallbackController`) and nginx
+(`try_files ... /index.html`) must serve the SPA entry point for deep links.
+`HashRouter` and manual `window.history` routing are not supported.
+
 ## Stack
 
 - React + TypeScript.

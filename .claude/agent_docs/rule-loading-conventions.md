@@ -6,9 +6,10 @@ and topic*. The two are independent — read both.
 
 ## Always-on vs path-scoped
 
-- **Always-on (hard rules).** Frontmatter has only `description:` and **no
-  `paths:`**. The body is in context for every task. There is one such file:
-  `00-backend-hard-rules.md` — non-negotiable backend invariants.
+- **Always-on rules.** Frontmatter has only `description:` and **no `paths:`**.
+  The body is in context for every task. `00-backend-hard-rules.md` contains
+  non-negotiable backend invariants; `60-documentation-sources.md` contains the
+  external-documentation and credential-safety policy.
 - **Path-scoped (topic rules).** Frontmatter has a `paths:` glob list. The body
   loads only when a file matching those globs is touched. All other files are
   path-scoped.
@@ -24,19 +25,23 @@ suffix is just a readable label for the always-on file.
 | `00-` | Always-on backend invariants | always on |
 | `10-39` | Backend and cross-layer topic rules | backend/frontend/deployment paths as declared |
 | `40-59` | Frontend topic rules | `frontend/**` paths |
+| `60-69` | External documentation/tooling policy | always on |
+| `70-79` | Delivery workflow and version control | product source and docs paths |
 
 Current files:
 
 - `00-backend-hard-rules.md` — always-on backend invariants
 - `10-architecture.md` — backend architecture / service boundaries
 - `12-database.md` — persistence, JPA, Liquibase, caching
-- `13-bigquery.md` — BigQuery query construction (dormant: no BigQuery code yet)
 - `14-performance.md` — request/query/load amplification, transactions,
   frontend fetching, integrations, payloads, and measurement
 - `20-tests.md` — backend test style
 - `30-web-openapi.md` — controllers and OpenAPI contract
 - `40-frontend-rules.md` — frontend architecture, API, auth, styling
 - `50-frontend-tests.md` — frontend test style
+- `60-documentation-sources.md` — Context7/official-doc fallback and secret handling
+- `70-version-control.md` — user-approved checkpoint commit offers during
+  migration, from-scratch, and multi-phase work
 
 ## Conventions when adding a rule file
 

@@ -5,7 +5,7 @@ description: Always-on backend engineering rules.
 # Backend Hard Rules
 
 - Backend stack is fixed: Java 21, Spring Boot 3.x, Maven multi-module, PostgreSQL, Liquibase.
-- Every new Liquibase `changeSet` must include direct `preConditions`; never rewrite already-applied changelogs to add them.
+- Every Liquibase `changeSet` must include direct `preConditions`; publish gates reject changelogs without them.
 - Discover and preserve one production package root. Do not introduce
   `com.example`, `org.example`, `io.replit`, or another parallel package root.
 - Backend controllers implement generated OpenAPI interfaces and stay thin.
@@ -19,7 +19,8 @@ description: Always-on backend engineering rules.
 - Reusable outbound metrics live in `backend/observability`, which owns
   `ExternalClientMetricsInterceptor` and `ExternalCallTimer`. Logbook
   configuration, inbound correlation, structured logging, Actuator, and
-  Prometheus remain application-owned.- Use `@ConfigurationProperties` for backend configuration; do not use `@Value`.
+  Prometheus remain application-owned.
+- Use `@ConfigurationProperties` for backend configuration; do not use `@Value`.
 - Do not introduce static methods on backend services or Spring beans.
 - Lombok is mandatory in every backend Maven submodule: every child
   `pom.xml`, including resource-only and optional modules, declares the managed

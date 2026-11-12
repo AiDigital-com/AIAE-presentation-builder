@@ -17,4 +17,4 @@ Rules:
 - Pages in `src/pages/` compose features; they stay thin.
 - All API calls go through `shared/api/client.ts`.
 - Use `LoadingBlock`, `ErrorAlert`, `EmptyState` for async states.
-- BEM class names — see `templates/generated-project/frontend/bem-naming-rules.md`.
+- BEM class names — see `.claude/agent_docs/frontend/bem-naming-rules.md`.

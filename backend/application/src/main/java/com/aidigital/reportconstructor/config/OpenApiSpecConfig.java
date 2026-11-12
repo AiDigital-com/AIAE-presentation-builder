@@ -3,7 +3,7 @@
 // `src/main/resources/static/` (Vite `emptyOutDir: true` would wipe it).
 // Spec lives at `src/main/resources/api/v1/specs/openapi.yaml`; this
 // WebMvcConfigurer maps the public URL → classpath. See
-// `templates/generated-project/openapi/canonical-openapi-rules.md` → "Spec file".
+// `.claude/agent_docs/openapi/canonical-openapi-rules.md` → "Spec file".
 
 package com.aidigital.reportconstructor.config;
 

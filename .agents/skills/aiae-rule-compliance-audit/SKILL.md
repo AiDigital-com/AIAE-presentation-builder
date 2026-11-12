@@ -1,6 +1,6 @@
 ---
-name: rule-compliance-audit
-description: Audit an entire repository or requested area against installed CLAUDE.md, .claude/rules, and agent docs. Use for periodic health checks, migration validation, pre-handoff compliance, or when asked whether a project follows the complete engineering contract.
+name: aiae-rule-compliance-audit
+description: AIAE-specific whole-repository audit against the installed dual-agent engineering contract. Use when a generated AIAE project needs a periodic health check, migration validation, or pre-handoff compliance review.
 ---
 
 # Rule Compliance Audit
@@ -9,11 +9,27 @@ Run a read-only, whole-contract audit. This is broader than code review: it
 checks architecture, generated boundaries, configuration, tests, frontend
 behavior, documentation, and rule distribution.
 
+## Authoritative source discovery
+
+Load and record every authoritative source that exists:
+
+1. `CLAUDE.md`;
+2. `AGENTS.md` when the active Replit surface is present;
+3. `replit.md` when the active Replit surface is present;
+4. every applicable file under `.claude/rules/`;
+5. `.claude/agent_docs/index.md` and the topic documents it routes to.
+
+The engineering-handoff state intentionally removes `AGENTS.md`, `replit.md`,
+and `.agents/`; their absence after a completed handoff is not a violation.
+Before handoff, a missing or contradictory runtime entry point is a
+`RULE_DISTRIBUTION_PROBLEM`.
+
+If neither `CLAUDE.md` nor `AGENTS.md` exists, stop with `STATUS: INCOMPLETE`.
+Never substitute remembered template rules for missing repository evidence.
+
 ## Procedure
 
-1. Read `CLAUDE.md`, `.claude/agent_docs/index.md`, `.claude/agent_docs/project_facts.md`, and every
-   applicable rule. Report items listed under "Known gaps" in `project_facts.md` as known, tracked gaps
-   rather than new findings, unless the gap has grown.
+1. Report the exact rule sources loaded and expected sources that were absent.
 2. Record the audit scope, current branch/diff state, discovered package root,
    modules, build tools, and test layers. Never substitute template assumptions
    for repository facts.
@@ -48,6 +64,12 @@ behavior, documentation, and rule distribution.
 - `ACCEPTED_EXCEPTION`: explicit, documented project decision with evidence.
 - `NOT_VERIFIED`: required runtime/tool/credential unavailable.
 - `COMPLIANT`: inspected evidence satisfies the rule.
+- `ARCHITECTURE_CONCERN`: evidence-backed risk not covered by a loaded rule;
+  report separately and never label it as non-compliance.
+- `RULE_DISTRIBUTION_PROBLEM`: a rule exists but is missing from one runtime,
+  unreachable from its entry point, or conflicts with another loaded source.
+- `MISSING_RULE_COVERAGE`: an important area has no applicable rule; recommend
+  coverage without inventing a violation.
 
 Report only high-confidence violations. Separate pre-existing debt from changes
 in the requested scope. Do not turn every recommendation into a compliance
@@ -58,14 +80,24 @@ failure.
 ```text
 STATUS: COMPLIANT | VIOLATIONS_FOUND | INCOMPLETE
 Scope: <whole repo or areas>
+Rule sources loaded:
+- <path> — <CLAUDE | AGENTS | Replit context | rule | agent doc>
 Evidence: <commands/files>
 Counts: blocking=<n>, important=<n>, minor=<n>, not_verified=<n>
 Findings:
 - [severity, confidence] rule-source - file:line - violation - impact - fix
 Accepted exceptions:
 - <decision and evidence>
+Architecture concerns (not rule violations):
+- <concern and recommendation>
+Rule distribution problems:
+- <problem and fix>
+Missing rule coverage:
+- <gap and suggested rule>
 Not verified:
 - <gap and what is required>
 ```
 
-`COMPLIANT` is allowed only when all applicable blocking rules have evidence.
+`COMPLIANT` is allowed only when all applicable blocking rules have evidence,
+the loaded-source list is present, and no unresolved rule-distribution problem
+can hide an applicable rule.

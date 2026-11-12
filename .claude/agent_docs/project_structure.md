@@ -33,14 +33,11 @@ root.
 
 ### `backend/observability`
 
-Package `com.aidigital.reportconstructor.observability.external`; built after `migrations` and
-attached to `external-services` and `application`.
-
 - Reusable, attachable outbound-client metrics only:
   `ExternalClientMetricsInterceptor`, `ExternalCallTimer`, and their shared
   low-cardinality metric schema.
 - No product/domain behavior and no dependency on application, service,
-  domain, db, or external-services.
+  domain, migrations, or external-services.
 - Product usage analytics is a separate persistence-backed feature module.
 
 ### `backend/external-services`

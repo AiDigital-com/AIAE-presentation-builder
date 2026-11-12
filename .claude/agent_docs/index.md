@@ -9,13 +9,20 @@ from the current checkout before applying examples.
 
 - `CLAUDE.md` is the repository entrypoint and should stay short.
 - `.claude/agent_docs/` contains detailed repository context and engineering conventions.
-- `.claude/rules/` contains concise always-on or path-scoped rules that Claude should load automatically. See `.claude/rules/README.md` for the naming/loading convention (always-on hard rules vs path-scoped topic rules).
-- `.claude/skills/` contains reusable workflows and review gates: `task-workflow` (multi-role execution), `backend-rule-review`, `frontend-style-review`, `rule-compliance-audit` (whole-repo audit against the rule set), `ui-designer` (visual-polish pass within the Elevate design system), `production-code-review` (verified production-readiness review of changes or commits), and `verification-gate` (fresh evidence before completion claims).
+- `.claude/rules/` contains concise always-on or path-scoped rules that Claude should load automatically. See `.claude/agent_docs/rule-loading-conventions.md` for the naming/loading convention (always-on hard rules vs path-scoped topic rules).
+- `.claude/skills/` contains reusable workflows and review gates: `task-workflow` (multi-role execution), `backend-rule-review`, `frontend-style-review`, `aiae-rule-compliance-audit` (whole-repo audit against the installed AIAE contract), `ui-designer` (visual-polish pass within the Elevate design system), and `local-preview` (fixtures plus a verified running demo).
 - `.claude/tasks/` stores plan, summary, review, and test artifacts for individual tasks.
 
 ## What to Read
 
-- Read `project_facts.md` first: the verified facts of this repository (package root, modules, ports, navigation shell, tokens, integrations) and the known gaps between it and the shared rules.
+- Read `agent-operating-model.md` before delegating work, selecting model roles,
+  asking the user for input, starting a local preview, or running final review.
+- When `docs/architecture-overview.md` exists at the repository root, read it
+  before cross-cutting product work. In a materialized project it is the
+  canonical record of the implemented system context, runtime flows, module
+  boundaries, data ownership, caching, integrations, deployment, and
+  operational constraints. Update it when those facts change; do not copy its
+  product-specific content into this reusable rule tree.
 - Read `project_structure.md` when locating modules, packages, generated code, frontend features, shared frontend utilities, or deciding where new classes/components belong.
 - Read `project_shape_decision.md` before deciding frontend-only vs full-stack work.
 - Read `building_the_project.md` before compiling, packaging, running Vite, or choosing Maven/npm commands.
@@ -27,10 +34,18 @@ from the current checkout before applying examples.
 - Read `performance_engineering.md` before changing request flows, transaction
   boundaries, queries, pagination, integrations, caching, pools, file transfer,
   frontend fetching, or bundle/loading behavior.
+- Read `distributed_cache.md` before adding Hibernate L2/query caching,
+  Spring caching, cache warm-up, or mutations of cached data.
+- Read `context7.md` before using external library/framework documentation or
+  configuring the project-level Context7 MCP.
 - Read `frontend_architecture.md` before changing React components, frontend API access, auth flow, routing, feature layout, or Vite configuration.
 - Read `frontend_style.md` before changing CSS, visual layout, component classes, or UI structure.
 - Read `frontend_testing.md` before adding or changing frontend unit/component/API tests.
 - Read `skill-selection.md` before choosing GSD, `task-workflow`, or a focused review/design/verification skill.
+- Read `version-control-checkpoints.md` before a migration, a from-scratch
+  service, or any multi-phase work: offer the user a commit at every completed
+  checkpoint, not only at phase boundaries, so in-progress work survives context
+  limits and rollbacks. The user approves every commit and push.
 
 ## Embedded Enterprise Rules
 

@@ -13,27 +13,26 @@ full `task-workflow` inside a GSD phase.
 | Debugging an unclear failure | GSD `debug`/`systematic` flow; use specialized review after the fix |
 | Read-only backend review | `backend-rule-review` |
 | Read-only frontend/UI review | `frontend-style-review` |
-| Whole-repository compliance/handoff | `rule-compliance-audit` |
+| Whole-repository compliance/handoff | `aiae-rule-compliance-audit` |
 | UI creation, parity, or visual polish | `ui-designer`, then `frontend-style-review` |
+| User asks to see, run, preview, or demo the product | `local-preview` |
 | Final evidence outside GSD | `verification-gate` |
 
 ## Installed project skills
 
-GSD is **not** installed in Presentation Builder; use `task-workflow` and the focused skills below,
-and install GSD only when explicitly asked.
-
-- `production-code-review`: verified production-readiness review of local changes, the latest
-  branch commit, or supplied commits.
 - `task-workflow`: sequential analyst -> developer -> reviewer -> tester loop for
   one bounded task. Produces artifacts under `.claude/tasks/<task>/`.
 - `backend-rule-review`: high-confidence Java/Spring correctness and compliance
   review against architecture, OpenAPI, persistence, typing, and test rules.
 - `frontend-style-review`: frontend behavior, visual, accessibility, network, and
   rule-compliance review.
-- `rule-compliance-audit`: evidence matrix across the full installed engineering
+- `aiae-rule-compliance-audit`: evidence matrix across the full installed engineering
   contract; use before migration handoff or periodic health checks.
 - `ui-designer`: implementation workflow with explicit `PARITY`, `IMPROVE`, and
   `NEW` modes.
+- `local-preview`: prepares safe local-only fixtures when needed, starts the
+  supported local stack, verifies it, and returns a business-friendly URL and
+  credential instructions.
 - `verification-gate`: fresh claim-to-evidence validation before completion.
 
 ## GSD usage
@@ -73,3 +72,9 @@ Within GSD, use specialized skills as focused gates when their domain applies.
 GSD remains responsible for lifecycle/state; the skill remains responsible for
 domain depth. Outside GSD, always finish implementation work with
 `verification-gate`.
+
+In migration, from-scratch, or multi-phase work, offer the user a commit at every
+completed checkpoint inside a phase or workflow step, not only when the phase
+ends — a context limit inside one long phase is the usual way work is lost. The
+user still approves every commit and every push. See
+`.claude/agent_docs/version-control-checkpoints.md`.

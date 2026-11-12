@@ -47,6 +47,8 @@ paths:
   invalidation with bounded staleness, idempotent/coordinated scheduled jobs, and
   stampede protection. Redis is absent; keep boundaries replaceable but do not
   add Redis without measured need and explicit approval.
+- Cache invalidation uses the shared DB outbox and monotonic event-ID protocol
+  in `.claude/agent_docs/distributed_cache.md`; timestamp polling is forbidden.
 - Pre-production API contracts may be changed directly when OpenAPI, generated
   types, backend, frontend, and tests move together; do not retain an inefficient
   legacy variant unless explicitly requested.
