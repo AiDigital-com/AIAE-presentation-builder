@@ -4,7 +4,9 @@ import com.aidigital.reportconstructor.api.v1.model.AdminActiveUsersPeriodV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminFailedJobV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminSavingsV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminRangeV1;
+import com.aidigital.reportconstructor.api.v1.model.AdminSeriesUnitV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminStatsV1;
+import com.aidigital.reportconstructor.api.v1.model.AdminTrendUnitV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminTokenPeriodV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminTokenLabelV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminTokenTotalsV1;
@@ -130,8 +132,8 @@ public interface AdminStatsApiMapper {
 	 * @param code the wire code, or {@code null}
 	 * @return the matching enum constant, or {@code null}
 	 */
-	default AdminStatsV1.SeriesUnitEnum toSeriesUnit(String code) {
-		return code == null ? null : AdminStatsV1.SeriesUnitEnum.fromValue(code);
+	default AdminSeriesUnitV1 toSeriesUnit(String code) {
+		return code == null ? null : AdminSeriesUnitV1.fromValue(code);
 	}
 
 	/**
@@ -140,7 +142,7 @@ public interface AdminStatsApiMapper {
 	 * @param code the wire code, or {@code null}
 	 * @return the matching enum constant, or {@code null}
 	 */
-	default AdminRangeV1.SuggestedUnitEnum toSuggestedUnit(String code) {
-		return code == null ? null : AdminRangeV1.SuggestedUnitEnum.fromValue(code);
+	default AdminTrendUnitV1 toSuggestedUnit(String code) {
+		return code == null ? null : AdminTrendUnitV1.fromValue(code);
 	}
 }

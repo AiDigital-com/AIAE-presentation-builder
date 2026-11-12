@@ -2,6 +2,34 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — P10 API validation (branch `PDI_240`)
+
+- **Contract hygiene** (no runtime change): 46 component object schemas closed with
+  `additionalProperties: false`; 4 inline enums replaced by named schemas (`AdminReportSortV1`,
+  `SortDirectionV1`, `AdminSeriesUnitV1`, `AdminTrendUnitV1` — the admin reports `sort`/`dir`
+  query params are now typed enums, defaults unchanged because the resolver already defaults null);
+  132 missing descriptions added (request bodies, schemas, properties).
+- **Input constraints** (behaviour change — oversized input now 400): every sheet grid
+  (`Rows2DV1`, `bqRows`, `planRows`) ≤ 200,000 rows, ≤ 702 cells/row (A..ZZ), ≤ 50,000 chars/cell;
+  paid export ≤ 100 tabs; sheet URLs ≤ 2,048 (required ones ≥ 1); `tab` 1–100; `brief` ≤ 100,000;
+  `changeLog` ≤ 20,000; `marketVolume` ≤ 100; `bqSheetId` ≤ 200; admin email `format: email`,
+  ≤ 320 (also the `removeAdmin` path param). Verified in the generated models (`@Size`, `@Email`).
+  The per-row cell bound is not emitted by the generator; the row and cell bounds are.
+- `GlobalExceptionHandler` now answers 400 (C002), not 500, for `HttpMessageNotReadableException`
+  (malformed JSON, unknown enum), `MethodArgumentTypeMismatchException` (e.g. `/report-jobs/abc`),
+  `MissingServletRequestParameterException` and `HandlerMethodValidationException`
+  (`@Min`/`@Max`/`@Size` on parameters).
+- `ApiRequestValidationTest`: one `@WebMvcTest` slice over the six API controllers, 16 negative
+  tests (one per constrained operation, two for the admin reports query) asserting 400 + `C002`.
+- **Finding:** required array properties are not enforced — the generated models initialise them
+  to an empty list, so a missing `planRows`/`adjRows` arrives as `[]` and passes `@NotNull`. Left as
+  is; services already treat an empty grid as "no data".
+- **Finding:** the spec says sheets are read `A1:Z`, the adapter reads `A1:ZZ`; limits follow the code.
+- Gates: strict-schemas, documentation, enums, input-constraints, api-validation-tests FAIL → PASS.
+  **5 of 21 failing.**
+- `mvn verify`: BUILD SUCCESS, 1,203 tests (+16), 0 failures. Frontend: types regenerated,
+  `typecheck`, `lint`, 136 tests and `build` pass.
+
 ## 2026-11-12 — Mapper package layout (P11 slice, branch `PDI_240`)
 
 - Application API mappers moved to `mappers/<aggregate>/` (`admin`, `auth`, `reports`, `version`);

@@ -7,6 +7,8 @@ import com.aidigital.reportconstructor.api.v1.AdminApi;
 import com.aidigital.reportconstructor.api.v1.model.AddAdminRequestV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminListV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminReportPageV1;
+import com.aidigital.reportconstructor.api.v1.model.AdminReportSortV1;
+import com.aidigital.reportconstructor.api.v1.model.SortDirectionV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminStatsV1;
 import com.aidigital.reportconstructor.security.AppUserFactory;
 import com.aidigital.reportconstructor.service.admin.services.AdminFailuresService;
@@ -58,9 +60,10 @@ public class AdminController implements AdminApi {
 
 	@Override
 	public ResponseEntity<AdminReportPageV1> listAllReports(
-			Integer page, Integer size, String sort, String dir) {
-		return ResponseEntity.ok(reportsPageMapper.toReportPage(
-				adminReports.allReports(caller().email(), page, size, sort, dir)));
+			Integer page, Integer size, AdminReportSortV1 sort, SortDirectionV1 dir) {
+		return ResponseEntity.ok(reportsPageMapper.toReportPage(adminReports.allReports(
+				caller().email(), page, size,
+				reportsPageMapper.toSortCode(sort), reportsPageMapper.toDirectionCode(dir))));
 	}
 
 	@Override

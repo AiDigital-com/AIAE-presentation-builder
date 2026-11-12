@@ -1,7 +1,8 @@
 package com.aidigital.reportconstructor.mappers.admin;
 
 import com.aidigital.reportconstructor.api.v1.model.AdminRangeV1;
-import com.aidigital.reportconstructor.api.v1.model.AdminStatsV1;
+import com.aidigital.reportconstructor.api.v1.model.AdminSeriesUnitV1;
+import com.aidigital.reportconstructor.api.v1.model.AdminTrendUnitV1;
 import com.aidigital.reportconstructor.service.admin.dto.AdminRangeView;
 import com.aidigital.reportconstructor.service.admin.enums.AdminPeriodUnit;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,7 @@ class AdminStatsApiMapperTest {
 		AdminRangeV1 mapped = mapper.toRange(range);
 
 		// Then:
-		assertThat(mapped.getSuggestedUnit()).isEqualTo(AdminRangeV1.SuggestedUnitEnum.WEEK);
+		assertThat(mapped.getSuggestedUnit()).isEqualTo(AdminTrendUnitV1.WEEK);
 		assertThat(mapped.getFrom()).isEqualTo(LocalDate.of(2026, 7, 8));
 		assertThat(mapped.getTo()).isEqualTo(LocalDate.of(2026, 8, 6));
 	}
@@ -39,11 +40,11 @@ class AdminStatsApiMapperTest {
 
 		// When-Then:
 		assertThat(mapper.toSeriesUnit(AdminPeriodUnit.DAY.getCode()))
-				.isEqualTo(AdminStatsV1.SeriesUnitEnum.DAY);
+				.isEqualTo(AdminSeriesUnitV1.DAY);
 		assertThat(mapper.toSeriesUnit(AdminPeriodUnit.WEEK.getCode()))
-				.isEqualTo(AdminStatsV1.SeriesUnitEnum.WEEK);
+				.isEqualTo(AdminSeriesUnitV1.WEEK);
 		assertThat(mapper.toSeriesUnit(AdminPeriodUnit.MONTH.getCode()))
-				.isEqualTo(AdminStatsV1.SeriesUnitEnum.MONTH);
+				.isEqualTo(AdminSeriesUnitV1.MONTH);
 		assertThat(mapper.toSeriesUnit(null)).isNull();
 	}
 }

@@ -19,11 +19,15 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
@@ -73,14 +77,20 @@ public class GlobalExceptionHandler {
 	}
 
 	/**
-	 * Handles bean-validation failures.
+	 * Handles requests that break the OpenAPI contract: bean-validation failures on bodies and
+	 * parameters, unreadable or mistyped bodies (including unknown enum values), mistyped or missing
+	 * query/path parameters. All of these are client errors and answer 400, not 500.
 	 *
-	 * @param ex validation exception from Spring or Jakarta Validation
+	 * @param ex validation or binding exception from Spring or Jakarta Validation
 	 * @return 400 API error response
 	 */
 	@ExceptionHandler({
 			MethodArgumentNotValidException.class,
-			ConstraintViolationException.class
+			ConstraintViolationException.class,
+			HandlerMethodValidationException.class,
+			HttpMessageNotReadableException.class,
+			MethodArgumentTypeMismatchException.class,
+			MissingServletRequestParameterException.class
 	})
 	public ResponseEntity<ApiErrorV1> handleValidation(Exception ex) {
 		LOG.warn("Validation failed: {}", ex.getMessage());
