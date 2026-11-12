@@ -5,7 +5,7 @@ import com.aidigital.reportconstructor.service.reports.entity.ReportJobEntitySer
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
 import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
-import com.aidigital.reportconstructor.service.reports.mappers.ReportJobEntityMapperImpl;
+import com.aidigital.reportconstructor.service.mappers.reports.ReportJobEntityMapperImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;

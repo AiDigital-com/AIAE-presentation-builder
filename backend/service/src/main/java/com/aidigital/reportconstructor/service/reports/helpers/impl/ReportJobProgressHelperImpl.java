@@ -8,7 +8,7 @@ import com.aidigital.reportconstructor.service.common.time.CurrentTime;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeUsage;
 import com.aidigital.reportconstructor.service.reports.entity.ReportJobEntityService;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportJobProgressHelper;
-import com.aidigital.reportconstructor.service.reports.mappers.ReportJobEntityMapper;
+import com.aidigital.reportconstructor.service.mappers.reports.ReportJobEntityMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;

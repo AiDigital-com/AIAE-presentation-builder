@@ -1,7 +1,7 @@
 package com.aidigital.reportconstructor.reports.controllers;
 
 import com.aidigital.reportconstructor.api.v1.model.SheetReadResultV1;
-import com.aidigital.reportconstructor.reports.mappers.DataSourceApiMapperImpl;
+import com.aidigital.reportconstructor.mappers.reports.DataSourceApiMapperImpl;
 import com.aidigital.reportconstructor.service.reports.dto.SheetTabRead;
 import org.junit.jupiter.api.Test;
 

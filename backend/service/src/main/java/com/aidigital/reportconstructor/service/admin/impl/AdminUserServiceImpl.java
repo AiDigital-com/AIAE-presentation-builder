@@ -3,7 +3,7 @@ package com.aidigital.reportconstructor.service.admin.impl;
 import com.aidigital.reportconstructor.domain.admin.entities.AdminUserEntity;
 import com.aidigital.reportconstructor.domain.admin.repositories.AdminUserRepository;
 import com.aidigital.reportconstructor.service.admin.AdminUserService;
-import com.aidigital.reportconstructor.service.admin.mappers.AdminUserEntityMapper;
+import com.aidigital.reportconstructor.service.mappers.admin.AdminUserEntityMapper;
 import com.aidigital.reportconstructor.service.common.time.CurrentTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

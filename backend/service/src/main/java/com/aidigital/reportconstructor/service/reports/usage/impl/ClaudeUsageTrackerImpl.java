@@ -5,7 +5,7 @@ import com.aidigital.reportconstructor.service.reports.enums.ClaudeUsageStatus;
 import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageEventService;
 import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageScope;
 import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageTracker;
-import com.aidigital.reportconstructor.service.reports.usage.mappers.ClaudeUsageEventEntityMapper;
+import com.aidigital.reportconstructor.service.mappers.reports.ClaudeUsageEventEntityMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

@@ -2,7 +2,7 @@ package com.aidigital.reportconstructor.auth.controllers;
 
 import com.aidigital.reportconstructor.api.v1.AuthApi;
 import com.aidigital.reportconstructor.api.v1.model.UserV1;
-import com.aidigital.reportconstructor.auth.mappers.UserMapper;
+import com.aidigital.reportconstructor.mappers.auth.UserMapper;
 import com.aidigital.reportconstructor.security.AppUserFactory;
 import com.aidigital.reportconstructor.service.admin.AdminAccessPolicy;
 import com.aidigital.reportconstructor.service.common.security.AppUser;

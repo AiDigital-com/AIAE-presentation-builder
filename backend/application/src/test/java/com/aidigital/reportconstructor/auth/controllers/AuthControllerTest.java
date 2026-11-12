@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.auth.controllers;
 
-import com.aidigital.reportconstructor.auth.mappers.UserMapperImpl;
+import com.aidigital.reportconstructor.mappers.auth.UserMapperImpl;
 import com.aidigital.reportconstructor.security.AppUserFactory;
 import com.aidigital.reportconstructor.security.AuthProperties;
 import com.aidigital.reportconstructor.security.AuthorizedPartyMatcher;

@@ -3,6 +3,7 @@ package com.aidigital.reportconstructor.service.reports.services.impl;
 import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
+import com.aidigital.reportconstructor.service.reports.dto.ReportHistory;
 import com.aidigital.reportconstructor.service.reports.dto.ReportResume;
 import com.aidigital.reportconstructor.service.reports.dto.ReportSummary;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportDraftPolicy;
@@ -32,7 +33,7 @@ public class ReportHistoryServiceImpl implements ReportHistoryService {
 	private final ReportResumeStateHelper resumeState;
 
 	@Override
-	public List<ReportSummary> historyForOwner(String userId) {
+	public ReportHistory historyForOwner(String userId) {
 		List<ReportJobEntity> owned = jobs.listJobsByOwner(userId);
 		// Computed once over the same list the rows are built from rather than queried per row: the
 		// owner's history is already fully loaded, so this costs one pass and no extra round trip.
@@ -44,7 +45,7 @@ public class ReportHistoryServiceImpl implements ReportHistoryService {
 			}
 			rows.add(assembler.toSummary(job, draftPolicy.isDraft(job, consumed)));
 		}
-		return rows;
+		return new ReportHistory(rows);
 	}
 
 	@Override

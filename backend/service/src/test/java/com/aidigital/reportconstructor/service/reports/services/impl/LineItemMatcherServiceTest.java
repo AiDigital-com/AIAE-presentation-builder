@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.services.impl;
 
-import com.aidigital.reportconstructor.service.reports.usage.mappers.ClaudeUsageEventEntityMapperImpl;
+import com.aidigital.reportconstructor.service.mappers.reports.ClaudeUsageEventEntityMapperImpl;
 import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.service.reports.engine.TacticCatalog;
 import com.aidigital.reportconstructor.service.reports.helpers.MediaPlanTacticExtractor;

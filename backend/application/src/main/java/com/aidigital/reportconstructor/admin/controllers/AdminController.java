@@ -1,8 +1,8 @@
 package com.aidigital.reportconstructor.admin.controllers;
 
-import com.aidigital.reportconstructor.admin.mappers.AdminManagementApiMapper;
-import com.aidigital.reportconstructor.admin.mappers.AdminReportsApiMapper;
-import com.aidigital.reportconstructor.admin.mappers.AdminStatsApiMapper;
+import com.aidigital.reportconstructor.mappers.admin.AdminManagementApiMapper;
+import com.aidigital.reportconstructor.mappers.admin.AdminReportsApiMapper;
+import com.aidigital.reportconstructor.mappers.admin.AdminStatsApiMapper;
 import com.aidigital.reportconstructor.api.v1.AdminApi;
 import com.aidigital.reportconstructor.api.v1.model.AddAdminRequestV1;
 import com.aidigital.reportconstructor.api.v1.model.AdminListV1;

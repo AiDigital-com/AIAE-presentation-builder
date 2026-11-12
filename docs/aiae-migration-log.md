@@ -2,6 +2,29 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Mapper package layout (P11 slice, branch `PDI_240`)
+
+- Application API mappers moved to `mappers/<aggregate>/` (`admin`, `auth`, `reports`, `version`);
+  service entity mappers to `service/mappers/<aggregate>/` (`admin`, `reports`). `git mv`, so
+  history follows.
+- The same structure-lint rules forbid `new *V1(...)` inside mappers, so the four hand-built
+  envelopes became MapStruct mappings over typed service results:
+  - `ReportHistoryService.historyForOwner` returns `ReportHistory(total, reports)`;
+    `AdminManagementService.list/add/removeAdmin` return `AdminList(admins)`.
+  - `DataSourceApiMapper.tabNotFound` / `toSummary` are MapStruct methods (same JSON: empty
+    lists default, `ok=false`, `error="tab_not_found"`, `rows`/`cols` 0).
+  - The hand-written `LineItemMatchResultMapper` class is gone: its indexing / numbering logic is
+    now `service` `LineItemMatchViewAssembler` (+ `LineItemMatchViewService`), producing
+    `LineItemMatchView`/`TacticMapping`; `LineItemMatchApiMapper` is a pure MapStruct interface.
+    Generated code keeps insertion-ordered maps (`LinkedHashMap`).
+- `structure-lint.sh` now passes every mapper rule and stops at
+  **"application/pom.xml must not depend on external-services — route through service/"**. The
+  standard has `service → external-services`; this project has the opposite (ports in `service`,
+  adapters in `external-services`). Fixing it means re-homing the outbound ports — P8 boundary work,
+  not done here.
+- Gates unchanged at **10 of 21 failing** (structure-lint still fail-fast, one rule further).
+- `mvn verify`: BUILD SUCCESS, 1,187 tests (+2 `LineItemMatchViewAssemblerTest`), 0 failures.
+
 ## 2026-11-12 — Thin controllers (P11 slice, branch `PDI_240`)
 
 - `DataSourceController.readSheet`: the try/catch + tab-not-found detection moved to the new

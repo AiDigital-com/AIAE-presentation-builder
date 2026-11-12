@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.service.reports.usage.impl;
 
-import com.aidigital.reportconstructor.service.reports.usage.mappers.ClaudeUsageEventEntityMapperImpl;
+import com.aidigital.reportconstructor.service.mappers.reports.ClaudeUsageEventEntityMapperImpl;
 import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.domain.reports.entities.ClaudeUsageEventEntity;
 import com.aidigital.reportconstructor.service.reports.dto.ClaudeUsage;

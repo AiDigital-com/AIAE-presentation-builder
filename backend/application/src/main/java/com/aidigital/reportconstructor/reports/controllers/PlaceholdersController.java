@@ -5,7 +5,7 @@ import com.aidigital.reportconstructor.api.v1.model.DateRangeRequestV1;
 import com.aidigital.reportconstructor.api.v1.model.DateRangeResultV1;
 import com.aidigital.reportconstructor.api.v1.model.PreviewRequestV1;
 import com.aidigital.reportconstructor.api.v1.model.PreviewResultV1;
-import com.aidigital.reportconstructor.reports.mappers.PlaceholdersApiMapper;
+import com.aidigital.reportconstructor.mappers.reports.PlaceholdersApiMapper;
 import com.aidigital.reportconstructor.service.reports.services.PlaceholderResolverService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

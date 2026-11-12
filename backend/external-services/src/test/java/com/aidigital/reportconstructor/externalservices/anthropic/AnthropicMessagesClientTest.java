@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.anthropic;
 
-import com.aidigital.reportconstructor.service.reports.usage.mappers.ClaudeUsageEventEntityMapperImpl;
+import com.aidigital.reportconstructor.service.mappers.reports.ClaudeUsageEventEntityMapperImpl;
 import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
 import com.aidigital.reportconstructor.externalservices.common.http.PooledRestClientFactory;
 import com.aidigital.reportconstructor.service.reports.diagnostics.impl.ClaudeFailureLogImpl;

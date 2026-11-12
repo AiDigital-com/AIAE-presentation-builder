@@ -4,7 +4,7 @@ import com.aidigital.reportconstructor.api.v1.ReportsApi;
 import com.aidigital.reportconstructor.api.v1.model.AdoptSheetRequestV1;
 import com.aidigital.reportconstructor.api.v1.model.ReportListV1;
 import com.aidigital.reportconstructor.api.v1.model.ReportResumeV1;
-import com.aidigital.reportconstructor.reports.mappers.ReportsApiMapper;
+import com.aidigital.reportconstructor.mappers.reports.ReportsApiMapper;
 import com.aidigital.reportconstructor.security.AppUserFactory;
 import com.aidigital.reportconstructor.service.reports.services.ReportHistoryService;
 import com.aidigital.reportconstructor.service.reports.services.SheetAdoptionService;

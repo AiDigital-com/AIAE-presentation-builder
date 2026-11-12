@@ -6,7 +6,7 @@ import com.aidigital.reportconstructor.api.v1.model.SheetReadRequestV1;
 import com.aidigital.reportconstructor.api.v1.model.SheetReadResultV1;
 import com.aidigital.reportconstructor.api.v1.model.SheetSummaryRequestV1;
 import com.aidigital.reportconstructor.api.v1.model.SheetSummaryResultV1;
-import com.aidigital.reportconstructor.reports.mappers.DataSourceApiMapper;
+import com.aidigital.reportconstructor.mappers.reports.DataSourceApiMapper;
 import com.aidigital.reportconstructor.security.AppUserFactory;
 import com.aidigital.reportconstructor.service.reports.ports.SheetQueryService;
 import com.aidigital.reportconstructor.service.reports.services.SheetSummaryQueryService;
