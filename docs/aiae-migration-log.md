@@ -2,6 +2,36 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Multi-node work (P7, branch `PDI_240`)
+
+- Inventory of node-local state and work: one `@Scheduled` job (`UsageRollupRefresher`), `@Async` report runs,
+  the `adminStats` cache, the Claude transport's semaphore, per-run `ThreadLocal` scopes (usage, failure
+  log), per-instance HTTP client pools.
+- **Rollup refresh — no change.** The rebuild is delete-window + `INSERT … ON CONFLICT ON CONSTRAINT
+  uq_usage_daily_grain DO UPDATE`, every row recomputed from `report_jobs`; concurrent rebuilds on different
+  instances converge (the repository JavaDoc and changelog `0009` state this intent). Each instance's timer
+  repeats a cheap grouped scan — duplicated work, not a correctness problem.
+- **Dashboard cache — fixed.** Eviction was per instance: after instance A rebuilt, B saw a fresh rollup,
+  skipped its own rebuild and kept serving its older snapshot until its next 10-minute tick. The key is now
+  `AdminStatsKey(range, rollupVersion)` with the version = `usage_daily` `max(refreshed_at)`
+  (`UsageRollupRefresher#lastRefreshedAt`, now public): a rebuild anywhere moves it, so every instance's dashboard
+  is at most the staleness budget (120 s) old. One extra `max()` read per dashboard request. Residual: a rebuild
+  that writes no row cannot move the version; that case stays bounded by each instance's timer.
+- **Abandoned report runs — new.** A run whose instance stopped stayed `queued`/`running` for ever (the
+  progress view polled indefinitely; the admin in-flight counter stayed high) — on a single instance too, at
+  every deploy. New `service.reports.jobs.AbandonedJobReaper` (every 5 min, every instance) calls
+  `ReportJobProgressHelper.failAbandonedJobs` → `ReportJobRepository.failInFlightNotUpdatedSince`, one
+  conditional `UPDATE` (status `error`, a "server restarted, please run it again" message) for jobs without
+  progress for `app.report-jobs.abandoned-after-minutes` (default 60; a live run writes progress at each of
+  its ~7 steps). Concurrent sweeps claim each row once; a run that was only slow still ends `done`.
+- **Claude concurrency** — `max-concurrent-calls` is per instance; `application.yml` now says to size it as
+  the account budget divided by replicas. Coordinating it across instances would need shared infrastructure
+  the rules say not to add without measured need.
+- Tests: `AbandonedJobReaperTest` 3, `ReportJobProgressHelperImplTest` +1 (cutoff and statuses),
+  `AdminStatsServiceImplTest` (versioned key), new `ReportJobAbandonedSweepTest` — the bulk update against real
+  Postgres 16 (Testcontainers) with the Liquibase schema. `service` 850 → 854, `application` 93 → 94.
+  `mvn -Pmvp verify`: BUILD SUCCESS. Gates: 2 of 21 failing (unchanged; D2/D3, D4).
+
 ## 2026-11-12 — Module edge flipped: `service → external-services` (P8, D6 resolved, branch `PDI_240`)
 
 - The 12 port adapters and their 12 tests moved from `externalservices.bridge` to `service.integration`

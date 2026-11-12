@@ -14,11 +14,15 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,6 +40,21 @@ class ReportJobProgressHelperImplTest {
 
 	@InjectMocks
 	private ReportJobProgressHelperImpl helper;
+
+	@Test
+	void shouldFailInFlightJobsSilentSinceTheCutoffTest() {
+		// Given: a fixed clock
+		OffsetDateTime now = OffsetDateTime.parse("2026-11-12T12:00:00Z");
+		doReturn(now).when(currentTime).nowOffsetDateTime();
+		when(jobs.failInFlightNotUpdatedSince(List.of("queued", "running"), now.minusMinutes(60), "error",
+				"interrupted", now)).thenReturn(2);
+
+		// When:
+		int failed = helper.failAbandonedJobs(Duration.ofMinutes(60), "interrupted");
+
+		// Then: only queued/running jobs untouched for the whole window are failed, stamped now
+		assertThat(failed).isEqualTo(2);
+	}
 
 	@Test
 	void shouldCreateQueuedJobWithSevenStepsTest() {

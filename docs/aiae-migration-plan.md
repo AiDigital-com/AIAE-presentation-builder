@@ -47,7 +47,7 @@ records what was actually measured.
 | **P4** `backend/observability` | Outbound metrics module | Already in place |
 | **P5** `backend/migrations` | Liquibase module with preconditions | In place; `0001`/`0002` predate preconditions and stay (never rewrite) — see D4 |
 | **P6** Distributed cache | `backend/cache-management` | Open decision D1 |
-| **P7** Multi-node work | `UsageRollupRefresher` (`@Scheduled`), `@Async` report jobs, `adminStats` cache — make idempotent/coordinated per `14-performance.md` | Not started |
+| **P7** Multi-node work | `UsageRollupRefresher` (`@Scheduled`), `@Async` report jobs, `adminStats` cache — make idempotent/coordinated per `14-performance.md` | Done 2026-11-12 — rollup rebuild already an idempotent upsert (verified, no change); dashboard cache keyed by rollup version (cross-node freshness ≤ staleness budget); `AbandonedJobReaper` fails runs orphaned by a stopped instance; Claude concurrency documented as per-instance |
 | **P8** Boundary splits | Entity-service and helper extraction per `structure/*`; module direction `service → external-services` with `external-services` a leaf | Done 2026-11-12 — every provider converged (Clerk, Drive, Sheets, Slides, workbook, charts + pacing pivots, Anthropic), Claude prompt logic and the port adapters (`service.integration`) in `service`, module edge flipped; structure-lint passes (D6 resolved) |
 | **P9** Coverage phase | `mvp` coverage profile driven by `.template-phase` | Not started (JaCoCo gate exists at 0.80/0.70) |
 | **P10** API validation | OpenAPI: closed schemas, descriptions, `$ref` enums, input constraints; one 400 MVC test per constrained operation | Done 2026-11-12 |

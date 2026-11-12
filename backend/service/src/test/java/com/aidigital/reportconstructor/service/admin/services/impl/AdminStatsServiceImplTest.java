@@ -7,6 +7,7 @@ import com.aidigital.reportconstructor.service.admin.AdminStatsCache;
 import com.aidigital.reportconstructor.service.admin.UsageRollupRefresher;
 import com.aidigital.reportconstructor.service.admin.dto.AdminDateRange;
 import com.aidigital.reportconstructor.service.admin.dto.AdminStats;
+import com.aidigital.reportconstructor.service.admin.dto.AdminStatsKey;
 import com.aidigital.reportconstructor.service.admin.enums.AdminPeriodUnit;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
@@ -18,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -73,20 +75,23 @@ class AdminStatsServiceImplTest {
 		when(currentTime.nowLocalDate()).thenReturn(today);
 		when(rangeResolver.resolve(null, null, today)).thenReturn(range);
 		when(assembler.assemble(range)).thenReturn(assembled);
-		when(statsCache.snapshot(eq(range), org.mockito.ArgumentMatchers.<Supplier<AdminStats>>any()))
+		OffsetDateTime version = OffsetDateTime.parse("2026-11-12T10:15:00Z");
+		when(rollupRefresher.lastRefreshedAt()).thenReturn(version);
+		when(statsCache.snapshot(eq(new AdminStatsKey(range, version)),
+				org.mockito.ArgumentMatchers.<Supplier<AdminStats>>any()))
 				.thenAnswer(invocation -> invocation.<Supplier<AdminStats>>getArgument(1).get());
 
 		// When:
 		AdminStats stats = service.statsFor("admin@aidigital.com", null, null);
 
-		// Then:
+		// Then: the snapshot is keyed by the rollup version, so a rebuild on another node moves it too
 		assertThat(stats).isSameAs(assembled);
 		verify(statsCache).invalidate();
 	}
 
 	@Test
 	void shouldServeStaleFiguresWhenTheRollupRefreshFailsTest() {
-		// Given: refreshing throws, which must not reach the caller
+		// Given: refreshing throws, which must not reach the caller; the version is unknown
 		LocalDate today = LocalDate.of(2026, 11, 12);
 		AdminDateRange range = new AdminDateRange(today.minusDays(6), today, AdminPeriodUnit.DAY);
 		AdminStats cached = mock(AdminStats.class);
@@ -94,7 +99,8 @@ class AdminStatsServiceImplTest {
 		when(rollupRefresher.ensureFresh()).thenThrow(new IllegalStateException("db down"));
 		when(currentTime.nowLocalDate()).thenReturn(today);
 		when(rangeResolver.resolve(null, null, today)).thenReturn(range);
-		when(statsCache.snapshot(eq(range), org.mockito.ArgumentMatchers.<Supplier<AdminStats>>any()))
+		when(statsCache.snapshot(eq(new AdminStatsKey(range, null)),
+				org.mockito.ArgumentMatchers.<Supplier<AdminStats>>any()))
 				.thenReturn(cached);
 
 		// When:

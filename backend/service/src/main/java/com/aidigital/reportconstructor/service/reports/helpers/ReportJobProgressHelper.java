@@ -6,6 +6,7 @@ import com.aidigital.reportconstructor.service.reports.dto.ClaudeUsage;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -191,6 +192,16 @@ public interface ReportJobProgressHelper {
 	 * @param errorMessage exception message or other failure detail for the UI
 	 */
 	void markJobFailed(Long jobId, String errorMessage);
+
+	/**
+	 * Marks {@code error} every queued or running job that has not moved for the given time — one whose node
+	 * stopped mid-run, so nothing will ever finish it. Safe to run on every node at once.
+	 *
+	 * @param silence      how long an in-flight job may go without an update before it counts as abandoned
+	 * @param errorMessage message shown on each abandoned job
+	 * @return the number of jobs failed
+	 */
+	int failAbandonedJobs(Duration silence, String errorMessage);
 
 	/**
 	 * Loads a job by id or throws when it does not exist.

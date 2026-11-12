@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -238,6 +239,14 @@ public class ReportJobProgressHelperImpl implements ReportJobProgressHelper {
 			job.setUpdatedAt(currentTime.nowOffsetDateTime());
 			jobs.save(job);
 		});
+	}
+
+	@Transactional
+	@Override
+	public int failAbandonedJobs(Duration silence, String errorMessage) {
+		OffsetDateTime now = currentTime.nowOffsetDateTime();
+		return jobs.failInFlightNotUpdatedSince(
+				IN_FLIGHT_STATUSES, now.minus(silence), STATUS_ERROR, errorMessage, now);
 	}
 
 	@Transactional(readOnly = true)

@@ -186,6 +186,8 @@ sequenceDiagram
   and recorded on the job; admins see them under `/admin/failures`.
 - `UsageRollupRefresher` rebuilds the `usage_daily` rollup every 10 minutes
   (`@Scheduled`), which feeds the admin dashboard.
+- `AbandonedJobReaper` fails, every 5 minutes, a queued/running job with no progress for
+  `app.report-jobs.abandoned-after-minutes` (default 60) — its instance stopped mid-run.
 - `ReportGenerationServiceImpl` only enqueues, opens the run's usage/failure scopes and picks a workflow:
   `DirectReportWorkflow` (from the request's grids) or `SlidesFromSheetWorkflow` (from a reviewed
   workbook), both in `service.reports.helpers` with their collaborators (`BreakdownSectionWorkflow`,
@@ -231,10 +233,28 @@ sequenceDiagram
   `CacheConfig` with Spring Boot's default simple in-memory manager — no
   provider dependency. It holds one admin-dashboard snapshot per date window and
   is evicted when `usage_daily` is rebuilt, not by TTL.
-- The cache is per instance. A second instance can serve a snapshot at most one
-  rollup interval old; this is accepted for an admin dashboard. There is no
-  `backend/cache-management` module.
+- The cache is per instance, so it is keyed by the date window **and the rollup's version**
+  (`AdminStatsKey`: `usage_daily`'s latest `refreshed_at`). A rebuild on any instance moves the version, so
+  every instance's next read misses and reassembles: the dashboard is never older than
+  `app.usage-rollup.staleness-seconds` (120 s) on any instance. Local `invalidate()` stays for immediacy on
+  the instance that did the work and to bound memory. There is no `backend/cache-management` module (D1).
 - Evidence: `backend/application/src/main/java/com/aidigital/reportconstructor/config/CacheConfig.java`
+
+## Multi-node operation
+
+- **Scheduled rollup refresh** — every instance runs `UsageRollupRefresher` every 10 minutes. The rebuild is
+  an idempotent upsert on `uq_usage_daily_grain` recomputed from `report_jobs`, so concurrent rebuilds on
+  different instances converge (documented on `UsageDailyRepository#rebuildWindow`); the in-process
+  single-flight only avoids duplicate work on one instance.
+- **Report runs** execute on an `@Async` thread of the instance that accepted the request; their state is in
+  `report_jobs`, so progress polling works from any instance. A run whose instance stops (deploy, restart,
+  crash) is failed by `AbandonedJobReaper` (every 5 minutes, every instance) once it has gone
+  `app.report-jobs.abandoned-after-minutes` (60) without progress — one conditional `UPDATE`, so concurrent
+  sweeps claim each row once. A late finisher still ends `done`.
+- **Claude concurrency** — `external.anthropic.max-concurrent-calls` is a per-instance semaphore; size it as
+  the account budget divided by the replica count.
+- No correctness depends on node-local state: the remaining in-memory structures are per-run scopes
+  (usage, failure log) and per-instance HTTP client pools.
 
 ## External integrations
 

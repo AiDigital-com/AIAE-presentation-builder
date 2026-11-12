@@ -82,6 +82,22 @@ public class ReportJobEntityService {
 	}
 
 	/**
+	 * Fails every in-flight job last updated before the cutoff, in one statement.
+	 *
+	 * @param inFlight     status codes of jobs that have not finished
+	 * @param cutoff       jobs last updated before this are abandoned
+	 * @param failedStatus status code to set
+	 * @param errorMessage message shown on the job
+	 * @param now          update timestamp to stamp
+	 * @return the number of jobs failed
+	 */
+	public int failInFlightNotUpdatedSince(
+			Collection<String> inFlight, OffsetDateTime cutoff, String failedStatus, String errorMessage,
+			OffsetDateTime now) {
+		return reportJobRepository.failInFlightNotUpdatedSince(inFlight, cutoff, failedStatus, errorMessage, now);
+	}
+
+	/**
 	 * Lists the most recent jobs in any of the given statuses, bounded by the page.
 	 *
 	 * @param statuses status codes to include

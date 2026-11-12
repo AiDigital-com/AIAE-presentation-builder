@@ -7,6 +7,7 @@ import com.aidigital.reportconstructor.service.admin.AdminStatsCache;
 import com.aidigital.reportconstructor.service.admin.UsageRollupRefresher;
 import com.aidigital.reportconstructor.service.admin.dto.AdminDateRange;
 import com.aidigital.reportconstructor.service.admin.dto.AdminStats;
+import com.aidigital.reportconstructor.service.admin.dto.AdminStatsKey;
 import com.aidigital.reportconstructor.service.admin.services.AdminStatsService;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
@@ -45,7 +46,10 @@ public class AdminStatsServiceImpl implements AdminStatsService {
 			statsCache.invalidate();
 		}
 		AdminDateRange range = rangeResolver.resolve(from, to, currentTime.nowLocalDate());
-		return statsCache.snapshot(range, () -> assembler.assemble(range));
+		// Keyed by the rollup's version too: another node's rebuild cannot evict this node's entry, but it does
+		// move the version, so this read misses and reassembles.
+		AdminStatsKey key = new AdminStatsKey(range, rollupRefresher.lastRefreshedAt());
+		return statsCache.snapshot(key, () -> assembler.assemble(range));
 	}
 
 	/**

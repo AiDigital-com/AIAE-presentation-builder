@@ -132,11 +132,12 @@ public class UsageRollupRefresher {
 	}
 
 	/**
-	 * Reads the rollup's last refresh timestamp, treating a read failure as "never refreshed".
+	 * Reads the rollup's last refresh timestamp, treating a read failure as "never refreshed". It doubles as the
+	 * rollup's version: any rebuild, on any node, moves it.
 	 *
 	 * @return the timestamp, or {@code null} when the rollup is empty or unreadable
 	 */
-	OffsetDateTime lastRefreshedAt() {
+	public OffsetDateTime lastRefreshedAt() {
 		try {
 			return rollup.lastRefreshedAt();
 		} catch (Exception ex) {

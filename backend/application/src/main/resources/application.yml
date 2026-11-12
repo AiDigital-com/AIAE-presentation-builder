@@ -154,6 +154,10 @@ app:
     # History the trend series read. At 400 days a month-over-month series still has a full previous
     # year to compare against.
     history-days: ${APP_ROLLUP_HISTORY_DAYS:400}
+  report-jobs:
+    # A queued/running report with no progress for this long is marked failed: its node stopped while it ran
+    # (restart, deploy, crash), so nothing will ever finish it. A live report writes progress at every step.
+    abandoned-after-minutes: ${APP_REPORT_JOBS_ABANDONED_AFTER_MINUTES:60}
   security:
     cors:
       allowed-origins: "${APP_SECURITY_CORS_ALLOWED_ORIGINS:https://*.replit.dev,https://*.repl.co,http://localhost:5173,http://localhost:5000}"
@@ -663,6 +667,8 @@ external:
     # each overview blind. Chunks run concurrently, bounded by max-concurrent-calls.
     breakdown-chunk-size: ${CLAUDE_BREAKDOWN_CHUNK_SIZE:7}
     # Max Claude HTTP calls in flight at once across a run (rate-limit guard for the per-tactic fan-out).
+    # Per node: with N replicas the Anthropic account can see up to N x this, so size it as the account's
+    # concurrency budget divided by the replica count.
     max-concurrent-calls: ${CLAUDE_MAX_CONCURRENT_CALLS:6}
     # Extra attempts a per-section call makes when its reply came back missing fields, before the fullest
     # attempt is shipped as it stands. Default 1 means one retry, two sends in total — a third send costs a

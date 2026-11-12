@@ -5,6 +5,7 @@ import com.aidigital.reportconstructor.domain.reports.projections.JobOwner;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -43,6 +44,30 @@ public interface ReportJobRepository extends JpaRepository<ReportJobEntity, Long
 	 * @return the number of matching jobs
 	 */
 	int countByStatusIn(Collection<String> statuses);
+
+	/**
+	 * Fails, in one statement, every in-flight job that has not moved since the cutoff — a job whose node
+	 * stopped (a restart, a deploy, a crash) while it was running, so nothing will ever finish it.
+	 *
+	 * <p>A single conditional {@code UPDATE} is what makes this safe on several nodes at once: each row is
+	 * claimed by whichever statement locks it first, and the others no longer match it.
+	 *
+	 * @param inFlight      status codes of jobs that have not finished
+	 * @param cutoff        jobs last updated before this are abandoned
+	 * @param failedStatus  status code to set
+	 * @param errorMessage  message shown on the job
+	 * @param now           update timestamp to stamp
+	 * @return the number of jobs failed
+	 */
+	@Modifying
+	@Query("""
+			update ReportJobEntity j
+			set j.status = :failedStatus, j.errorMessage = :errorMessage, j.updatedAt = :now
+			where j.status in :inFlight and j.updatedAt < :cutoff""")
+	int failInFlightNotUpdatedSince(
+			@Param("inFlight") Collection<String> inFlight, @Param("cutoff") OffsetDateTime cutoff,
+			@Param("failedStatus") String failedStatus, @Param("errorMessage") String errorMessage,
+			@Param("now") OffsetDateTime now);
 
 	/**
 	 * Lists the most recent jobs in any of the given statuses.
