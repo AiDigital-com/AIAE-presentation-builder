@@ -2,6 +2,22 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Module direction step 1 (P8 / D6, branch `PDI_240`)
+
+- Measured before: `external-services` main code pulled a closure of 102 `service`/`domain` types; the
+  only reach into `domain` and the admin services was `DriveShareRecipients` (`AdminAccessPolicy`,
+  `AdminUserService`, `AdminUserEntity`).
+- New `service.admin.services.AdminEmailDirectory` (+ `AdminEmailDirectoryImpl`) returns config admins
+  then managed admins, degrading to config admins when the managed lookup fails (behaviour moved
+  verbatim, test moved with it). `DriveShareRecipients` now depends on `GoogleProperties` +
+  `AdminEmailDirectory` only and keeps normalisation/de-duplication.
+- `external-services/pom.xml`: `domain` dependency removed; `dependency:analyze` clean.
+- `mvn -Pmvp verify`: BUILD SUCCESS, all modules.
+- structure-lint still stops at "application/pom.xml must not depend on external-services" — accepted
+  as D6 until the per-provider convergence. Gates: **3 of 21 failing** (unchanged).
+- Operational Hub was not available locally to compare against; onboarding-platform (same standard)
+  is the reference for the target shape.
+
 ## 2026-11-12 — Service contract quality (P11, branch `PDI_240`)
 
 - `ReportGenerationServiceImpl` 1,723 lines / 40 dependencies → 138 lines / 8. It keeps `start`,

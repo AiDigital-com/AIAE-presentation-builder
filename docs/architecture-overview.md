@@ -88,8 +88,18 @@ across all modules. Maven modules (`backend/pom.xml`), in build order:
 | `backend/observability` | `ExternalClientMetricsInterceptor` and `ExternalCallTimer` (`observability.external`), recording `external.client.requests` tagged `client` / `operation` / `outcome` | Metrics APIs only |
 | `backend/event-logging-to-db-feature` | Temporary MVP feedback telemetry (`usage_events`); removed at engineering handoff | Application service annotations and PostgreSQL during MVP only |
 | `backend/service` | Report engine, sheet/deck orchestration, admin statistics, entity services | `domain`, outbound integration ports |
-| `backend/external-services` | Outbound integrations: `anthropic`, `google`, `clerk`, `common.http` | `observability` |
+| `backend/external-services` | Outbound integrations: `anthropic`, `google`, `clerk`, `common.http`; implements the ports in `service` | `service` (ports, their request/result types, `admin.services.AdminEmailDirectory`), `observability`; never `domain` |
 | `backend/application` | Runtime composition, security, OpenAPI controllers, exception translation, Logbook, SPA hosting | `service`, `external-services`, `observability` |
+
+**Module direction (decision D6, deliberate divergence).** The standard wants a leaf
+`external-services` with `service → external-services`. Here the outbound ports live in `service`
+(`service.reports.ports`) and `external-services` implements them, so the arrow points the other way
+and `application` depends on `external-services` to put the adapters on the classpath. The rule
+kept regardless: `external-services` never depends on `domain` or on entity/admin services — data it
+needs from the business side arrives through a narrow `service` interface (e.g. Drive auto-share
+reads admin emails via `AdminEmailDirectory`). Converging is planned one provider per branch, in the
+onboarding-platform shape (provider-level client + `model/` records, `service` maps): Clerk, Drive,
+Sheets, then Claude and Slides.
 
 Controllers implement generated OpenAPI interfaces and delegate to services.
 Repositories are accessed only through their paired entity services.

@@ -48,7 +48,7 @@ records what was actually measured.
 | **P5** `backend/migrations` | Liquibase module with preconditions | In place; `0001`/`0002` predate preconditions and stay (never rewrite) — see D4 |
 | **P6** Distributed cache | `backend/cache-management` | Open decision D1 |
 | **P7** Multi-node work | `UsageRollupRefresher` (`@Scheduled`), `@Async` report jobs, `adminStats` cache — make idempotent/coordinated per `14-performance.md` | Not started |
-| **P8** Boundary splits | Entity-service and helper extraction per `structure/*`; module direction `service → external-services` (today `external-services → service`, with `application → external-services`), which is structure-lint's next stop | Not started |
+| **P8** Boundary splits | Entity-service and helper extraction per `structure/*`; module direction `service → external-services` (today `external-services → service`, with `application → external-services`), which is structure-lint's next stop | Step 1 done 2026-11-12 — `external-services` no longer depends on `domain` or the admin services (D6); per-provider convergence not started |
 | **P9** Coverage phase | `mvp` coverage profile driven by `.template-phase` | Not started (JaCoCo gate exists at 0.80/0.70) |
 | **P10** API validation | OpenAPI: closed schemas, descriptions, `$ref` enums, input constraints; one 400 MVC test per constrained operation | Done 2026-11-12 |
 | **P11** Thin controllers and service shape | Controller logic → services/mappers; split `ReportGenerationServiceImpl`, `LineItemMatcherServiceImpl`, `AdminStatsServiceImpl`; `CurrentTime`; MapStruct for entity mapping; remove static factories | Done 2026-11-12 — `CurrentTime`, static factories, MapStruct entity mapping, thin controllers, mapper package layout and service splits (`ReportGenerationServiceImpl` 1,723 → 138 lines) |
@@ -64,6 +64,7 @@ records what was actually measured.
 | D3 | Pin Vitest to the firewall-approved `^3.2.6` (we use `^4.1.11`)? | Ask whether the Replit firewall allow-list still requires 3.x; otherwise request the standard to accept 4.x. |
 | D4 | Liquibase `0001`/`0002` have no `preConditions` | Accept permanently (applied changelogs are immutable); request an allow-list in `check-liquibase-preconditions.py` upstream. |
 | D5 | Lifecycle phase `mvp` vs `engineering` (`.template-phase`) | Stay `mvp` while usage telemetry is on; switch via `finalize-coverage` before handoff. |
+| D6 | Module direction: ports in `service`, adapters in `external-services` (standard: leaf `external-services`, `service → external-services`, no `application → external-services`) | **Accept for now** as a recorded divergence; structure-lint stays red on it. Hard line kept: `external-services` never depends on `domain` or entity/admin services. Converge one provider per branch in the onboarding-platform shape (Clerk → Drive → Sheets → Claude/Slides). |
 
 ## Carried gate failures (accepted until their phase)
 
