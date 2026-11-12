@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
 class AdminFailureAssemblerTest {
 
 	@Mock
-	ReportSummaryAssembler summaryAssembler;
+	private ReportSummaryAssembler summaryAssembler;
 
 	/**
 	 * Builds the assembler under test with real (cheap) token collaborators.

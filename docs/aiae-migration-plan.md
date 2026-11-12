@@ -41,7 +41,7 @@ records what was actually measured.
 |---|---|---|
 | **P0** Baseline and decisions | This plan, the log, the gate baseline | Done 2026-11-12 (decisions D1–D5 open) |
 | **P1** Agent surface | Managed `.claude/`, `CLAUDE.md`, `.agents/skills`, `AGENTS.md`, `replit.md`, `llm-aux.lock`, `.template-*`, `.mcp.json`, `.gitattributes` | Done (`7f14b3e`) |
-| **P2** Harness and local runner | `verify-gates.sh`, `structure-lint.sh`, `scripts/lib` checkers, `gates-report.sh`, `local-verify.sh` runs the gates, CI `static-checks` job, `checkstyle-test-fields.xml` (report-only) | Done 2026-11-12 |
+| **P2** Harness and local runner | `verify-gates.sh`, `structure-lint.sh`, `scripts/lib` checkers, `gates-report.sh`, `local-verify.sh` runs the gates, CI `static-checks` job, `checkstyle-test-fields.xml` (blocking in `mvn verify` since all 87 test fields were made `private`) | Done 2026-11-12 |
 | **P3** Docs and Replit contract | `architecture-overview.md`, `README.md`, inline `.replit` workflows, `replit-run.sh` sources `replit-env.sh`, Context7 | Done 2026-11-12 |
 | **P3b** Maven dependency analysis | Directly used libraries declared in all 7 module poms, runtime-only starters/modules at `runtime` scope, `maven-dependency-plugin analyze-only` (`failOnWarning`) enforced in `mvn verify`, `backend/DEPENDENCY-ANALYSIS.md` | Done 2026-11-12 — blocking in the Maven build; fat jar not yet booted against a real DB |
 | **P4** `backend/observability` | Outbound metrics module | Already in place |

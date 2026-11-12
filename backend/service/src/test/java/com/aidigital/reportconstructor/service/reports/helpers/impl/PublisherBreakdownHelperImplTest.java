@@ -29,14 +29,14 @@ import static org.mockito.Mockito.when;
 class PublisherBreakdownHelperImplTest {
 
 	@Mock
-	ReportSheetHelper sheetHelper;
+	private ReportSheetHelper sheetHelper;
 	@Mock
-	BreakdownSelectionResolver breakdownResolver;
+	private BreakdownSelectionResolver breakdownResolver;
 	@Mock
-	ReportNumberParser numbers;
+	private ReportNumberParser numbers;
 
 	@InjectMocks
-	PublisherBreakdownHelperImpl helper;
+	private PublisherBreakdownHelperImpl helper;
 
 	@Test
 	void shouldCopySheetRowsVerbatimAndDashTheSlotsTheUserLeftBlankTest() {

@@ -324,10 +324,6 @@
 									<testSourceDirectory>${project.basedir}/src/test/java</testSourceDirectory>
 								</testSourceDirectories>
 								<violationSeverity>error</violationSeverity>
-								<!-- Report-only during AIAE convergence (docs/aiae-migration-plan.md):
-									 existing tests still declare package-private fields. Flip to true
-									 once the count logged by this execution reaches zero. -->
-								<failOnViolation>false</failOnViolation>
 							</configuration>
 						</execution>
 					</executions>

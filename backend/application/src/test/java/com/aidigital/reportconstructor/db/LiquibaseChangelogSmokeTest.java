@@ -21,7 +21,7 @@ class LiquibaseChangelogSmokeTest {
 
 	@Container
 	@ServiceConnection
-	static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+	private static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
 	@Test
 	void shouldApplyMasterChangelogToPostgresTest() {

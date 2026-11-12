@@ -25,10 +25,10 @@ import static org.mockito.Mockito.when;
 class ReportJobEntityServiceTest {
 
 	@Mock
-	ReportJobRepository reportJobRepository;
+	private ReportJobRepository reportJobRepository;
 
 	@InjectMocks
-	ReportJobEntityService service;
+	private ReportJobEntityService service;
 
 	@Test
 	void shouldListAnOwnersJobsThroughTheRepositoryTest() {

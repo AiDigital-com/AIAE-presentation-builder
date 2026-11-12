@@ -19,10 +19,10 @@ import static org.mockito.Mockito.when;
 class FunnelChannelResolverTest {
 
 	@Mock
-	CampaignResolvers campaignResolvers;
+	private CampaignResolvers campaignResolvers;
 
 	@InjectMocks
-	FunnelChannelResolver resolver;
+	private FunnelChannelResolver resolver;
 
 	@Test
 	void resolveFunnelChannels_shouldGroupTacticsByTheirMediaPlanGoalTest() {

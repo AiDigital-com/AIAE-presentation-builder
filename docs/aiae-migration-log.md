@@ -2,6 +2,16 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Test field visibility made blocking (branch `PDI_240`)
+
+- 85 package-private test fields made `private` (84 in 16 `backend/service` test
+  classes, 1 in `application`'s `LiquibaseChangelogSmokeTest`); together with the
+  2 fixed earlier in `event-logging-to-db-feature`, all 87 findings are cleared.
+  Declaration change only — no test logic touched.
+- `checkstyle-test-field-visibility` no longer sets `failOnViolation=false`, so it
+  now fails `mvn verify` like the main Checkstyle profile.
+- `mvn verify`: BUILD SUCCESS, 1,172 tests, 0 failures, 0 Checkstyle violations.
+
 ## 2026-11-12 — P3b Maven dependency analysis (branch `PDI_240`)
 
 - `maven-dependency-plugin:3.7.1:analyze-only` bound to `verify` in every module,

@@ -100,53 +100,53 @@ import static org.mockito.Mockito.when;
 class ReportGenerationServiceImplTest {
 
 	@Mock
-	ReportJobProgressHelper jobProgress;
+	private ReportJobProgressHelper jobProgress;
 	@Mock
-	ReportGenerationWarningsHelper warnings;
+	private ReportGenerationWarningsHelper warnings;
 	@Mock
-	ReportGenerationChartHelper chartHelper;
+	private ReportGenerationChartHelper chartHelper;
 	@Mock
-	ReportSheetHelper sheetHelper;
+	private ReportSheetHelper sheetHelper;
 	@Mock
-	SheetPlaceholderReader placeholderReader;
+	private SheetPlaceholderReader placeholderReader;
 	@Mock
-	SheetCampaignReader sheetCampaign;
+	private SheetCampaignReader sheetCampaign;
 	@Mock
-	PlaceholderResolverService placeholders;
+	private PlaceholderResolverService placeholders;
 	@Mock
-	ClaudeClient claude;
+	private ClaudeClient claude;
 	@Mock
-	ClaudeClientFlavors claudeClients;
+	private ClaudeClientFlavors claudeClients;
 	@Mock
-	SheetChartDataReader sheetChartData;
+	private SheetChartDataReader sheetChartData;
 	@Mock
-	TacticExtractionHelper tacticExtraction;
+	private TacticExtractionHelper tacticExtraction;
 	@Mock
-	SlidesProvider slides;
+	private SlidesProvider slides;
 	@Mock
-	ObjectProvider<UserGoogleTokenProvider> userGoogleTokens;
+	private ObjectProvider<UserGoogleTokenProvider> userGoogleTokens;
 	@Mock
-	ObjectProvider<ReportGenerationService> self;
+	private ObjectProvider<ReportGenerationService> self;
 	@Mock
-	ReportClaudeDefaults claudeDefaults;
+	private ReportClaudeDefaults claudeDefaults;
 	@Mock
-	ReportFileNamer fileNamer;
+	private ReportFileNamer fileNamer;
 	@Mock
-	PublisherBreakdownHelper publisherBreakdown;
+	private PublisherBreakdownHelper publisherBreakdown;
 	@Mock
-	CreativeBreakdownHelper creativeBreakdown;
+	private CreativeBreakdownHelper creativeBreakdown;
 	@Mock
-	GeoBreakdownHelper geoBreakdown;
+	private GeoBreakdownHelper geoBreakdown;
 	@Mock
-	AudienceBreakdownHelper audienceBreakdown;
+	private AudienceBreakdownHelper audienceBreakdown;
 	@Mock
-	DeviceBreakdownHelper deviceBreakdown;
+	private DeviceBreakdownHelper deviceBreakdown;
 	@Mock
-	ReportResumeStateHelper resumeState;
+	private ReportResumeStateHelper resumeState;
 	@Mock
-	PaidTokenHelper paidTokens;
+	private PaidTokenHelper paidTokens;
 
-	ReportGenerationServiceImpl service;
+	private ReportGenerationServiceImpl service;
 
 	@BeforeEach
 	void setUp() {

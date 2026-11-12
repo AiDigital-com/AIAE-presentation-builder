@@ -30,12 +30,12 @@ import static org.mockito.Mockito.when;
 class DeviceBreakdownHelperImplTest {
 
 	@Mock
-	ReportSheetHelper sheetHelper;
+	private ReportSheetHelper sheetHelper;
 	@Mock
-	BreakdownSelectionResolver breakdownResolver;
+	private BreakdownSelectionResolver breakdownResolver;
 
 	@InjectMocks
-	DeviceBreakdownHelperImpl helper;
+	private DeviceBreakdownHelperImpl helper;
 
 	@Test
 	void shouldCopySheetValuesVerbatimAndDashTheDeviceSlotsTheUserLeftBlankTest() {

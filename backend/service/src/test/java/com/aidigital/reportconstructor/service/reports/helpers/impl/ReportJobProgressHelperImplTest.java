@@ -23,10 +23,10 @@ import static org.mockito.Mockito.when;
 class ReportJobProgressHelperImplTest {
 
 	@Mock
-	ReportJobEntityService jobs;
+	private ReportJobEntityService jobs;
 
 	@InjectMocks
-	ReportJobProgressHelperImpl helper;
+	private ReportJobProgressHelperImpl helper;
 
 	@Test
 	void shouldCreateQueuedJobWithSevenStepsTest() {
