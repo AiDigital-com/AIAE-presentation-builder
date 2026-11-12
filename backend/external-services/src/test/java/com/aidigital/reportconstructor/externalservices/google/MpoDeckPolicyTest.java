@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckTemplate;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,7 +16,7 @@ class MpoDeckPolicyTest {
 		MpoDeckPolicy policy = new MpoDeckPolicy(props);
 
 		// When
-		String templateId = policy.templateIdOr(TemplateVariant.MPO, "EOM", "standard-eom");
+		String templateId = policy.templateIdOr(DeckTemplate.MPO, "EOM", "standard-eom");
 
 		// Then: the configured id, trimmed
 		assertThat(templateId).isEqualTo("mpo-eom");
@@ -31,7 +31,7 @@ class MpoDeckPolicyTest {
 		MpoDeckPolicy policy = new MpoDeckPolicy(props);
 
 		// When
-		String templateId = policy.templateIdOr(TemplateVariant.STANDARD, "EOC", "standard-eoc");
+		String templateId = policy.templateIdOr(DeckTemplate.STANDARD, "EOC", "standard-eoc");
 
 		// Then
 		assertThat(templateId).isEqualTo("standard-eoc");
@@ -45,7 +45,7 @@ class MpoDeckPolicyTest {
 		MpoDeckPolicy policy = new MpoDeckPolicy(props);
 
 		// When
-		String templateId = policy.templateIdOr(TemplateVariant.MPO, "EOC", "standard-eoc");
+		String templateId = policy.templateIdOr(DeckTemplate.MPO, "EOC", "standard-eoc");
 
 		// Then: no attempt to clone a blank id
 		assertThat(templateId).isEqualTo("standard-eoc");
@@ -74,10 +74,10 @@ class MpoDeckPolicyTest {
 		MpoDeckPolicy policy = new MpoDeckPolicy(props);
 
 		// When-Then: an EOC MPO deck uses them; a standard deck and an EOM deck never do
-		assertThat(policy.usesEocSlides(TemplateVariant.MPO, "EOC")).isTrue();
-		assertThat(policy.usesEocSlides(TemplateVariant.STANDARD, "EOC")).isFalse();
+		assertThat(policy.usesEocSlides(DeckTemplate.MPO, "EOC")).isTrue();
+		assertThat(policy.usesEocSlides(DeckTemplate.STANDARD, "EOC")).isFalse();
 		assertThat(policy.usesEocSlides(null, "EOC")).isFalse();
-		assertThat(policy.usesEocSlides(TemplateVariant.MPO, "EOM")).isFalse();
+		assertThat(policy.usesEocSlides(DeckTemplate.MPO, "EOM")).isFalse();
 	}
 
 	@Test
@@ -89,9 +89,9 @@ class MpoDeckPolicyTest {
 
 		// When-Then: an EOC MPO deck carries it; a standard deck and an EOM MPO request (which falls back to the
 		// standard EOM template) do not
-		assertThat(policy.usesMpoTemplate(TemplateVariant.MPO, "EOC")).isTrue();
-		assertThat(policy.usesMpoTemplate(TemplateVariant.STANDARD, "EOC")).isFalse();
-		assertThat(policy.usesMpoTemplate(TemplateVariant.MPO, "EOM")).isFalse();
+		assertThat(policy.usesMpoTemplate(DeckTemplate.MPO, "EOC")).isTrue();
+		assertThat(policy.usesMpoTemplate(DeckTemplate.STANDARD, "EOC")).isFalse();
+		assertThat(policy.usesMpoTemplate(DeckTemplate.MPO, "EOM")).isFalse();
 	}
 
 	@Test
@@ -100,7 +100,7 @@ class MpoDeckPolicyTest {
 		MpoDeckPolicy policy = new MpoDeckPolicy(new MpoDeckProperties());
 
 		// When
-		boolean usesMpoSlides = policy.usesEocSlides(TemplateVariant.MPO, "EOC");
+		boolean usesMpoSlides = policy.usesEocSlides(DeckTemplate.MPO, "EOC");
 
 		// Then: the deck that was actually cloned keeps its own (standard) ids
 		assertThat(usesMpoSlides).isFalse();

@@ -2,6 +2,39 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Slides converged (P8 / D6, branch `PDI_240`)
+
+- Measured first: `SlidesProvider` has 12 operations; `RealSlidesProvider` 1,975 lines used service types 61
+  times (`BreakdownType` 32, `TemplateVariant` 11, `AppException` 13, `PaidSlidesFill`, the port,
+  `BreakdownThoughtsGate`); six helpers used one service type each. Every `AppException` was `C000` + message.
+- New Google-owned vocabulary in `google.deck` — copies, not moves, so the service keeps its own types:
+  `DeckBreakdown` (same constants, order, codes, anchor labels — the workbook reads it by ordinal),
+  `DeckTemplate`, `DeckMarkers` (U+2063 / `[[` / `]]`), `PaidDeckChannel`, `PaidDeckTableMarker`,
+  `model/PaidDeckFill`, `model/PaidDeckTable`; plus `google.GoogleApiException`.
+- `google.slides.SlidesDeckClient` (generated from the port, same JavaDoc) is implemented by
+  `RealSlidesProvider` / `StubSlidesProvider`; they and `DeckMarkupRequestBuilder`, `EomSlideFinder`,
+  `PaidSlidesWriter`, `MpoDeckPolicy`, `BreakdownSlideNaming`, `SlideModel` now import nothing from `service`.
+  Kept in package `google` (shared package-private helpers with the workbook/chart code).
+- The ">2 breakdowns" thoughts rule stays in the service: the bridge calls
+  `BreakdownThoughtsGate.qualifyingTactics` and the client receives the qualifying tactic numbers
+  (`addBreakdownSlides(..., Set<Integer> thoughtsTactics, ...)`, threaded through the
+  `buildBreakdownRequests` overloads and the EOM path). Equivalent: `qualifyingTactics` keeps exactly the
+  tactics for which `qualifies` is true.
+- `bridge.SlidesProviderBridge` implements `SlidesProvider` (the only implementation); `bridge.DeckModelMapper`
+  maps by constant name, keeping `null`s and map order. `GoogleApiException` → `AppException(C000, message)`:
+  the job error text (`markJobFailed(jobId, ex.getMessage())`) is unchanged.
+- Transitional: `BreakdownChartBuilder` converts `BreakdownType` → `DeckBreakdown` by name for the slide id
+  until the charts are converted. `GoogleRequestRetrier` is unchanged (shared with the workbook writer and
+  charts); its interrupt-only `AppException` passes through the bridge untouched.
+- Tests: `RealSlidesProviderTest` 47 (unchanged count; gate tests now pass the qualifying set, the one
+  cross-module contract test keeps the service `BreakdownType` for the service resolver stub),
+  `EomSlideFinderTest`, `PaidSlidesWriterTest`, `MpoDeckPolicyTest`, `DeckMarkupRequestBuilderTest` switched to
+  the deck types; new `DeckModelMapperTest` 6 (both vocabularies stay identical), `SlidesProviderBridgeTest` 4.
+  `external-services` 447 → 457 tests. `mvn -Pmvp verify`: BUILD SUCCESS (`ApplicationSmokeTest` boots with the
+  bridge as the single `SlidesProvider`).
+- `service` import lines in `external-services` main outside `bridge`: 185 in 33 files → 164 in 25. Gates:
+  **3 of 21 failing** (unchanged).
+
 ## 2026-11-12 — Sheets read path converged (P8 / D6, branch `PDI_240`)
 
 - Scope: the read path only (`GoogleSheetsProvider` had one caller, `SheetQueryServiceImpl`). The

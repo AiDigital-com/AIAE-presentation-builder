@@ -1,9 +1,9 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
-import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
-import com.aidigital.reportconstructor.service.reports.model.PaidSlidesFill;
-import com.aidigital.reportconstructor.service.reports.ports.SlidesProvider;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckBreakdown;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckTemplate;
+import com.aidigital.reportconstructor.externalservices.google.deck.model.PaidDeckFill;
+import com.aidigital.reportconstructor.externalservices.google.slides.SlidesDeckClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Deterministic Slides provider — the only candidate when no {@code @Primary}
+ * Deterministic {@link SlidesDeckClient} — the only candidate when no {@code @Primary}
  * real Slides bean is registered (i.e. when {@code GOOGLE_SERVICE_ACCOUNT_JSON}
  * is unset and {@link RealSlidesProvider} stays conditional-excluded).
  *
@@ -21,7 +21,7 @@ import java.util.Set;
  */
 @Component
 @RequiredArgsConstructor
-public class StubSlidesProvider implements SlidesProvider {
+public class StubSlidesProvider implements SlidesDeckClient {
 
 	private final GoogleProperties props;
 	private final EomDeckPolicy eomDeckPolicy;
@@ -33,7 +33,7 @@ public class StubSlidesProvider implements SlidesProvider {
 	}
 
 	@Override
-	public boolean carriesTacticThoughts(String reportType, TemplateVariant templateVariant) {
+	public boolean carriesTacticThoughts(String reportType, DeckTemplate templateVariant) {
 		String thoughtsMaster = mpoDeckPolicy.usesEocSlides(templateVariant, reportType)
 				? mpoDeckPolicy.eocSlideIds().getThoughtsMasterSlideObjectId()
 				: props.getThoughtsMasterSlideObjectId();
@@ -41,14 +41,14 @@ public class StubSlidesProvider implements SlidesProvider {
 	}
 
 	@Override
-	public boolean carriesMpoNarrative(String reportType, TemplateVariant templateVariant) {
+	public boolean carriesMpoNarrative(String reportType, DeckTemplate templateVariant) {
 		return mpoDeckPolicy.usesMpoTemplate(templateVariant, reportType);
 	}
 
 	@Override
 	public String createDeck(
 			String jobId, String fileName, Map<String, String> placeholderMap, String reportType,
-			TemplateVariant templateVariant, String userGoogleAccessToken) {
+			DeckTemplate templateVariant, String userGoogleAccessToken) {
 		String templateId = mpoDeckPolicy.templateIdOr(
 				templateVariant, reportType, eomDeckPolicy.templateIdOr(reportType, props.getSlidesTemplateId()));
 		return "https://docs.google.com/presentation/d/" + templateId + "/edit?stub=" + jobId;
@@ -56,7 +56,7 @@ public class StubSlidesProvider implements SlidesProvider {
 
 	@Override
 	public void trimTactics(
-			String presentationId, int tacticCount, String reportType, TemplateVariant templateVariant,
+			String presentationId, int tacticCount, String reportType, DeckTemplate templateVariant,
 			String userGoogleAccessToken) {
 		// No-op: the stub never clones a real deck, so there are no slides to trim.
 	}
@@ -64,21 +64,21 @@ public class StubSlidesProvider implements SlidesProvider {
 	@Override
 	public void addTacticSlides(
 			String presentationId, int tacticCount, Map<String, String> placeholderMap, String reportType,
-			TemplateVariant templateVariant, String userGoogleAccessToken) {
+			DeckTemplate templateVariant, String userGoogleAccessToken) {
 		// No-op: the stub never clones a real deck, so there is no master tactic slide to duplicate.
 	}
 
 	@Override
 	public void addBreakdownSlides(
-			String presentationId, Map<Integer, Set<BreakdownType>> enabledByTactic,
-			Map<String, String> breakdownValues, String reportType, TemplateVariant templateVariant,
-			String userGoogleAccessToken) {
+			String presentationId, Map<Integer, Set<DeckBreakdown>> enabledByTactic,
+			Map<String, String> breakdownValues, Set<Integer> thoughtsTactics, String reportType,
+			DeckTemplate templateVariant, String userGoogleAccessToken) {
 		// No-op: the stub never clones a real deck, so there are no master slides to duplicate.
 	}
 
 	@Override
 	public void deleteMasterSlides(
-			String presentationId, String reportType, TemplateVariant templateVariant, String userGoogleAccessToken) {
+			String presentationId, String reportType, DeckTemplate templateVariant, String userGoogleAccessToken) {
 		// No-op: the stub never clones a real deck, so there are no master slides to delete.
 	}
 
@@ -89,7 +89,7 @@ public class StubSlidesProvider implements SlidesProvider {
 
 	@Override
 	public List<String> dashUnresolvedTokens(
-			String presentationId, String reportType, TemplateVariant templateVariant, String userGoogleAccessToken) {
+			String presentationId, String reportType, DeckTemplate templateVariant, String userGoogleAccessToken) {
 		// No-op: the stub never clones a real deck, so there are no tokens left standing in one.
 		return List.of();
 	}
@@ -100,7 +100,7 @@ public class StubSlidesProvider implements SlidesProvider {
 	}
 
 	@Override
-	public void fillPaidSlides(String presentationId, PaidSlidesFill fill, String userGoogleAccessToken) {
+	public void fillPaidSlides(String presentationId, PaidDeckFill fill, String userGoogleAccessToken) {
 		// No-op: the stub never clones a real deck, so there are no paid tables to write.
 	}
 

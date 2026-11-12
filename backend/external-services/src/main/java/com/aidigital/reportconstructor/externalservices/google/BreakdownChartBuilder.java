@@ -2,8 +2,8 @@ package com.aidigital.reportconstructor.externalservices.google;
 
 import com.aidigital.reportconstructor.externalservices.google.drive.DriveCopier;
 import com.aidigital.reportconstructor.externalservices.google.drive.ChartFileSharer;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckBreakdown;
 import com.aidigital.reportconstructor.service.reports.dto.BreakdownChartSeries;
-import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartJob;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartRequest;
 import com.aidigital.reportconstructor.service.reports.ports.BreakdownChartSlice;
@@ -143,7 +143,9 @@ public class BreakdownChartBuilder {
 		if (series == null) {
 			return;
 		}
-		BreakdownType type = series.section();
+		// The slide naming speaks the deck's own breakdown vocabulary; this chart code still receives the service's
+		// type until the chart provider is converted, so the two are matched by constant name here.
+		DeckBreakdown type = DeckBreakdown.valueOf(series.section().name());
 		String tag = "Breakdown " + series.code() + " tactic " + job.tacticNum();
 		String sourceSheetId = catalog.getSourceSheetIds().get(series.code());
 		Integer chartIdInSheet = parseChartId(catalog.getChartIdInSheet().get(series.code()));

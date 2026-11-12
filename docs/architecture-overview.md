@@ -122,8 +122,18 @@ provider is converted, the bridges move into `service` and the module edge flips
   credentials exist, `impl.StubSheetsClient` otherwise). `bridge.SheetQueryServiceImpl` implements the
   `SheetQueryService` port: URL validation, `SheetData` shaping, and user-facing errors through
   `bridge.SheetsFailureTranslator`.
-- Not yet converted: the workbook/deck writers (`RealSheetDeckProvider`, `SheetPacingTableWriter`,
-  `ChartSheetWriter`), Slides and charts; `anthropic`.
+- Converted: **Slides** (`google.slides.SlidesDeckClient`, the 12 deck operations in Google terms, implemented
+  by `RealSlidesProvider` / `StubSlidesProvider`; failures are `google.GoogleApiException`). The deck
+  vocabulary the Google code shares lives in `google.deck`: `DeckBreakdown`, `DeckTemplate`, `DeckMarkers`,
+  `PaidDeckChannel`, `PaidDeckTableMarker`, `model.PaidDeckFill` / `PaidDeckTable` — copies of the service's
+  types, kept identical by `DeckModelMapperTest`. `bridge.SlidesProviderBridge` implements `SlidesProvider`:
+  maps types through `bridge.DeckModelMapper`, applies `BreakdownThoughtsGate` and hands the qualifying
+  tactics down, and turns `GoogleApiException` into `AppException(C000)` with the same message. The Slides
+  classes stay in package `google` (they share package-private helpers with the workbook and chart code);
+  they move into `google.slides` once those are converted.
+- Not yet converted: the workbook writer (`RealSheetDeckProvider`, `SheetPacingTableWriter`), the charts
+  (`RealChartProvider`, chart builders, `ChartSheetWriter`), `GoogleRequestRetrier` (shared; its rare
+  "interrupted" `AppException` passes through the bridges unchanged until then), and `anthropic`.
 
 Controllers implement generated OpenAPI interfaces and delegate to services.
 Repositories are accessed only through their paired entity services.

@@ -1,6 +1,6 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
-import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckTemplate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -27,8 +27,8 @@ public class MpoDeckPolicy {
 	 * @param standardTemplateId the template the standard design clones for this report type
 	 * @return the template id to clone
 	 */
-	public String templateIdOr(TemplateVariant variant, String reportType, String standardTemplateId) {
-		if (variant != TemplateVariant.MPO) {
+	public String templateIdOr(DeckTemplate variant, String reportType, String standardTemplateId) {
+		if (variant != DeckTemplate.MPO) {
 			return standardTemplateId;
 		}
 		String mpoTemplateId = mpoTemplateIdFor(reportType);
@@ -44,8 +44,8 @@ public class MpoDeckPolicy {
 	 * @param reportType report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
 	 * @return {@code true} when an MPO template is configured for the report type and this deck clones it
 	 */
-	public boolean usesMpoTemplate(TemplateVariant variant, String reportType) {
-		return variant == TemplateVariant.MPO && !mpoTemplateIdFor(reportType).isEmpty();
+	public boolean usesMpoTemplate(DeckTemplate variant, String reportType) {
+		return variant == DeckTemplate.MPO && !mpoTemplateIdFor(reportType).isEmpty();
 	}
 
 	/**
@@ -57,8 +57,8 @@ public class MpoDeckPolicy {
 	 * @param reportType report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
 	 * @return {@code true} when the EOC MPO template is configured and this deck clones it
 	 */
-	public boolean usesEocSlides(TemplateVariant variant, String reportType) {
-		return variant == TemplateVariant.MPO
+	public boolean usesEocSlides(DeckTemplate variant, String reportType) {
+		return variant == DeckTemplate.MPO
 				&& !EomDeckPolicy.EOM_REPORT_TYPE.equals(reportType)
 				&& !mpoTemplateIdFor(reportType).isEmpty();
 	}
