@@ -131,9 +131,18 @@ provider is converted, the bridges move into `service` and the module edge flips
   tactics down, and turns `GoogleApiException` into `AppException(C000)` with the same message. The Slides
   classes stay in package `google` (they share package-private helpers with the workbook and chart code);
   they move into `google.slides` once those are converted.
-- Not yet converted: the workbook writer (`RealSheetDeckProvider`, `SheetPacingTableWriter`), the charts
-  (`RealChartProvider`, chart builders, `ChartSheetWriter`), `GoogleRequestRetrier` (shared; its rare
-  "interrupted" `AppException` passes through the bridges unchanged until then), and `anthropic`.
+- Converted: **workbook writer** (`google.sheets.SheetWorkbookClient`, implemented by
+  `RealSheetDeckProvider` / `StubSheetDeckProvider`; the breakdown tables read back are the copies in
+  `google.sheets.model.Workbook*`, kept identical to the service records by `WorkbookModelMapperTest`).
+  `bridge.SheetDeckProviderBridge` implements `SheetDeckProvider` and maps through `DeckModelMapper` /
+  `bridge.WorkbookModelMapper`. Pacing tables: the client resolves identity and the first tab and runs a
+  `google.sheets.WorkbookTabWriter` the bridge supplies, which still calls `SheetPacingTableWriter`.
+- Not yet converted — the **chart/pacing pivot path**: the service's `ChartPivot` engine (BigQuery rows →
+  pivots) is injected into `SheetPacingTableWriter` and `TacticChartBuilder`, so business calculation runs
+  inside the integration. The target is the service computing pivots and the Google code only writing them;
+  that slice covers `SheetPacingTableWriter`, `RealChartProvider`, the chart builders, `ChartSheetWriter`.
+  Also open: `GoogleRequestRetrier` (shared; its rare "interrupted" `AppException` passes through the bridges
+  unchanged until then) and `anthropic`.
 
 Controllers implement generated OpenAPI interfaces and delegate to services.
 Repositories are accessed only through their paired entity services.

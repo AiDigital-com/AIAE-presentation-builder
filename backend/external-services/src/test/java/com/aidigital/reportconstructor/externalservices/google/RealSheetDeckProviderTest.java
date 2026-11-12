@@ -2,17 +2,17 @@ package com.aidigital.reportconstructor.externalservices.google;
 
 import com.aidigital.reportconstructor.externalservices.google.drive.DriveSharer;
 import com.aidigital.reportconstructor.externalservices.google.drive.DriveShareRecipients;
-import com.aidigital.reportconstructor.service.reports.dto.AudienceAgeRow;
-import com.aidigital.reportconstructor.service.reports.dto.AudienceSegmentRow;
-import com.aidigital.reportconstructor.service.reports.dto.AudienceTable;
-import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
-import com.aidigital.reportconstructor.service.reports.dto.CreativeRow;
-import com.aidigital.reportconstructor.service.reports.dto.CreativeTable;
-import com.aidigital.reportconstructor.service.reports.dto.DeviceRow;
-import com.aidigital.reportconstructor.service.reports.dto.DeviceTable;
-import com.aidigital.reportconstructor.service.reports.dto.GeoRow;
-import com.aidigital.reportconstructor.service.reports.dto.GeoTable;
-import com.aidigital.reportconstructor.service.reports.dto.PublisherRow;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookAudienceAgeRow;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookAudienceSegmentRow;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookAudienceTable;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckBreakdown;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookCreativeRow;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookCreativeTable;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookDeviceRow;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookDeviceTable;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookGeoRow;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookGeoTable;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookPublisherRow;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.sheets.v4.model.GridRange;
@@ -42,11 +42,10 @@ class RealSheetDeckProviderTest {
 		when(props.getSheetsTemplateId()).thenReturn("template");
 		when(props.getEomSheetsTemplateId()).thenReturn("eom-template");
 		when(props.getSheetsTargetFolderId()).thenReturn("");
-		SheetPacingTableWriter writer = Mockito.mock(SheetPacingTableWriter.class);
 		GoogleRequestRetrier retrier = Mockito.mock(GoogleRequestRetrier.class);
 		DriveSharer driveSharer = Mockito.mock(DriveSharer.class);
 		DriveShareRecipients shareRecipients = Mockito.mock(DriveShareRecipients.class);
-		return new RealSheetDeckProvider(creds, props, writer, retrier, driveSharer, shareRecipients);
+		return new RealSheetDeckProvider(creds, props, retrier, driveSharer, shareRecipients);
 	}
 
 	@Test
@@ -187,9 +186,9 @@ class RealSheetDeckProviderTest {
 		}
 		int sheetId = 5;
 		// Tactic 1 keeps Top Publishers + Geo; tactic 2 enables nothing (all five cleared).
-		Map<Integer, Set<BreakdownType>> enabledByTactic = Map.of(
-				1, EnumSet.of(BreakdownType.TOP_PUBLISHERS, BreakdownType.GEO),
-				2, EnumSet.noneOf(BreakdownType.class));
+		Map<Integer, Set<DeckBreakdown>> enabledByTactic = Map.of(
+				1, EnumSet.of(DeckBreakdown.TOP_PUBLISHERS, DeckBreakdown.GEO),
+				2, EnumSet.noneOf(DeckBreakdown.class));
 
 		// When:
 		List<Request> requests = provider.breakdownClearRequests(grid, sheetId, enabledByTactic);
@@ -257,12 +256,12 @@ class RealSheetDeckProviderTest {
 				1, List.of(List.of("YouTube", "1,200,000", "26%"), List.of("Hulu", "800,000", "17%"))));
 
 		// When:
-		Map<Integer, List<PublisherRow>> tables = provider.publisherTables(grid, Set.of(1));
+		Map<Integer, List<WorkbookPublisherRow>> tables = provider.publisherTables(grid, Set.of(1));
 
 		// Then: both rows come back verbatim, in sheet order
 		assertThat(tables.get(1)).containsExactly(
-				new PublisherRow("YouTube", "1,200,000", "26%"),
-				new PublisherRow("Hulu", "800,000", "17%"));
+				new WorkbookPublisherRow("YouTube", "1,200,000", "26%"),
+				new WorkbookPublisherRow("Hulu", "800,000", "17%"));
 	}
 
 	@Test
@@ -275,10 +274,10 @@ class RealSheetDeckProviderTest {
 				15, List.of(List.of("Roku", "500,000", "11%"))));
 
 		// When:
-		Map<Integer, List<PublisherRow>> tables = provider.publisherTables(grid, Set.of(1));
+		Map<Integer, List<WorkbookPublisherRow>> tables = provider.publisherTables(grid, Set.of(1));
 
 		// Then: only tactic 1's own row is returned and tactic 15's block is untouched
-		assertThat(tables.get(1)).containsExactly(new PublisherRow("YouTube", "1,200,000", "26%"));
+		assertThat(tables.get(1)).containsExactly(new WorkbookPublisherRow("YouTube", "1,200,000", "26%"));
 		assertThat(tables).doesNotContainKey(15);
 	}
 
@@ -289,7 +288,7 @@ class RealSheetDeckProviderTest {
 		List<List<String>> grid = publisherGrid(Map.of(1, List.of()));
 
 		// When:
-		Map<Integer, List<PublisherRow>> tables = provider.publisherTables(grid, Set.of(1));
+		Map<Integer, List<WorkbookPublisherRow>> tables = provider.publisherTables(grid, Set.of(1));
 
 		// Then: the tactic is present with no rows rather than absent, so the caller can still ship the slide
 		assertThat(tables).containsKey(1);
@@ -313,10 +312,10 @@ class RealSheetDeckProviderTest {
 		grid.add(new ArrayList<>(List.of("Top Publishers 2", "{{tactic 2}}", "", "")));
 
 		// When:
-		Map<Integer, List<PublisherRow>> tables = provider.publisherTables(grid, Set.of(1));
+		Map<Integer, List<WorkbookPublisherRow>> tables = provider.publisherTables(grid, Set.of(1));
 
 		// Then: only the one filled publisher comes back — the Total row is not mistaken for a 16th
-		assertThat(tables.get(1)).containsExactly(new PublisherRow("YouTube", "1,200,000", "26%"));
+		assertThat(tables.get(1)).containsExactly(new WorkbookPublisherRow("YouTube", "1,200,000", "26%"));
 	}
 
 	@Test
@@ -344,10 +343,10 @@ class RealSheetDeckProviderTest {
 						List.of("Cutdown 6s", "600,000", "0.31%", "71.2%", "$2,100"))));
 
 		// When:
-		Map<Integer, CreativeTable> tables = provider.creativeTables(grid, Set.of(1));
+		Map<Integer, WorkbookCreativeTable> tables = provider.creativeTables(grid, Set.of(1));
 
 		// Then: the stat tiles come back as typed
-		CreativeTable table = tables.get(1);
+		WorkbookCreativeTable table = tables.get(1);
 		assertThat(table.creativesLive()).isEqualTo("12");
 		assertThat(table.bestKpi()).isEqualTo("0.58");
 		assertThat(table.avgKpi()).isEqualTo("0.42");
@@ -355,8 +354,8 @@ class RealSheetDeckProviderTest {
 
 		// Then: both rows come back verbatim, in sheet order
 		assertThat(table.rows()).containsExactly(
-				new CreativeRow("Hero 15s", "1,200,000", "0.58%", "82.9%", "$4,800"),
-				new CreativeRow("Cutdown 6s", "600,000", "0.31%", "71.2%", "$2,100"));
+				new WorkbookCreativeRow("Hero 15s", "1,200,000", "0.58%", "82.9%", "$4,800"),
+				new WorkbookCreativeRow("Cutdown 6s", "600,000", "0.31%", "71.2%", "$2,100"));
 	}
 
 	@Test
@@ -369,11 +368,11 @@ class RealSheetDeckProviderTest {
 				15, List.of(List.of("Banner 300x250", "500,000", "0.11%", "—", "$900"))));
 
 		// When:
-		Map<Integer, CreativeTable> tables = provider.creativeTables(grid, Set.of(1));
+		Map<Integer, WorkbookCreativeTable> tables = provider.creativeTables(grid, Set.of(1));
 
 		// Then: only tactic 1's own row is returned and tactic 15's block is untouched
 		assertThat(tables.get(1).rows())
-				.containsExactly(new CreativeRow("Hero 15s", "1,200,000", "0.58%", "82.9%", "$4,800"));
+				.containsExactly(new WorkbookCreativeRow("Hero 15s", "1,200,000", "0.58%", "82.9%", "$4,800"));
 		assertThat(tables).doesNotContainKey(15);
 	}
 
@@ -384,7 +383,7 @@ class RealSheetDeckProviderTest {
 		List<List<String>> grid = creativeGrid(Map.of(1, List.of()));
 
 		// When:
-		Map<Integer, CreativeTable> tables = provider.creativeTables(grid, Set.of(2));
+		Map<Integer, WorkbookCreativeTable> tables = provider.creativeTables(grid, Set.of(2));
 
 		// Then: the tactic is present with an empty table rather than absent, so the slide still ships
 		assertThat(tables).containsKey(2);
@@ -432,18 +431,18 @@ class RealSheetDeckProviderTest {
 						List.of("Atlanta", "900,000", "0.46%"))));
 
 		// When:
-		Map<Integer, GeoTable> tables = provider.geoTables(grid, Set.of(1));
+		Map<Integer, WorkbookGeoTable> tables = provider.geoTables(grid, Set.of(1));
 
 		// Then: the stat tiles come back as typed, including the prefix-matched "MOST EFFICIENT CTR" tile
-		GeoTable table = tables.get(1);
+		WorkbookGeoTable table = tables.get(1);
 		assertThat(table.marketsActivated()).isEqualTo("42");
 		assertThat(table.topGeo()).isEqualTo("Miami");
 		assertThat(table.topKpi()).isEqualTo("0.48%");
 
 		// Then: both rows come back verbatim, in sheet order
 		assertThat(table.rows()).containsExactly(
-				new GeoRow("Miami", "1,200,000", "0.48%"),
-				new GeoRow("Atlanta", "900,000", "0.46%"));
+				new WorkbookGeoRow("Miami", "1,200,000", "0.48%"),
+				new WorkbookGeoRow("Atlanta", "900,000", "0.46%"));
 	}
 
 	@Test
@@ -456,10 +455,10 @@ class RealSheetDeckProviderTest {
 				15, List.of(List.of("Boise", "50,000", "0.11%"))));
 
 		// When:
-		Map<Integer, GeoTable> tables = provider.geoTables(grid, Set.of(1));
+		Map<Integer, WorkbookGeoTable> tables = provider.geoTables(grid, Set.of(1));
 
 		// Then: only tactic 1's own row is returned and tactic 15's block is untouched
-		assertThat(tables.get(1).rows()).containsExactly(new GeoRow("Miami", "1,200,000", "0.48%"));
+		assertThat(tables.get(1).rows()).containsExactly(new WorkbookGeoRow("Miami", "1,200,000", "0.48%"));
 		assertThat(tables).doesNotContainKey(15);
 	}
 
@@ -470,7 +469,7 @@ class RealSheetDeckProviderTest {
 		List<List<String>> grid = geoGrid(Map.of(1, List.of()));
 
 		// When:
-		Map<Integer, GeoTable> tables = provider.geoTables(grid, Set.of(2));
+		Map<Integer, WorkbookGeoTable> tables = provider.geoTables(grid, Set.of(2));
 
 		// Then: the tactic is present with an empty table rather than absent, so the slide still ships
 		assertThat(tables).containsKey(2);
@@ -513,26 +512,26 @@ class RealSheetDeckProviderTest {
 		// age rows and its filled segment rows
 		RealSheetDeckProvider provider = newProvider();
 		List<List<String>> grid = audienceGrid(Map.of(
-				1, new AudienceTable("25-34", "58% F / 42% M",
-						List.of(new AudienceAgeRow("18-24", "800,000"), new AudienceAgeRow("25-34", "1,200,000")),
-						List.of(new AudienceSegmentRow("Auto Intenders", "142"),
-								new AudienceSegmentRow("Sports Fans", "128")))));
+				1, new WorkbookAudienceTable("25-34", "58% F / 42% M",
+						List.of(new WorkbookAudienceAgeRow("18-24", "800,000"), new WorkbookAudienceAgeRow("25-34", "1,200,000")),
+						List.of(new WorkbookAudienceSegmentRow("Auto Intenders", "142"),
+								new WorkbookAudienceSegmentRow("Sports Fans", "128")))));
 
 		// When:
-		Map<Integer, AudienceTable> tables = provider.audienceTables(grid, Set.of(1));
+		Map<Integer, WorkbookAudienceTable> tables = provider.audienceTables(grid, Set.of(1));
 
 		// Then: the stat tiles come back as typed
-		AudienceTable table = tables.get(1);
+		WorkbookAudienceTable table = tables.get(1);
 		assertThat(table.ageDistribution()).isEqualTo("25-34");
 		assertThat(table.genderDemographics()).isEqualTo("58% F / 42% M");
 
 		// Then: both sub-tables come back verbatim, in sheet order
 		assertThat(table.ageRows()).containsExactly(
-				new AudienceAgeRow("18-24", "800,000"),
-				new AudienceAgeRow("25-34", "1,200,000"));
+				new WorkbookAudienceAgeRow("18-24", "800,000"),
+				new WorkbookAudienceAgeRow("25-34", "1,200,000"));
 		assertThat(table.segmentRows()).containsExactly(
-				new AudienceSegmentRow("Auto Intenders", "142"),
-				new AudienceSegmentRow("Sports Fans", "128"));
+				new WorkbookAudienceSegmentRow("Auto Intenders", "142"),
+				new WorkbookAudienceSegmentRow("Sports Fans", "128"));
 	}
 
 	@Test
@@ -540,15 +539,15 @@ class RealSheetDeckProviderTest {
 		// Given: the template pre-fills every age bucket label, but the user typed impressions for only one
 		RealSheetDeckProvider provider = newProvider();
 		List<List<String>> grid = audienceGrid(Map.of(
-				1, new AudienceTable("25-34", "",
-						List.of(new AudienceAgeRow("18-24", ""), new AudienceAgeRow("25-34", "1,200,000")),
+				1, new WorkbookAudienceTable("25-34", "",
+						List.of(new WorkbookAudienceAgeRow("18-24", ""), new WorkbookAudienceAgeRow("25-34", "1,200,000")),
 						List.of())));
 
 		// When:
-		Map<Integer, AudienceTable> tables = provider.audienceTables(grid, Set.of(1));
+		Map<Integer, WorkbookAudienceTable> tables = provider.audienceTables(grid, Set.of(1));
 
 		// Then: only the impressions-filled bucket is kept, so a blank age table never reads as data
-		assertThat(tables.get(1).ageRows()).containsExactly(new AudienceAgeRow("25-34", "1,200,000"));
+		assertThat(tables.get(1).ageRows()).containsExactly(new WorkbookAudienceAgeRow("25-34", "1,200,000"));
 	}
 
 	@Test
@@ -557,16 +556,16 @@ class RealSheetDeckProviderTest {
 		// anchor of the first is a prefix of the second, so a loose match would pull tactic 15's rows in
 		RealSheetDeckProvider provider = newProvider();
 		List<List<String>> grid = audienceGrid(Map.of(
-				1, new AudienceTable("25-34", "58% F", List.of(),
-						List.of(new AudienceSegmentRow("Auto Intenders", "142"))),
-				15, new AudienceTable("55-64", "50% F", List.of(),
-						List.of(new AudienceSegmentRow("Retirees", "90")))));
+				1, new WorkbookAudienceTable("25-34", "58% F", List.of(),
+						List.of(new WorkbookAudienceSegmentRow("Auto Intenders", "142"))),
+				15, new WorkbookAudienceTable("55-64", "50% F", List.of(),
+						List.of(new WorkbookAudienceSegmentRow("Retirees", "90")))));
 
 		// When:
-		Map<Integer, AudienceTable> tables = provider.audienceTables(grid, Set.of(1));
+		Map<Integer, WorkbookAudienceTable> tables = provider.audienceTables(grid, Set.of(1));
 
 		// Then: only tactic 1's own segment is returned and tactic 15's block is untouched
-		assertThat(tables.get(1).segmentRows()).containsExactly(new AudienceSegmentRow("Auto Intenders", "142"));
+		assertThat(tables.get(1).segmentRows()).containsExactly(new WorkbookAudienceSegmentRow("Auto Intenders", "142"));
 		assertThat(tables).doesNotContainKey(15);
 	}
 
@@ -574,10 +573,10 @@ class RealSheetDeckProviderTest {
 	void audienceTables_returnsEmptyTableForATacticWhoseBlockWasNeverFilledTest() {
 		// Given: a tab carrying no audience anchor for the requested tactic
 		RealSheetDeckProvider provider = newProvider();
-		List<List<String>> grid = audienceGrid(Map.of(1, AudienceTable.EMPTY));
+		List<List<String>> grid = audienceGrid(Map.of(1, WorkbookAudienceTable.EMPTY));
 
 		// When:
-		Map<Integer, AudienceTable> tables = provider.audienceTables(grid, Set.of(2));
+		Map<Integer, WorkbookAudienceTable> tables = provider.audienceTables(grid, Set.of(2));
 
 		// Then: the tactic is present with an empty table rather than absent, so the slide still ships
 		assertThat(tables).containsKey(2);
@@ -608,15 +607,15 @@ class RealSheetDeckProviderTest {
 		// per-device rows
 		RealSheetDeckProvider provider = newProvider();
 		List<List<String>> grid = deviceGrid(Map.of(
-				1, new DeviceTable("1.20%", "82%", "4", "Mobile", "61%",
-						List.of(new DeviceRow("Mobile", "1,200,000", "1.20%", "78%", "$4,000"),
-								new DeviceRow("Desktop", "300,000", "0.90%", "85%", "$1,000")))));
+				1, new WorkbookDeviceTable("1.20%", "82%", "4", "Mobile", "61%",
+						List.of(new WorkbookDeviceRow("Mobile", "1,200,000", "1.20%", "78%", "$4,000"),
+								new WorkbookDeviceRow("Desktop", "300,000", "0.90%", "85%", "$1,000")))));
 
 		// When:
-		Map<Integer, DeviceTable> tables = provider.deviceTables(grid, Set.of(1));
+		Map<Integer, WorkbookDeviceTable> tables = provider.deviceTables(grid, Set.of(1));
 
 		// Then: every stat tile comes back as typed
-		DeviceTable table = tables.get(1);
+		WorkbookDeviceTable table = tables.get(1);
 		assertThat(table.highestCtr()).isEqualTo("1.20%");
 		assertThat(table.bestCompletion()).isEqualTo("82%");
 		assertThat(table.devicesTracked()).isEqualTo("4");
@@ -625,8 +624,8 @@ class RealSheetDeckProviderTest {
 
 		// Then: the table's filled rows come back verbatim, in sheet order
 		assertThat(table.rows()).containsExactly(
-				new DeviceRow("Mobile", "1,200,000", "1.20%", "78%", "$4,000"),
-				new DeviceRow("Desktop", "300,000", "0.90%", "85%", "$1,000"));
+				new WorkbookDeviceRow("Mobile", "1,200,000", "1.20%", "78%", "$4,000"),
+				new WorkbookDeviceRow("Desktop", "300,000", "0.90%", "85%", "$1,000"));
 	}
 
 	@Test
@@ -634,16 +633,16 @@ class RealSheetDeckProviderTest {
 		// Given: the template pre-fills every device label, but the user typed impressions for only one
 		RealSheetDeckProvider provider = newProvider();
 		List<List<String>> grid = deviceGrid(Map.of(
-				1, new DeviceTable("1.20%", "", "", "", "",
-						List.of(new DeviceRow("Mobile", "", "", "", ""),
-								new DeviceRow("Desktop", "300,000", "0.90%", "85%", "$1,000")))));
+				1, new WorkbookDeviceTable("1.20%", "", "", "", "",
+						List.of(new WorkbookDeviceRow("Mobile", "", "", "", ""),
+								new WorkbookDeviceRow("Desktop", "300,000", "0.90%", "85%", "$1,000")))));
 
 		// When:
-		Map<Integer, DeviceTable> tables = provider.deviceTables(grid, Set.of(1));
+		Map<Integer, WorkbookDeviceTable> tables = provider.deviceTables(grid, Set.of(1));
 
 		// Then: only the impressions-filled device is kept, so a blank device row never reads as data
 		assertThat(tables.get(1).rows())
-				.containsExactly(new DeviceRow("Desktop", "300,000", "0.90%", "85%", "$1,000"));
+				.containsExactly(new WorkbookDeviceRow("Desktop", "300,000", "0.90%", "85%", "$1,000"));
 	}
 
 	@Test
@@ -652,17 +651,17 @@ class RealSheetDeckProviderTest {
 		// of the first is a prefix of the second, so a loose match would pull tactic 15's rows in
 		RealSheetDeckProvider provider = newProvider();
 		List<List<String>> grid = deviceGrid(Map.of(
-				1, new DeviceTable("1.20%", "82%", "4", "Mobile", "61%",
-						List.of(new DeviceRow("Mobile", "1,200,000", "1.20%", "78%", "$4,000"))),
-				15, new DeviceTable("0.40%", "60%", "2", "Desktop", "70%",
-						List.of(new DeviceRow("Desktop", "500,000", "0.40%", "60%", "$900")))));
+				1, new WorkbookDeviceTable("1.20%", "82%", "4", "Mobile", "61%",
+						List.of(new WorkbookDeviceRow("Mobile", "1,200,000", "1.20%", "78%", "$4,000"))),
+				15, new WorkbookDeviceTable("0.40%", "60%", "2", "Desktop", "70%",
+						List.of(new WorkbookDeviceRow("Desktop", "500,000", "0.40%", "60%", "$900")))));
 
 		// When:
-		Map<Integer, DeviceTable> tables = provider.deviceTables(grid, Set.of(1));
+		Map<Integer, WorkbookDeviceTable> tables = provider.deviceTables(grid, Set.of(1));
 
 		// Then: only tactic 1's own row is returned and tactic 15's block is untouched
 		assertThat(tables.get(1).rows())
-				.containsExactly(new DeviceRow("Mobile", "1,200,000", "1.20%", "78%", "$4,000"));
+				.containsExactly(new WorkbookDeviceRow("Mobile", "1,200,000", "1.20%", "78%", "$4,000"));
 		assertThat(tables).doesNotContainKey(15);
 	}
 
@@ -670,10 +669,10 @@ class RealSheetDeckProviderTest {
 	void deviceTables_returnsEmptyTableForATacticWhoseBlockWasNeverFilledTest() {
 		// Given: a tab carrying no device anchor for the requested tactic
 		RealSheetDeckProvider provider = newProvider();
-		List<List<String>> grid = deviceGrid(Map.of(1, DeviceTable.EMPTY));
+		List<List<String>> grid = deviceGrid(Map.of(1, WorkbookDeviceTable.EMPTY));
 
 		// When:
-		Map<Integer, DeviceTable> tables = provider.deviceTables(grid, Set.of(2));
+		Map<Integer, WorkbookDeviceTable> tables = provider.deviceTables(grid, Set.of(2));
 
 		// Then: the tactic is present with an empty table rather than absent, so the slide still ships
 		assertThat(tables).containsKey(2);
@@ -686,10 +685,10 @@ class RealSheetDeckProviderTest {
 		// shorter "TOP DEVICE" label read the "% OF IMPRESSIONS" tile's value or vice versa
 		RealSheetDeckProvider provider = newProvider();
 		List<List<String>> grid = deviceGrid(Map.of(
-				1, new DeviceTable("1.20%", "82%", "4", "Mobile", "61%", List.of())));
+				1, new WorkbookDeviceTable("1.20%", "82%", "4", "Mobile", "61%", List.of())));
 
 		// When:
-		DeviceTable table = provider.deviceTables(grid, Set.of(1)).get(1);
+		WorkbookDeviceTable table = provider.deviceTables(grid, Set.of(1)).get(1);
 
 		// Then: each tile keeps its own value
 		assertThat(table.topDevice()).isEqualTo("Mobile");
@@ -754,15 +753,15 @@ class RealSheetDeckProviderTest {
 		}
 
 		// When: both surviving tactics are read
-		Map<Integer, CreativeTable> tables = provider.creativeTables(grid, Set.of(2, 3));
+		Map<Integer, WorkbookCreativeTable> tables = provider.creativeTables(grid, Set.of(2, 3));
 
 		// Then: each block is read off its own anchor, so neither picks up the other's row
 		assertThat(tables.get(2).creativesLive()).isEqualTo("12");
 		assertThat(tables.get(2).rows())
-				.containsExactly(new CreativeRow("Hero 2", "1,200,002", "0.52%", "82.9%", "$4,800"));
+				.containsExactly(new WorkbookCreativeRow("Hero 2", "1,200,002", "0.52%", "82.9%", "$4,800"));
 		assertThat(tables.get(3).creativesLive()).isEqualTo("13");
 		assertThat(tables.get(3).rows())
-				.containsExactly(new CreativeRow("Hero 3", "1,200,003", "0.53%", "82.9%", "$4,800"));
+				.containsExactly(new WorkbookCreativeRow("Hero 3", "1,200,003", "0.53%", "82.9%", "$4,800"));
 	}
 
 	@Test
@@ -790,14 +789,14 @@ class RealSheetDeckProviderTest {
 		}
 
 		// When:
-		Map<Integer, CreativeTable> tables = provider.creativeTables(grid, Set.of(1));
+		Map<Integer, WorkbookCreativeTable> tables = provider.creativeTables(grid, Set.of(1));
 
 		// Then: only the creative section's own columns are read — the publisher row, the publisher block's
 		// identically-labelled stat tile, and the geo columns are all outside the block and never picked up
-		CreativeTable table = tables.get(1);
+		WorkbookCreativeTable table = tables.get(1);
 		assertThat(table.creativesLive()).isEqualTo("12");
 		assertThat(table.rows())
-				.containsExactly(new CreativeRow("Hero 15s", "1,200,000", "0.58%", "82.9%", "$4,800"));
+				.containsExactly(new WorkbookCreativeRow("Hero 15s", "1,200,000", "0.58%", "82.9%", "$4,800"));
 	}
 
 	@Test
@@ -818,14 +817,14 @@ class RealSheetDeckProviderTest {
 		}
 
 		// When:
-		Map<Integer, CreativeTable> tables = provider.creativeTables(grid, Set.of(1));
+		Map<Integer, WorkbookCreativeTable> tables = provider.creativeTables(grid, Set.of(1));
 
 		// Then: the wider span reads only blank geo columns, so the block still comes back intact and the
 		// audience section's value is never mistaken for a creative stat
-		CreativeTable table = tables.get(1);
+		WorkbookCreativeTable table = tables.get(1);
 		assertThat(table.creativesLive()).isEqualTo("12");
 		assertThat(table.rows())
-				.containsExactly(new CreativeRow("Hero 15s", "1,200,000", "0.58%", "82.9%", "$4,800"));
+				.containsExactly(new WorkbookCreativeRow("Hero 15s", "1,200,000", "0.58%", "82.9%", "$4,800"));
 	}
 
 	@Test
@@ -866,14 +865,14 @@ class RealSheetDeckProviderTest {
 		}
 
 		// When:
-		Map<Integer, CreativeTable> tables = provider.creativeTables(grid, Set.of(1, 3));
+		Map<Integer, WorkbookCreativeTable> tables = provider.creativeTables(grid, Set.of(1, 3));
 
 		// Then: tactic 1's over-wide window only ever reaches the cleared block's blank rows — tactic 3's
 		// own block starts exactly where the window ends, so its creative is never pulled into tactic 1
 		assertThat(tables.get(1).rows())
-				.containsExactly(new CreativeRow("Hero 1", "1,200,001", "0.51%", "82.9%", "$4,800"));
+				.containsExactly(new WorkbookCreativeRow("Hero 1", "1,200,001", "0.51%", "82.9%", "$4,800"));
 		assertThat(tables.get(3).rows())
-				.containsExactly(new CreativeRow("Hero 3", "1,200,003", "0.53%", "82.9%", "$4,800"));
+				.containsExactly(new WorkbookCreativeRow("Hero 3", "1,200,003", "0.53%", "82.9%", "$4,800"));
 	}
 
 	/**
@@ -983,10 +982,10 @@ class RealSheetDeckProviderTest {
 	 * @param tablesByTactic tactic number → the audience block to render on the tab
 	 * @return the tab as trimmed cell strings, five columns wide
 	 */
-	private List<List<String>> audienceGrid(Map<Integer, AudienceTable> tablesByTactic) {
+	private List<List<String>> audienceGrid(Map<Integer, WorkbookAudienceTable> tablesByTactic) {
 		List<List<String>> grid = new ArrayList<>();
-		for (Map.Entry<Integer, AudienceTable> entry : new java.util.TreeMap<>(tablesByTactic).entrySet()) {
-			AudienceTable table = entry.getValue();
+		for (Map.Entry<Integer, WorkbookAudienceTable> entry : new java.util.TreeMap<>(tablesByTactic).entrySet()) {
+			WorkbookAudienceTable table = entry.getValue();
 			List<List<String>> block = new ArrayList<>();
 			block.add(padAudience(List.of("Audience analysis " + entry.getKey(), "{{tactic " + entry.getKey() + "}}")));
 			block.add(padAudience(List.of("AGE DISTRIBUTION", table.ageDistribution())));
@@ -1036,10 +1035,10 @@ class RealSheetDeckProviderTest {
 	 * @param tablesByTactic tactic number → the device block to render on the tab
 	 * @return the tab as trimmed cell strings, five columns wide
 	 */
-	private List<List<String>> deviceGrid(Map<Integer, DeviceTable> tablesByTactic) {
+	private List<List<String>> deviceGrid(Map<Integer, WorkbookDeviceTable> tablesByTactic) {
 		List<List<String>> grid = new ArrayList<>();
-		for (Map.Entry<Integer, DeviceTable> entry : new java.util.TreeMap<>(tablesByTactic).entrySet()) {
-			DeviceTable table = entry.getValue();
+		for (Map.Entry<Integer, WorkbookDeviceTable> entry : new java.util.TreeMap<>(tablesByTactic).entrySet()) {
+			WorkbookDeviceTable table = entry.getValue();
 			List<List<String>> block = new ArrayList<>();
 			block.add(padAudience(List.of("Device breakdown " + entry.getKey(), "{{tactic " + entry.getKey() + "}}")));
 			block.add(padAudience(List.of("HIGHEST CTR", table.highestCtr())));
@@ -1049,7 +1048,7 @@ class RealSheetDeckProviderTest {
 			block.add(padAudience(List.of("TOP DEVICE - % OF IMPRESSIONS", table.topDeviceImpressionsPct())));
 			block.add(padAudience(List.of("")));
 			block.add(padAudience(List.of("Device", "Impressions", "CTR", "VCR", "Spend")));
-			for (DeviceRow row : table.rows()) {
+			for (WorkbookDeviceRow row : table.rows()) {
 				block.add(padAudience(List.of(row.device(), row.impressions(), row.ctr(), row.vcr(), row.spend())));
 			}
 			while (block.size() < 18) {

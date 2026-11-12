@@ -2,21 +2,19 @@ package com.aidigital.reportconstructor.externalservices.google;
 
 import com.aidigital.reportconstructor.externalservices.google.drive.DriveSharer;
 import com.aidigital.reportconstructor.externalservices.google.drive.DriveShareRecipients;
-import com.aidigital.reportconstructor.service.common.error.AppException;
-import com.aidigital.reportconstructor.service.common.error.ErrorReason;
-import com.aidigital.reportconstructor.service.reports.dto.AudienceAgeRow;
-import com.aidigital.reportconstructor.service.reports.dto.AudienceSegmentRow;
-import com.aidigital.reportconstructor.service.reports.dto.AudienceTable;
-import com.aidigital.reportconstructor.service.reports.dto.BreakdownType;
-import com.aidigital.reportconstructor.service.reports.dto.CreativeRow;
-import com.aidigital.reportconstructor.service.reports.dto.CreativeTable;
-import com.aidigital.reportconstructor.service.reports.dto.DeviceRow;
-import com.aidigital.reportconstructor.service.reports.dto.DeviceTable;
-import com.aidigital.reportconstructor.service.reports.dto.GeoRow;
-import com.aidigital.reportconstructor.service.reports.dto.GeoTable;
-import com.aidigital.reportconstructor.service.reports.dto.PublisherRow;
-import com.aidigital.reportconstructor.service.reports.ports.PacingTablesRequest;
-import com.aidigital.reportconstructor.service.reports.ports.SheetDeckProvider;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookAudienceAgeRow;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookAudienceSegmentRow;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookAudienceTable;
+import com.aidigital.reportconstructor.externalservices.google.deck.DeckBreakdown;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookCreativeRow;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookCreativeTable;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookDeviceRow;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookDeviceTable;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookGeoRow;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookGeoTable;
+import com.aidigital.reportconstructor.externalservices.google.sheets.model.WorkbookPublisherRow;
+import com.aidigital.reportconstructor.externalservices.google.sheets.WorkbookTabWriter;
+import com.aidigital.reportconstructor.externalservices.google.sheets.SheetWorkbookClient;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
@@ -65,7 +63,7 @@ import java.util.regex.Pattern;
 @Component
 @Primary
 @ConditionalOnBean(GoogleCredentialsFactory.class)
-public class RealSheetDeckProvider implements SheetDeckProvider {
+public class RealSheetDeckProvider implements SheetWorkbookClient {
 
 	private static final String APPLICATION_NAME = "Report Constructor — AI Digital";
 
@@ -277,10 +275,10 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 * block repeats these headers (e.g. {@code "Geo analysis 3"}); the capture group is the 1-based tactic
 	 * number. Matching is case-insensitive so template casing drift does not break detection.
 	 */
-	private static final Map<BreakdownType, Pattern> BREAKDOWN_ANCHORS = new EnumMap<>(BreakdownType.class);
+	private static final Map<DeckBreakdown, Pattern> BREAKDOWN_ANCHORS = new EnumMap<>(DeckBreakdown.class);
 
 	static {
-		for (BreakdownType type : BreakdownType.values()) {
+		for (DeckBreakdown type : DeckBreakdown.values()) {
 			BREAKDOWN_ANCHORS.put(type, Pattern.compile("(?i)^" + Pattern.quote(type.anchorLabel()) + "\\s+(\\d+)$"));
 		}
 	}
@@ -292,18 +290,16 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	private final String sheetsTemplateId;
 	private final String eomSheetsTemplateId;
 	private final String targetFolderId;
-	private final SheetPacingTableWriter pacingTableWriter;
 	private final DriveSharer driveSharer;
 	private final DriveShareRecipients shareRecipients;
 
 	public RealSheetDeckProvider(
-			GoogleCredentialsFactory creds, GoogleProperties props, SheetPacingTableWriter pacingTableWriter,
+			GoogleCredentialsFactory creds, GoogleProperties props,
 			GoogleRequestRetrier retrier, DriveSharer driveSharer, DriveShareRecipients shareRecipients) {
 		this.creds = creds;
 		this.retrier = retrier;
 		this.driveSharer = driveSharer;
 		this.shareRecipients = shareRecipients;
-		this.pacingTableWriter = pacingTableWriter;
 		this.sheets = new Sheets.Builder(creds.transport(), creds.jsonFactory(), creds.initializer())
 				.setApplicationName(APPLICATION_NAME)
 				.build();
@@ -411,8 +407,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			return "https://docs.google.com/spreadsheets/d/" + newId + "/edit";
 		} catch (IOException ex) {
 			log.error("[sheets] createSheet failed for job {}", jobId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Sheets workbook creation failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Sheets workbook creation failed: " + ex.getMessage());
 		}
 	}
 
@@ -443,22 +438,22 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			executeInChunks(sheetsClient, spreadsheetId, requests, "trimTactics batchUpdate for " + spreadsheetId);
 		} catch (IOException ex) {
 			log.error("[sheets] trimTactics failed for {}", spreadsheetId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Sheets trimTactics failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Sheets trimTactics failed: " + ex.getMessage());
 		}
 	}
 
 	@Override
-	public List<String> writePacingTables(String spreadsheetId, PacingTablesRequest request) {
-		boolean asUser = request.userGoogleAccessToken() != null && !request.userGoogleAccessToken().isBlank();
-		Sheets sheetsClient = asUser ? buildSheets(request.userGoogleAccessToken()) : sheets;
+	public List<String> writePacingTables(
+			String spreadsheetId, String userGoogleAccessToken, WorkbookTabWriter writer) {
+		boolean asUser = userGoogleAccessToken != null && !userGoogleAccessToken.isBlank();
+		Sheets sheetsClient = asUser ? buildSheets(userGoogleAccessToken) : sheets;
 		try {
 			Map<String, Integer> tabSheetIds = fetchSheetIds(sheetsClient, spreadsheetId);
 			if (tabSheetIds.isEmpty()) {
 				return List.of("Pacing tables skipped — workbook has no tabs");
 			}
 			String tabName = tabSheetIds.keySet().iterator().next();
-			return pacingTableWriter.writeAll(sheetsClient, spreadsheetId, tabName, request);
+			return writer.write(sheetsClient, spreadsheetId, tabName);
 		} catch (IOException ex) {
 			log.error("[sheets] writePacingTables failed for {}", spreadsheetId, ex);
 			return List.of("Pacing tables failed: " + ex.getMessage());
@@ -480,14 +475,13 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			return readGrid(sheetsClient, spreadsheetId, firstTab);
 		} catch (IOException ex) {
 			log.error("[sheets] readSheetGrid failed for {}", spreadsheetId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Sheets read failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Sheets read failed: " + ex.getMessage());
 		}
 	}
 
 	@Override
 	public void clearBreakdowns(
-			String spreadsheetId, Map<Integer, Set<BreakdownType>> enabledByTactic, String userGoogleAccessToken) {
+			String spreadsheetId, Map<Integer, Set<DeckBreakdown>> enabledByTactic, String userGoogleAccessToken) {
 		boolean asUser = userGoogleAccessToken != null && !userGoogleAccessToken.isBlank();
 		Sheets sheetsClient = asUser ? buildSheets(userGoogleAccessToken) : sheets;
 		try {
@@ -505,13 +499,12 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			executeInChunks(sheetsClient, spreadsheetId, requests, "clearBreakdowns batchUpdate for " + spreadsheetId);
 		} catch (IOException ex) {
 			log.error("[sheets] clearBreakdowns failed for {}", spreadsheetId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Sheets clearBreakdowns failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Sheets clearBreakdowns failed: " + ex.getMessage());
 		}
 	}
 
 	@Override
-	public Map<Integer, List<PublisherRow>> readPublisherTables(
+	public Map<Integer, List<WorkbookPublisherRow>> readPublisherTables(
 			String spreadsheetId, Set<Integer> tacticNums, String userGoogleAccessToken) {
 		if (tacticNums == null || tacticNums.isEmpty()) {
 			return Map.of();
@@ -529,13 +522,12 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			return publisherTables(grid, tacticNums);
 		} catch (IOException ex) {
 			log.error("[sheets] readPublisherTables failed for {}", spreadsheetId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Sheets readPublisherTables failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Sheets readPublisherTables failed: " + ex.getMessage());
 		}
 	}
 
 	@Override
-	public Map<Integer, CreativeTable> readCreativeTables(
+	public Map<Integer, WorkbookCreativeTable> readCreativeTables(
 			String spreadsheetId, Set<Integer> tacticNums, String userGoogleAccessToken) {
 		if (tacticNums == null || tacticNums.isEmpty()) {
 			return Map.of();
@@ -553,13 +545,12 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			return creativeTables(grid, tacticNums);
 		} catch (IOException ex) {
 			log.error("[sheets] readCreativeTables failed for {}", spreadsheetId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Sheets readCreativeTables failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Sheets readCreativeTables failed: " + ex.getMessage());
 		}
 	}
 
 	@Override
-	public Map<Integer, GeoTable> readGeoTables(
+	public Map<Integer, WorkbookGeoTable> readGeoTables(
 			String spreadsheetId, Set<Integer> tacticNums, String userGoogleAccessToken) {
 		if (tacticNums == null || tacticNums.isEmpty()) {
 			return Map.of();
@@ -577,13 +568,12 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			return geoTables(grid, tacticNums);
 		} catch (IOException ex) {
 			log.error("[sheets] readGeoTables failed for {}", spreadsheetId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Sheets readGeoTables failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Sheets readGeoTables failed: " + ex.getMessage());
 		}
 	}
 
 	@Override
-	public Map<Integer, AudienceTable> readAudienceTables(
+	public Map<Integer, WorkbookAudienceTable> readAudienceTables(
 			String spreadsheetId, Set<Integer> tacticNums, String userGoogleAccessToken) {
 		if (tacticNums == null || tacticNums.isEmpty()) {
 			return Map.of();
@@ -601,13 +591,12 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			return audienceTables(grid, tacticNums);
 		} catch (IOException ex) {
 			log.error("[sheets] readAudienceTables failed for {}", spreadsheetId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Sheets readAudienceTables failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Sheets readAudienceTables failed: " + ex.getMessage());
 		}
 	}
 
 	@Override
-	public Map<Integer, DeviceTable> readDeviceTables(
+	public Map<Integer, WorkbookDeviceTable> readDeviceTables(
 			String spreadsheetId, Set<Integer> tacticNums, String userGoogleAccessToken) {
 		if (tacticNums == null || tacticNums.isEmpty()) {
 			return Map.of();
@@ -625,8 +614,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			return deviceTables(grid, tacticNums);
 		} catch (IOException ex) {
 			log.error("[sheets] readDeviceTables failed for {}", spreadsheetId, ex);
-			throw new AppException(ErrorReason.C000,
-					"Google Sheets readDeviceTables failed: " + ex.getMessage());
+			throw new GoogleApiException("Google Sheets readDeviceTables failed: " + ex.getMessage());
 		}
 	}
 
@@ -638,17 +626,17 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 *
 	 * @param grid       the {@code "Breakdowns"} tab, read as trimmed cell strings
 	 * @param tacticNums 1-based tactic numbers whose blocks are wanted
-	 * @return tactic number → its geo block; tactics with no anchor map to {@link GeoTable#empty()}
+	 * @return tactic number → its geo block; tactics with no anchor map to {@link WorkbookGeoTable#empty()}
 	 */
-	Map<Integer, GeoTable> geoTables(List<List<String>> grid, Set<Integer> tacticNums) {
-		Map<Integer, GeoTable> tables = new LinkedHashMap<>();
+	Map<Integer, WorkbookGeoTable> geoTables(List<List<String>> grid, Set<Integer> tacticNums) {
+		Map<Integer, WorkbookGeoTable> tables = new LinkedHashMap<>();
 		List<int[]> anchors = findBreakdownAnchors(grid);
 		if (anchors.isEmpty()) {
 			log.warn("[sheets] readGeoTables: no breakdown anchors on \"{}\" tab — nothing to read", BREAKDOWN_TAB);
 			return tables;
 		}
 		int blockHeight = breakdownBlockHeight(anchors);
-		int geoOrdinal = BreakdownType.GEO.ordinal();
+		int geoOrdinal = DeckBreakdown.GEO.ordinal();
 		for (int[] anchor : anchors) {
 			if (anchor[0] != geoOrdinal || !tacticNums.contains(anchor[1])) {
 				continue;
@@ -660,7 +648,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			tables.put(anchor[1], geoBlock(grid, row, endRow, col, endCol, anchor[1]));
 		}
 		for (Integer tacticNum : tacticNums) {
-			tables.putIfAbsent(tacticNum, GeoTable.EMPTY);
+			tables.putIfAbsent(tacticNum, WorkbookGeoTable.EMPTY);
 		}
 		return tables;
 	}
@@ -678,9 +666,9 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 * @param tacticNum  the block's tactic number, used only for logging
 	 * @return the block's summary cells and rows, blank/empty where the user typed nothing
 	 */
-	GeoTable geoBlock(
+	WorkbookGeoTable geoBlock(
 			List<List<String>> grid, int startRow, int endRowExcl, int startCol, int endColExcl, int tacticNum) {
-		return new GeoTable(
+		return new WorkbookGeoTable(
 				summaryValue(grid, startRow, endRowExcl, startCol, endColExcl, GEO_MARKETS_LABEL),
 				summaryValue(grid, startRow, endRowExcl, startCol, endColExcl, GEO_TOP_GEO_LABEL),
 				geoSummaryValueByPrefix(grid, startRow, endRowExcl, startCol, endColExcl, GEO_TOP_KPI_LABEL_PREFIX),
@@ -702,7 +690,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 * @param tacticNum  the block's tactic number, used only for logging
 	 * @return the filled geo rows in sheet order, or an empty list when the header is missing
 	 */
-	List<GeoRow> geoRowsInBlock(
+	List<WorkbookGeoRow> geoRowsInBlock(
 			List<List<String>> grid, int startRow, int endRowExcl, int startCol, int endColExcl, int tacticNum) {
 		int[] header = findGeoHeader(grid, startRow, endRowExcl, startCol, endColExcl);
 		if (header == null) {
@@ -710,13 +698,13 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 					tacticNum, GEO_NAME_HEADER);
 			return List.of();
 		}
-		List<GeoRow> rows = new ArrayList<>();
+		List<WorkbookGeoRow> rows = new ArrayList<>();
 		for (int r = header[0] + 1; r < endRowExcl; r++) {
 			String name = cellAt(grid, r, header[1]);
 			if (name.isEmpty()) {
 				continue;
 			}
-			rows.add(new GeoRow(name, cellAt(grid, r, header[2]), cellAt(grid, r, header[3])));
+			rows.add(new WorkbookGeoRow(name, cellAt(grid, r, header[2]), cellAt(grid, r, header[3])));
 		}
 		return rows;
 	}
@@ -838,10 +826,10 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 *
 	 * @param grid       the {@code "Breakdowns"} tab, read as trimmed cell strings
 	 * @param tacticNums 1-based tactic numbers whose blocks are wanted
-	 * @return tactic number → its audience block; tactics with no anchor map to {@link AudienceTable#empty()}
+	 * @return tactic number → its audience block; tactics with no anchor map to {@link WorkbookAudienceTable#empty()}
 	 */
-	Map<Integer, AudienceTable> audienceTables(List<List<String>> grid, Set<Integer> tacticNums) {
-		Map<Integer, AudienceTable> tables = new LinkedHashMap<>();
+	Map<Integer, WorkbookAudienceTable> audienceTables(List<List<String>> grid, Set<Integer> tacticNums) {
+		Map<Integer, WorkbookAudienceTable> tables = new LinkedHashMap<>();
 		List<int[]> anchors = findBreakdownAnchors(grid);
 		if (anchors.isEmpty()) {
 			log.warn("[sheets] readAudienceTables: no breakdown anchors on \"{}\" tab — nothing to read",
@@ -849,7 +837,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			return tables;
 		}
 		int blockHeight = breakdownBlockHeight(anchors);
-		int audienceOrdinal = BreakdownType.AUDIENCE.ordinal();
+		int audienceOrdinal = DeckBreakdown.AUDIENCE.ordinal();
 		for (int[] anchor : anchors) {
 			if (anchor[0] != audienceOrdinal || !tacticNums.contains(anchor[1])) {
 				continue;
@@ -861,7 +849,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			tables.put(anchor[1], audienceBlock(grid, row, endRow, col, endCol, anchor[1]));
 		}
 		for (Integer tacticNum : tacticNums) {
-			tables.putIfAbsent(tacticNum, AudienceTable.EMPTY);
+			tables.putIfAbsent(tacticNum, WorkbookAudienceTable.EMPTY);
 		}
 		return tables;
 	}
@@ -879,9 +867,9 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 * @param tacticNum  the block's tactic number, used only for logging
 	 * @return the block's stat tiles and rows, blank/empty where the user typed nothing
 	 */
-	AudienceTable audienceBlock(
+	WorkbookAudienceTable audienceBlock(
 			List<List<String>> grid, int startRow, int endRowExcl, int startCol, int endColExcl, int tacticNum) {
-		return new AudienceTable(
+		return new WorkbookAudienceTable(
 				summaryValue(grid, startRow, endRowExcl, startCol, endColExcl, AUDIENCE_AGE_LABEL),
 				summaryValue(grid, startRow, endRowExcl, startCol, endColExcl, AUDIENCE_GENDER_LABEL),
 				audienceAgeRowsInBlock(grid, startRow, endRowExcl, startCol, endColExcl, tacticNum),
@@ -901,7 +889,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 * @param tacticNum  the block's tactic number, used only for logging
 	 * @return the filled age rows in sheet order, or an empty list when the header is missing
 	 */
-	List<AudienceAgeRow> audienceAgeRowsInBlock(
+	List<WorkbookAudienceAgeRow> audienceAgeRowsInBlock(
 			List<List<String>> grid, int startRow, int endRowExcl, int startCol, int endColExcl, int tacticNum) {
 		int[] header = findAudienceAgeHeader(grid, startRow, endRowExcl, startCol, endColExcl);
 		if (header == null) {
@@ -909,13 +897,13 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 					tacticNum, AUDIENCE_AGE_HEADER);
 			return List.of();
 		}
-		List<AudienceAgeRow> rows = new ArrayList<>();
+		List<WorkbookAudienceAgeRow> rows = new ArrayList<>();
 		for (int r = header[0] + 1; r < endRowExcl; r++) {
 			String impressions = cellAt(grid, r, header[2]);
 			if (impressions.isEmpty()) {
 				continue;
 			}
-			rows.add(new AudienceAgeRow(cellAt(grid, r, header[1]), impressions));
+			rows.add(new WorkbookAudienceAgeRow(cellAt(grid, r, header[1]), impressions));
 		}
 		return rows;
 	}
@@ -932,7 +920,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 * @param tacticNum  the block's tactic number, used only for logging
 	 * @return the filled segment rows in sheet order, or an empty list when the header is missing
 	 */
-	List<AudienceSegmentRow> audienceSegmentRowsInBlock(
+	List<WorkbookAudienceSegmentRow> audienceSegmentRowsInBlock(
 			List<List<String>> grid, int startRow, int endRowExcl, int startCol, int endColExcl, int tacticNum) {
 		int[] header = findAudienceSegmentHeader(grid, startRow, endRowExcl, startCol, endColExcl);
 		if (header == null) {
@@ -940,13 +928,13 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 					tacticNum, AUDIENCE_SEGMENT_HEADER);
 			return List.of();
 		}
-		List<AudienceSegmentRow> rows = new ArrayList<>();
+		List<WorkbookAudienceSegmentRow> rows = new ArrayList<>();
 		for (int r = header[0] + 1; r < endRowExcl; r++) {
 			String segment = cellAt(grid, r, header[1]);
 			if (segment.isEmpty()) {
 				continue;
 			}
-			rows.add(new AudienceSegmentRow(segment, cellAt(grid, r, header[2])));
+			rows.add(new WorkbookAudienceSegmentRow(segment, cellAt(grid, r, header[2])));
 		}
 		return rows;
 	}
@@ -1009,10 +997,10 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 *
 	 * @param grid       the {@code "Breakdowns"} tab, read as trimmed cell strings
 	 * @param tacticNums 1-based tactic numbers whose blocks are wanted
-	 * @return tactic number → its device block; tactics with no anchor map to {@link DeviceTable#empty()}
+	 * @return tactic number → its device block; tactics with no anchor map to {@link WorkbookDeviceTable#empty()}
 	 */
-	Map<Integer, DeviceTable> deviceTables(List<List<String>> grid, Set<Integer> tacticNums) {
-		Map<Integer, DeviceTable> tables = new LinkedHashMap<>();
+	Map<Integer, WorkbookDeviceTable> deviceTables(List<List<String>> grid, Set<Integer> tacticNums) {
+		Map<Integer, WorkbookDeviceTable> tables = new LinkedHashMap<>();
 		List<int[]> anchors = findBreakdownAnchors(grid);
 		if (anchors.isEmpty()) {
 			log.warn("[sheets] readDeviceTables: no breakdown anchors on \"{}\" tab — nothing to read",
@@ -1020,7 +1008,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			return tables;
 		}
 		int blockHeight = breakdownBlockHeight(anchors);
-		int deviceOrdinal = BreakdownType.DEVICE.ordinal();
+		int deviceOrdinal = DeckBreakdown.DEVICE.ordinal();
 		for (int[] anchor : anchors) {
 			if (anchor[0] != deviceOrdinal || !tacticNums.contains(anchor[1])) {
 				continue;
@@ -1032,7 +1020,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			tables.put(anchor[1], deviceBlock(grid, row, endRow, col, endCol, anchor[1]));
 		}
 		for (Integer tacticNum : tacticNums) {
-			tables.putIfAbsent(tacticNum, DeviceTable.EMPTY);
+			tables.putIfAbsent(tacticNum, WorkbookDeviceTable.EMPTY);
 		}
 		return tables;
 	}
@@ -1050,9 +1038,9 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 * @param tacticNum  the block's tactic number, used only for logging
 	 * @return the block's stat tiles and rows, blank/empty where the user typed nothing
 	 */
-	DeviceTable deviceBlock(
+	WorkbookDeviceTable deviceBlock(
 			List<List<String>> grid, int startRow, int endRowExcl, int startCol, int endColExcl, int tacticNum) {
-		return new DeviceTable(
+		return new WorkbookDeviceTable(
 				summaryValue(grid, startRow, endRowExcl, startCol, endColExcl, DEVICE_HIGHEST_CTR_LABEL),
 				summaryValue(grid, startRow, endRowExcl, startCol, endColExcl, DEVICE_BEST_COMPLETION_LABEL),
 				summaryValue(grid, startRow, endRowExcl, startCol, endColExcl, DEVICE_TRACKED_LABEL),
@@ -1075,7 +1063,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 * @param tacticNum  the block's tactic number, used only for logging
 	 * @return the filled device rows in sheet order, or an empty list when the header is missing
 	 */
-	List<DeviceRow> deviceRowsInBlock(
+	List<WorkbookDeviceRow> deviceRowsInBlock(
 			List<List<String>> grid, int startRow, int endRowExcl, int startCol, int endColExcl, int tacticNum) {
 		int[] header = findDeviceHeader(grid, startRow, endRowExcl, startCol, endColExcl);
 		if (header == null) {
@@ -1083,13 +1071,13 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 					tacticNum, DEVICE_NAME_HEADER);
 			return List.of();
 		}
-		List<DeviceRow> rows = new ArrayList<>();
+		List<WorkbookDeviceRow> rows = new ArrayList<>();
 		for (int r = header[0] + 1; r < endRowExcl; r++) {
 			String impressions = cellAt(grid, r, header[2]);
 			if (impressions.isEmpty()) {
 				continue;
 			}
-			rows.add(new DeviceRow(
+			rows.add(new WorkbookDeviceRow(
 					cellAt(grid, r, header[1]),
 					impressions,
 					cellAt(grid, r, header[3]),
@@ -1138,10 +1126,10 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 *
 	 * @param grid       the {@code "Breakdowns"} tab, read as trimmed cell strings
 	 * @param tacticNums 1-based tactic numbers whose blocks are wanted
-	 * @return tactic number → its creative block; tactics with no anchor map to {@link CreativeTable#empty()}
+	 * @return tactic number → its creative block; tactics with no anchor map to {@link WorkbookCreativeTable#empty()}
 	 */
-	Map<Integer, CreativeTable> creativeTables(List<List<String>> grid, Set<Integer> tacticNums) {
-		Map<Integer, CreativeTable> tables = new LinkedHashMap<>();
+	Map<Integer, WorkbookCreativeTable> creativeTables(List<List<String>> grid, Set<Integer> tacticNums) {
+		Map<Integer, WorkbookCreativeTable> tables = new LinkedHashMap<>();
 		List<int[]> anchors = findBreakdownAnchors(grid);
 		if (anchors.isEmpty()) {
 			log.warn("[sheets] readCreativeTables: no breakdown anchors on \"{}\" tab — nothing to read",
@@ -1149,7 +1137,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			return tables;
 		}
 		int blockHeight = breakdownBlockHeight(anchors);
-		int creativeOrdinal = BreakdownType.CREATIVE.ordinal();
+		int creativeOrdinal = DeckBreakdown.CREATIVE.ordinal();
 		for (int[] anchor : anchors) {
 			if (anchor[0] != creativeOrdinal || !tacticNums.contains(anchor[1])) {
 				continue;
@@ -1161,7 +1149,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			tables.put(anchor[1], creativeBlock(grid, row, endRow, col, endCol, anchor[1]));
 		}
 		for (Integer tacticNum : tacticNums) {
-			tables.putIfAbsent(tacticNum, CreativeTable.EMPTY);
+			tables.putIfAbsent(tacticNum, WorkbookCreativeTable.EMPTY);
 		}
 		return tables;
 	}
@@ -1179,9 +1167,9 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 * @param tacticNum  the block's tactic number, used only for logging
 	 * @return the block's summary cells and rows, blank/empty where the user typed nothing
 	 */
-	CreativeTable creativeBlock(
+	WorkbookCreativeTable creativeBlock(
 			List<List<String>> grid, int startRow, int endRowExcl, int startCol, int endColExcl, int tacticNum) {
-		return new CreativeTable(
+		return new WorkbookCreativeTable(
 				summaryValue(grid, startRow, endRowExcl, startCol, endColExcl, CREATIVES_LIVE_LABEL),
 				summaryValue(grid, startRow, endRowExcl, startCol, endColExcl, CREATIVE_BEST_KPI_LABEL),
 				summaryValue(grid, startRow, endRowExcl, startCol, endColExcl, CREATIVE_AVG_KPI_LABEL),
@@ -1203,7 +1191,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 * @param tacticNum  the block's tactic number, used only for logging
 	 * @return the filled creative rows in sheet order, or an empty list when the header is missing
 	 */
-	List<CreativeRow> creativeRowsInBlock(
+	List<WorkbookCreativeRow> creativeRowsInBlock(
 			List<List<String>> grid, int startRow, int endRowExcl, int startCol, int endColExcl, int tacticNum) {
 		int[] header = findCreativeHeader(grid, startRow, endRowExcl, startCol, endColExcl);
 		if (header == null) {
@@ -1211,13 +1199,13 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 					tacticNum, CREATIVE_NAME_HEADER);
 			return List.of();
 		}
-		List<CreativeRow> rows = new ArrayList<>();
+		List<WorkbookCreativeRow> rows = new ArrayList<>();
 		for (int r = header[0] + 1; r < endRowExcl; r++) {
 			String name = cellAt(grid, r, header[1]);
 			if (name.isEmpty()) {
 				continue;
 			}
-			rows.add(new CreativeRow(
+			rows.add(new WorkbookCreativeRow(
 					name,
 					cellAt(grid, r, header[2]),
 					cellAt(grid, r, header[3]),
@@ -1301,8 +1289,8 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 * @return tactic number → its filled publisher rows, in sheet order; tactics with no anchor or no
 	 *         filled rows map to an empty list
 	 */
-	Map<Integer, List<PublisherRow>> publisherTables(List<List<String>> grid, Set<Integer> tacticNums) {
-		Map<Integer, List<PublisherRow>> tables = new LinkedHashMap<>();
+	Map<Integer, List<WorkbookPublisherRow>> publisherTables(List<List<String>> grid, Set<Integer> tacticNums) {
+		Map<Integer, List<WorkbookPublisherRow>> tables = new LinkedHashMap<>();
 		List<int[]> anchors = findBreakdownAnchors(grid);
 		if (anchors.isEmpty()) {
 			log.warn("[sheets] readPublisherTables: no breakdown anchors on \"{}\" tab — nothing to read",
@@ -1310,7 +1298,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			return tables;
 		}
 		int blockHeight = breakdownBlockHeight(anchors);
-		int publisherOrdinal = BreakdownType.TOP_PUBLISHERS.ordinal();
+		int publisherOrdinal = DeckBreakdown.TOP_PUBLISHERS.ordinal();
 		for (int[] anchor : anchors) {
 			if (anchor[0] != publisherOrdinal || !tacticNums.contains(anchor[1])) {
 				continue;
@@ -1342,7 +1330,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 * @param tacticNum  the block's tactic number, used only for logging
 	 * @return the filled publisher rows in sheet order, or an empty list when the header is missing
 	 */
-	List<PublisherRow> publisherRowsInBlock(
+	List<WorkbookPublisherRow> publisherRowsInBlock(
 			List<List<String>> grid, int startRow, int endRowExcl, int startCol, int endColExcl, int tacticNum) {
 		int[] header = findPublisherHeader(grid, startRow, endRowExcl, startCol, endColExcl);
 		if (header == null) {
@@ -1350,13 +1338,13 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 					tacticNum, PUBLISHER_NAME_HEADER);
 			return List.of();
 		}
-		List<PublisherRow> rows = new ArrayList<>();
+		List<WorkbookPublisherRow> rows = new ArrayList<>();
 		for (int r = header[0] + 1; r < endRowExcl; r++) {
 			String name = cellAt(grid, r, header[1]);
 			if (name.isEmpty()) {
 				continue;
 			}
-			rows.add(new PublisherRow(name, cellAt(grid, r, header[2]), cellAt(grid, r, header[3])));
+			rows.add(new WorkbookPublisherRow(name, cellAt(grid, r, header[2]), cellAt(grid, r, header[3])));
 		}
 		return rows;
 	}
@@ -1718,7 +1706,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 * @return clear requests for the unselected sections, or an empty list
 	 */
 	List<Request> breakdownClearRequests(
-			List<List<String>> grid, int sheetId, Map<Integer, Set<BreakdownType>> enabledByTactic) {
+			List<List<String>> grid, int sheetId, Map<Integer, Set<DeckBreakdown>> enabledByTactic) {
 		List<int[]> anchors = findBreakdownAnchors(grid);
 		if (anchors.isEmpty()) {
 			log.warn("[sheets] clearBreakdowns: no breakdown anchors found on \"{}\" tab — nothing to clear",
@@ -1726,14 +1714,14 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 			return List.of();
 		}
 		int blockHeight = breakdownBlockHeight(anchors);
-		BreakdownType[] types = BreakdownType.values();
+		DeckBreakdown[] types = DeckBreakdown.values();
 		List<Request> requests = new ArrayList<>();
 		for (int[] anchor : anchors) {
-			BreakdownType type = types[anchor[0]];
+			DeckBreakdown type = types[anchor[0]];
 			int tacticNum = anchor[1];
 			int row = anchor[2];
 			int col = anchor[3];
-			Set<BreakdownType> enabled = enabledByTactic.get(tacticNum);
+			Set<DeckBreakdown> enabled = enabledByTactic.get(tacticNum);
 			if (enabled != null && enabled.contains(type)) {
 				continue;
 			}
@@ -1754,7 +1742,7 @@ public class RealSheetDeckProvider implements SheetDeckProvider {
 	 */
 	List<int[]> findBreakdownAnchors(List<List<String>> grid) {
 		List<int[]> anchors = new ArrayList<>();
-		BreakdownType[] types = BreakdownType.values();
+		DeckBreakdown[] types = DeckBreakdown.values();
 		for (int r = 0; r < grid.size(); r++) {
 			List<String> rowCells = grid.get(r);
 			for (int c = 0; c < rowCells.size(); c++) {

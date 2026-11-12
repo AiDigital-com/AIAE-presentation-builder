@@ -2,6 +2,35 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Workbook writer converged (P8 / D6, branch `PDI_240`)
+
+- Measured first: `SheetDeckProvider` has 11 operations; `RealSheetDeckProvider` (1,935 lines) used 15
+  service types — `BreakdownType`, ten breakdown-table records (`PublisherRow`, `CreativeTable`/`Row`,
+  `GeoTable`/`Row`, `DeviceTable`/`Row`, `AudienceTable`/`AgeRow`/`SegmentRow`), `PacingTablesRequest`, the port
+  and `AppException` (9, all `C000` + message).
+- **Found:** the service's `ChartPivot` (a Spring bean that pivots BigQuery rows, with `SheetRowHelper`,
+  `LineItemNamingHelper`, `ReportNumberParser`) is injected into `SheetPacingTableWriter` and
+  `TacticChartBuilder` — business calculation inside the integration. Left for the chart slice, where the
+  service will compute pivots and hand them over as data.
+- New `google.sheets.SheetWorkbookClient` (generated from the port) and `google.sheets.model.Workbook*` (ten
+  records generated from the service sources, `EMPTY` constants included; no service code compares them by
+  identity). `RealSheetDeckProvider` / `StubSheetDeckProvider` implement it and import nothing from `service`;
+  `BreakdownType` → `DeckBreakdown` (shared with Slides), `AppException` → `GoogleApiException`.
+- Pacing tables: `writePacingTables(spreadsheetId, userToken, WorkbookTabWriter)` — the provider still builds
+  the Sheets client for the caller, finds the first tab and returns a message on `IOException` exactly as
+  before; the bridge passes a writer that calls `SheetPacingTableWriter.writeAll` with the service request.
+  `SheetPacingTableWriter` left the provider's constructor and is injected into the bridge (it is an
+  unconditional `@Component`).
+- `bridge.SheetDeckProviderBridge` implements `SheetDeckProvider` (the only implementation);
+  `bridge.WorkbookModelMapper` maps the tables back, keeping tactic order. Same `AppException(C000, message)`
+  translation as the Slides bridge.
+- Tests: `RealSheetDeckProviderTest` 38 (types switched, constructor without the pacing writer); new
+  `WorkbookModelMapperTest` 2 (record components identical via reflection; every table maps) and
+  `SheetDeckProviderBridgeTest` 3 (pacing callback, section/table mapping, error translation).
+  `external-services` 457 → 462 tests. `mvn -Pmvp verify`: BUILD SUCCESS.
+- `service` import lines in `external-services` main outside `bridge`: 164 in 25 files → 141 in 23. Gates:
+  **3 of 21 failing** (unchanged).
+
 ## 2026-11-12 — Slides converged (P8 / D6, branch `PDI_240`)
 
 - Measured first: `SlidesProvider` has 12 operations; `RealSlidesProvider` 1,975 lines used service types 61
