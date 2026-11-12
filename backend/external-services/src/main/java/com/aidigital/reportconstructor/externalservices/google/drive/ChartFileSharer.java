@@ -1,4 +1,4 @@
-package com.aidigital.reportconstructor.externalservices.google;
+package com.aidigital.reportconstructor.externalservices.google.drive;
 
 import com.google.api.services.drive.Drive;
 import lombok.RequiredArgsConstructor;

@@ -111,7 +111,12 @@ provider is converted, the bridges move into `service` and the module edge flips
 - Converted: **Clerk** (`ClerkClient.googleOAuthAccessTokens` → `bridge.ClerkUserGoogleTokenProvider`
   implements `UserGoogleTokenProvider`; both beans exist only when `app.clerk.secret-key` is set,
   otherwise callers use the Google service account).
-- Not yet converted: `google` (Drive, Sheets, Slides, charts), `anthropic`.
+- Converted: **Drive** (`google.drive`: `DriveCopier`, `DriveSharer`, `ChartFileSharer`,
+  `DriveShareRecipients`). Who gets auto-shared comes from the Drive-owned `DriveShareAudience`
+  interface, implemented by `bridge.AdminDriveShareAudience` over `AdminEmailDirectory`. These helpers
+  still take the SDK's `Drive` client as a parameter because the Sheets/Slides/chart code builds it per
+  request (user token or service account); hiding it goes with the Sheets/Slides conversion.
+- Not yet converted: `google` Sheets, Slides and charts; `anthropic`.
 
 Controllers implement generated OpenAPI interfaces and delegate to services.
 Repositories are accessed only through their paired entity services.

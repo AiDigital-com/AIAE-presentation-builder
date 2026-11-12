@@ -2,6 +2,23 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Drive helpers converged (P8 / D6, branch `PDI_240`)
+
+- `DriveCopier`, `DriveSharer`, `ChartFileSharer`, `DriveShareRecipients` and their tests moved to
+  `externalservices.google.drive` (`git mv`, code unchanged apart from package/imports).
+- The package imports nothing from `service`. The one link it had — admin emails for auto-share — now
+  goes through the Drive-owned `DriveShareAudience` interface, implemented by
+  `bridge.AdminDriveShareAudience` (delegates to `AdminEmailDirectory`). Recipients, order,
+  normalisation and the never-throw guarantee are unchanged.
+- Not done here, deliberately: the helpers still take the SDK `Drive` client. It is built per request
+  from a user token or the service account by the Sheets/Slides/chart code; replacing it with a
+  token-based `DriveClient` touches `RealSlidesProvider`/`RealSheetDeckProvider` (template copy) and
+  the chart builders, so it moves with the Sheets/Slides conversion.
+- `service` import lines in `external-services` main outside `bridge`: 200 in 39 files before the Clerk
+  and Drive slices → 198 in 37 (the remainder is Sheets/Slides/charts and Anthropic; `bridge` holds 2).
+- Tests: `AdminDriveShareAudienceTest` added; Drive tests 12 green. `mvn -Pmvp verify`: BUILD SUCCESS.
+  Gates: **3 of 21 failing** (unchanged).
+
 ## 2026-11-12 — Clerk provider converged (P8 / D6, branch `PDI_240`)
 
 - `externalservices.clerk` now has the onboarding-platform shape and **no `service` imports**:

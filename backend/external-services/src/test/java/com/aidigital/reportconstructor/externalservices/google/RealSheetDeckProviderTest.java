@@ -1,5 +1,7 @@
 package com.aidigital.reportconstructor.externalservices.google;
 
+import com.aidigital.reportconstructor.externalservices.google.drive.DriveSharer;
+import com.aidigital.reportconstructor.externalservices.google.drive.DriveShareRecipients;
 import com.aidigital.reportconstructor.service.reports.dto.AudienceAgeRow;
 import com.aidigital.reportconstructor.service.reports.dto.AudienceSegmentRow;
 import com.aidigital.reportconstructor.service.reports.dto.AudienceTable;

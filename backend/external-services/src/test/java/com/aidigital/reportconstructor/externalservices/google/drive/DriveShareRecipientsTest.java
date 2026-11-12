@@ -1,6 +1,6 @@
-package com.aidigital.reportconstructor.externalservices.google;
+package com.aidigital.reportconstructor.externalservices.google.drive;
 
-import com.aidigital.reportconstructor.service.admin.services.AdminEmailDirectory;
+import com.aidigital.reportconstructor.externalservices.google.GoogleProperties;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -12,14 +12,14 @@ import static org.mockito.Mockito.when;
 class DriveShareRecipientsTest {
 
 	private final GoogleProperties props = new GoogleProperties();
-	private final AdminEmailDirectory adminEmailDirectory = mock(AdminEmailDirectory.class);
-	private final DriveShareRecipients recipients = new DriveShareRecipients(props, adminEmailDirectory);
+	private final DriveShareAudience shareAudience = mock(DriveShareAudience.class);
+	private final DriveShareRecipients recipients = new DriveShareRecipients(props, shareAudience);
 
 	@Test
-	void shouldMergeConfiguredEmailsWithAdminEmailsTest() {
+	void shouldMergeConfiguredEmailsWithTheAudienceTest() {
 		// Given:
 		props.setShareWithEmails(List.of("owner@x.com", " "));
-		when(adminEmailDirectory.adminEmails()).thenReturn(List.of("root@x.com", "managed@x.com"));
+		when(shareAudience.additionalRecipients()).thenReturn(List.of("root@x.com", "managed@x.com"));
 
 		// When:
 		List<String> resolved = recipients.resolve();
@@ -32,7 +32,7 @@ class DriveShareRecipientsTest {
 	void shouldDeduplicateCaseInsensitivelyTest() {
 		// Given: the same address configured as a share recipient and as an admin
 		props.setShareWithEmails(List.of("Owner@X.com"));
-		when(adminEmailDirectory.adminEmails()).thenReturn(List.of("owner@x.com", "OWNER@x.com"));
+		when(shareAudience.additionalRecipients()).thenReturn(List.of("owner@x.com", "OWNER@x.com"));
 
 		// When:
 		List<String> resolved = recipients.resolve();
@@ -42,10 +42,10 @@ class DriveShareRecipientsTest {
 	}
 
 	@Test
-	void shouldReturnConfiguredEmailsWhenThereAreNoAdminsTest() {
+	void shouldReturnConfiguredEmailsWhenTheAudienceIsEmptyTest() {
 		// Given:
 		props.setShareWithEmails(List.of("owner@x.com"));
-		when(adminEmailDirectory.adminEmails()).thenReturn(List.of());
+		when(shareAudience.additionalRecipients()).thenReturn(List.of());
 
 		// When:
 		List<String> resolved = recipients.resolve();

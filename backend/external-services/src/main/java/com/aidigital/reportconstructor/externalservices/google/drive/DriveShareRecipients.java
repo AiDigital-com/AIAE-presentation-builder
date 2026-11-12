@@ -1,6 +1,6 @@
-package com.aidigital.reportconstructor.externalservices.google;
+package com.aidigital.reportconstructor.externalservices.google.drive;
 
-import com.aidigital.reportconstructor.service.admin.services.AdminEmailDirectory;
+import com.aidigital.reportconstructor.externalservices.google.GoogleProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -12,28 +12,26 @@ import java.util.Set;
 /**
  * Resolves who every generated Drive file (deck and EOC workbook alike) is auto-shared
  * with: the statically configured {@code external.google.share-with-emails} list plus
- * every current admin — both the config allow-list ({@code app.admin.emails}) and the
- * UI-managed grants, read through {@link AdminEmailDirectory}. Kept as one collaborator so
- * both providers share a single policy.
+ * the {@link DriveShareAudience} (today every current admin — the config allow-list and the
+ * UI-managed grants). Kept as one collaborator so both providers share a single policy.
  */
 @Component
 @RequiredArgsConstructor
 public class DriveShareRecipients {
 
 	private final GoogleProperties googleProperties;
-	private final AdminEmailDirectory adminEmailDirectory;
+	private final DriveShareAudience shareAudience;
 
 	/**
 	 * Returns the de-duplicated, lowercased list of emails a freshly generated file should
-	 * be shared with. The admin directory degrades to the configured admins when the managed
-	 * grants cannot be read, so report generation never breaks on it.
+	 * be shared with. The audience never throws, so report generation never breaks on it.
 	 *
-	 * @return share recipients, in configuration order then admin order; never null
+	 * @return share recipients, in configuration order then audience order; never null
 	 */
 	public List<String> resolve() {
 		Set<String> recipients = new LinkedHashSet<>();
 		addAll(recipients, googleProperties.getShareWithEmails());
-		addAll(recipients, adminEmailDirectory.adminEmails());
+		addAll(recipients, shareAudience.additionalRecipients());
 		return List.copyOf(recipients);
 	}
 
