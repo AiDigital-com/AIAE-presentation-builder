@@ -51,7 +51,7 @@ records what was actually measured.
 | **P8** Boundary splits | Entity-service and helper extraction per `structure/*`; module direction `service → external-services` (today `external-services → service`, with `application → external-services`), which is structure-lint's next stop | Not started |
 | **P9** Coverage phase | `mvp` coverage profile driven by `.template-phase` | Not started (JaCoCo gate exists at 0.80/0.70) |
 | **P10** API validation | OpenAPI: closed schemas, descriptions, `$ref` enums, input constraints; one 400 MVC test per constrained operation | Done 2026-11-12 |
-| **P11** Thin controllers and service shape | Controller logic → services/mappers; split `ReportGenerationServiceImpl`, `LineItemMatcherServiceImpl`, `AdminStatsServiceImpl`; `CurrentTime`; MapStruct for entity mapping; remove static factories | In progress — `CurrentTime`, static factories, MapStruct entity mapping, thin controllers and mapper package layout done 2026-11-12; service splits remain |
+| **P11** Thin controllers and service shape | Controller logic → services/mappers; split `ReportGenerationServiceImpl`, `LineItemMatcherServiceImpl`, `AdminStatsServiceImpl`; `CurrentTime`; MapStruct for entity mapping; remove static factories | Done 2026-11-12 — `CurrentTime`, static factories, MapStruct entity mapping, thin controllers, mapper package layout and service splits (`ReportGenerationServiceImpl` 1,723 → 138 lines) |
 | **P12** Frontend tooling | ESLint, import order, Husky; remaining `check-frontend-ui-rules` findings | Done 2026-11-12 (tooling earlier; UI-rule findings fixed, visual check pending) |
 | **P15** Make it stick | Flip `gates-report.sh`, CI `static-checks` and the test-field Checkstyle profile to blocking | Not started |
 

@@ -51,6 +51,13 @@ import com.aidigital.reportconstructor.service.reports.helpers.impl.ImpressionCo
 import com.aidigital.reportconstructor.service.reports.helpers.PaidTokenHelper;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.MpoNarrativeAssemblerImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.PacingNarrativeAssemblerImpl;
+import com.aidigital.reportconstructor.service.reports.helpers.BreakdownSectionWorkflow;
+import com.aidigital.reportconstructor.service.reports.helpers.ClaudeCallDispatcher;
+import com.aidigital.reportconstructor.service.reports.helpers.DirectReportWorkflow;
+import com.aidigital.reportconstructor.service.reports.helpers.MpoDeckTokenWriter;
+import com.aidigital.reportconstructor.service.reports.helpers.ReportRunRecorder;
+import com.aidigital.reportconstructor.service.reports.helpers.ReportTokenAssembler;
+import com.aidigital.reportconstructor.service.reports.helpers.SlidesFromSheetWorkflow;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.ReportNumberParserImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.impl.TacticConclusionAssemblerImpl;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportGenerationChartHelper;
@@ -151,24 +158,56 @@ class ReportGenerationServiceImplTest {
 	private PaidTokenHelper paidTokens;
 
 	private ReportGenerationServiceImpl service;
+	private MpoDeckTokenWriter deckSections;
+	private BreakdownSectionWorkflow breakdowns;
 
 	@BeforeEach
 	void setUp() {
 		lenient().when(claudeClients.forReport(any(), any())).thenReturn(claude);
-		service = new ReportGenerationServiceImpl(
-				jobProgress, warnings, chartHelper, sheetHelper, publisherBreakdown, creativeBreakdown, geoBreakdown, audienceBreakdown, deviceBreakdown, placeholderReader, sheetCampaign, placeholders,
-				claudeClients, slides, userGoogleTokens, self, claudeDefaults, fileNamer,
-				new ReportNumberParserImpl(), new Fmt(),
-				new EomDashboardResolver(new ReportNumberParserImpl(), new Fmt(), new RatePlanCalculator()), new SimpleAsyncTaskExecutor(),
-				new ClaudeUsageTrackerImpl(new NoOpClaudeUsageEventService(), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl()), new ClaudeFailureLogImpl(),
-				new BreakdownSelectionResolverImpl(), new BreakdownThoughtsGateImpl(),
-				new TacticConclusionAssemblerImpl(), sheetChartData, tacticExtraction,
-				new ImpressionContributionHelperImpl(new ReportNumberParserImpl(), new Fmt()), resumeState,
-				new SheetTacticCountHelperImpl(), new PacingNarrativeAssemblerImpl(), new MpoNarrativeAssemblerImpl(),
-				new DeckStyleTokenHelperImpl(new SheetRowHelperImpl(new CurrentTimeImpl())), paidTokens,
-				new PaidNarrativeAssemblerImpl(new PaidValueFormatter(), new PaidCopySlotResolver()),
+		// The service and its workflows over the same mocks and real collaborators, wired as Spring wires them:
+		// one usage tracker, one failure log and one executor shared by every stage of a run.
+		ClaudeUsageTrackerImpl usageTracker = new ClaudeUsageTrackerImpl(
+				new NoOpClaudeUsageEventService(), new CurrentTimeImpl(), new ClaudeUsageEventEntityMapperImpl());
+		ClaudeFailureLogImpl failureLog = new ClaudeFailureLogImpl();
+		SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor();
+		ReportTokenAssembler tokens = tokenAssembler();
+		ReportRunRecorder recorder = new ReportRunRecorder(jobProgress, slides);
+		ClaudeCallDispatcher dispatcher = new ClaudeCallDispatcher(failureLog, usageTracker, executor);
+		deckSections = new MpoDeckTokenWriter(slides, paidTokens,
+				new PaidNarrativeAssemblerImpl(new PaidValueFormatter(), new PaidCopySlotResolver()), chartHelper,
 				new PaidSlideTableAssemblerImpl(new PaidValueFormatter()),
-				new PaidSlideChartAssemblerImpl(new PaidValueFormatter()), new NarrativeCopyLimitsResolver());
+				new PaidSlideChartAssemblerImpl(new PaidValueFormatter()),
+				new MpoNarrativeAssemblerImpl(), new PacingNarrativeAssemblerImpl(), dispatcher);
+		breakdowns = new BreakdownSectionWorkflow(
+				publisherBreakdown, creativeBreakdown, geoBreakdown, audienceBreakdown, deviceBreakdown,
+				usageTracker, executor, slides, new BreakdownThoughtsGateImpl(), new BreakdownSelectionResolverImpl(),
+				tacticExtraction, sheetChartData);
+		ImpressionContributionHelperImpl contributions =
+				new ImpressionContributionHelperImpl(new ReportNumberParserImpl(), new Fmt());
+		DeckStyleTokenHelperImpl deckStyleTokens =
+				new DeckStyleTokenHelperImpl(new SheetRowHelperImpl(new CurrentTimeImpl()));
+		NarrativeCopyLimitsResolver copyLimits = new NarrativeCopyLimitsResolver();
+		SlidesFromSheetWorkflow slidesFromSheet = new SlidesFromSheetWorkflow(
+				jobProgress, warnings, chartHelper, sheetHelper, placeholderReader, sheetCampaign, placeholders,
+				claudeClients, slides, userGoogleTokens, claudeDefaults, fileNamer, usageTracker, failureLog,
+				new TacticConclusionAssemblerImpl(), contributions, new SheetTacticCountHelperImpl(), deckStyleTokens,
+				copyLimits, tokens, dispatcher, deckSections, breakdowns, recorder);
+		DirectReportWorkflow direct = new DirectReportWorkflow(
+				jobProgress, warnings, chartHelper, sheetHelper, placeholders, claudeClients, slides, userGoogleTokens,
+				claudeDefaults, fileNamer, contributions, resumeState, deckStyleTokens, copyLimits, tokens,
+				deckSections, recorder);
+		service = new ReportGenerationServiceImpl(
+				jobProgress, warnings, self, usageTracker, failureLog, recorder, slidesFromSheet, direct);
+	}
+
+	/**
+	 * The real token assembler the service delegates placeholder shaping to.
+	 *
+	 * @return a token assembler over real number parsing and formatting
+	 */
+	ReportTokenAssembler tokenAssembler() {
+		return new ReportTokenAssembler(new Fmt(), new ReportNumberParserImpl(),
+				new EomDashboardResolver(new ReportNumberParserImpl(), new Fmt(), new RatePlanCalculator()));
 	}
 
 	@Test
@@ -462,7 +501,7 @@ class ReportGenerationServiceImplTest {
 		when(slides.carriesTacticThoughts("EOC", TemplateVariant.STANDARD)).thenReturn(true);
 
 		// When:
-		Set<Integer> qualifying = service.thoughtsTactics(payload, 2);
+		Set<Integer> qualifying = breakdowns.thoughtsTactics(payload, 2);
 
 		// Then: only the tactic past the "> 2 breakdowns" gate gets the thoughts call
 		assertThat(qualifying).containsExactly(1);
@@ -476,7 +515,7 @@ class ReportGenerationServiceImplTest {
 				"{{tactic 1 reach}}", "372,967", "{{tactic 1 KPI}}", "0.19%", "{{tactic 1}}", "Display");
 
 		// When:
-		Map<String, String> merged = service.withDeckFallback(breakdownValues, flatReplacements);
+		Map<String, String> merged = breakdowns.withDeckFallback(breakdownValues, flatReplacements);
 
 		// Then: the missing tactic tokens come from the deck map, and a breakdown value still wins
 		assertThat(merged)
@@ -498,7 +537,7 @@ class ReportGenerationServiceImplTest {
 		when(slides.carriesTacticThoughts("EOC", TemplateVariant.STANDARD)).thenReturn(false);
 
 		// When:
-		Set<Integer> qualifying = service.thoughtsTactics(payload, 2);
+		Set<Integer> qualifying = breakdowns.thoughtsTactics(payload, 2);
 
 		// Then: no thoughts call is paid for
 		assertThat(qualifying).isEmpty();
@@ -514,7 +553,7 @@ class ReportGenerationServiceImplTest {
 		Map<String, String> flat = new LinkedHashMap<>(Map.of("{{client_name}}", "Acme"));
 
 		// When:
-		service.fillMpoNarrative(claude, flat, 1, payload, true, "brief");
+		deckSections.fillMpoNarrative(claude, flat, 1, payload, true, "brief");
 
 		// Then: the call is never paid for and no MPO token is written
 		verify(claude, never()).mpoNarrative(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
@@ -532,7 +571,7 @@ class ReportGenerationServiceImplTest {
 		Map<String, String> flat = new LinkedHashMap<>();
 
 		// When:
-		service.fillPaidTokens(flat, payload);
+		deckSections.fillPaidTokens(flat, payload);
 
 		// Then: the helper gets the very map and request
 		verify(paidTokens).fillPaidTokens(same(flat), same(payload));
@@ -554,7 +593,7 @@ class ReportGenerationServiceImplTest {
 		Map<String, String> flat = new LinkedHashMap<>(Map.of("{{ps_period_label}}", "the full flight"));
 
 		// When:
-		service.fillPaidNarrative(claude, flat, List.of(search), payload, true, "brief");
+		deckSections.fillPaidNarrative(claude, flat, List.of(search), payload, true, "brief");
 
 		// Then: the reply's field is written and every field it left out is dashed, never left raw
 		assertThat(flat)
@@ -577,7 +616,7 @@ class ReportGenerationServiceImplTest {
 		Map<String, String> flat = new LinkedHashMap<>();
 
 		// When:
-		service.fillPaidNarrative(claude, flat, List.of(social), payload, false, "brief");
+		deckSections.fillPaidNarrative(claude, flat, List.of(social), payload, false, "brief");
 
 		// Then:
 		verify(claude, never()).paidNarrative(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
@@ -597,7 +636,7 @@ class ReportGenerationServiceImplTest {
 		when(slides.carriesMpoNarrative("EOC", TemplateVariant.STANDARD)).thenReturn(false);
 
 		// When:
-		service.fillPaidTokens(new LinkedHashMap<>(), payload);
+		deckSections.fillPaidTokens(new LinkedHashMap<>(), payload);
 
 		// Then:
 		verifyNoInteractions(paidTokens);
@@ -612,7 +651,7 @@ class ReportGenerationServiceImplTest {
 		when(slides.carriesMpoNarrative("EOC", TemplateVariant.MPO)).thenReturn(true);
 
 		// When:
-		service.finishPaidSlides("https://docs.google.com/presentation/d/deck1/edit", List.of(), payload, "tok");
+		deckSections.finishPaidSlides("https://docs.google.com/presentation/d/deck1/edit", List.of(), payload, "tok");
 
 		// Then:
 		PaidSlidesFill expected = new PaidSlidesFill(List.of(),
@@ -630,7 +669,7 @@ class ReportGenerationServiceImplTest {
 		when(slides.carriesMpoNarrative("EOC", TemplateVariant.STANDARD)).thenReturn(false);
 
 		// When:
-		service.finishPaidSlides("https://docs.google.com/presentation/d/deck1/edit", List.of(), payload, "tok");
+		deckSections.finishPaidSlides("https://docs.google.com/presentation/d/deck1/edit", List.of(), payload, "tok");
 
 		// Then:
 		verifyNoInteractions(chartHelper);
@@ -653,7 +692,7 @@ class ReportGenerationServiceImplTest {
 				.thenReturn(List.of("chart warning"));
 
 		// When:
-		List<String> result = service.buildPaidCharts(
+		List<String> result = deckSections.buildPaidCharts(
 				"https://docs.google.com/presentation/d/deck1/edit", List.of(search), payload, flat, "tok");
 
 		// Then:
@@ -672,7 +711,7 @@ class ReportGenerationServiceImplTest {
 				List.of(), List.of(), List.of());
 
 		// When:
-		List<String> result = service.buildPaidCharts(
+		List<String> result = deckSections.buildPaidCharts(
 				"https://docs.google.com/presentation/d/deck1/edit", List.of(search), payload, Map.of(), "tok");
 
 		// Then:
@@ -697,7 +736,7 @@ class ReportGenerationServiceImplTest {
 		when(claude.mpoNarrative(eq(expectedInput), eq("brief"))).thenReturn(narrative);
 
 		// When:
-		service.fillMpoNarrative(claude, flat, 1, payload, true, "brief");
+		deckSections.fillMpoNarrative(claude, flat, 1, payload, true, "brief");
 
 		// Then: the reply lands on its tokens, and the slots it left empty are dashed rather than raw
 		assertThat(flat)
@@ -720,7 +759,7 @@ class ReportGenerationServiceImplTest {
 		Map<String, String> flat = new LinkedHashMap<>();
 
 		// When:
-		service.fillMpoNarrative(claude, flat, 1, payload, false, "brief");
+		deckSections.fillMpoNarrative(claude, flat, 1, payload, false, "brief");
 
 		// Then: no call, and every MPO slot reads as "no figure" instead of its own token name
 		verify(claude, never()).mpoNarrative(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
@@ -747,7 +786,7 @@ class ReportGenerationServiceImplTest {
 		flat.put("{{reach_f}}", "5.383523093");
 
 		// When: the sheet tokens are aliased for the deck
-		service.aliasSheetTokens(flat, 0, "EOC");
+		tokenAssembler().aliasSheetTokens(flat, 0, "EOC");
 
 		// Then: "Market Captured" ({{reach_f}}) is reclaimed from the Reach column, not the Frequency total,
 		// and the presentation-short reach tokens render it abbreviated
@@ -792,7 +831,7 @@ class ReportGenerationServiceImplTest {
 				.thenReturn("Awareness, Consideration");
 
 		// When:
-		service.fillFunnelStages(claude, flat, 2, true);
+		tokenAssembler().fillFunnelStages(claude, flat, 2, true);
 
 		// Then: the goals — never the source workbook — produced the funnel line
 		assertThat(flat).containsEntry("{{funnel_stages}}", "Awareness, Consideration");
@@ -807,7 +846,7 @@ class ReportGenerationServiceImplTest {
 		flat.put("{{tactic 1 goal}}", "Build awareness");
 
 		// When:
-		service.fillFunnelStages(claude, flat, 1, true);
+		tokenAssembler().fillFunnelStages(claude, flat, 1, true);
 
 		// Then: a reviewed value is never overwritten and costs no request
 		assertThat(flat).containsEntry("{{funnel_stages}}", "Awareness, Conversion");
@@ -822,7 +861,7 @@ class ReportGenerationServiceImplTest {
 		flat.put("{{tactic 1 goal}}", "—");
 
 		// When:
-		service.fillFunnelStages(claude, flat, 1, true);
+		tokenAssembler().fillFunnelStages(claude, flat, 1, true);
 
 		// Then:
 		assertThat(flat).containsEntry("{{funnel_stages}}", "—");

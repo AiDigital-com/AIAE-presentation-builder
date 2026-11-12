@@ -2,6 +2,31 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Service contract quality (P11, branch `PDI_240`)
+
+- `ReportGenerationServiceImpl` 1,723 lines / 40 dependencies → 138 lines / 8. It keeps `start`,
+  `enqueue`, `progress` and `run`, which opens/closes the usage and failure scopes and picks a workflow.
+  Logic moved verbatim (JavaDoc included) into `service.reports.helpers` components:
+  `DirectReportWorkflow` (build from the request's grids → SHEET or SLIDES), `SlidesFromSheetWorkflow`
+  (build the deck from a reviewed workbook), `BreakdownSectionWorkflow` (read/gate/write the five
+  breakdown sections, pacing series), `MpoDeckTokenWriter` (MPO/paid sections, EOM pacing narrative),
+  `ClaudeCallDispatcher` (per-tactic fan-out on the virtual-thread executor), `ReportTokenAssembler`
+  (placeholder shaping), `ReportRunRecorder` (slide count / token usage). One new method:
+  `SlidesFromSheetWorkflow.sectionBullets`, extracted to keep `runSlidesFromSheet` under Checkstyle's
+  150-line method limit.
+- Earlier the same day: `SheetAdoptionServiceImpl` 9 → 7 deps (`AdoptedDraftRecorder`),
+  `AdminStatsServiceImpl` 17 → 6 (`AdminStatsAssembler`, + `AdminStatsServiceImplTest`),
+  `LineItemMatcherServiceImpl` 466 → ~210 lines (`TacticChannelCatalog`, `PlanLineIdMatcher`,
+  `LineItemAiDisambiguator`).
+- **Still heavy, not gated:** `SlidesFromSheetWorkflow` has 24 collaborators and 475 lines — the gate only
+  measures `*ServiceImpl`. It is one pipeline, now readable on its own; splitting it further is optional.
+- `ReportGenerationServiceImplTest` wires the real object graph over the same mocks and real collaborators
+  (one shared usage tracker / failure log / executor); tests of moved methods call the collaborator.
+- `check-service-contract-quality`: FAIL → PASS. **3 of 21 failing** (structure-lint: module direction;
+  verify-gates: D2/D3; liquibase-preconditions: D4).
+- `mvn verify`: BUILD SUCCESS, 1,206 tests (unchanged — no test lost), coverage gate met;
+  `ApplicationSmokeTest` boots the context with the new beans.
+
 ## 2026-11-12 — Frontend UI rules (P12, branch `PDI_240`)
 
 - 63 hex colours in `aidigital-tokens.css` / `base/tokens.css` rewritten as the exact `rgb()`

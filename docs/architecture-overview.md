@@ -147,7 +147,12 @@ sequenceDiagram
   and recorded on the job; admins see them under `/admin/failures`.
 - `UsageRollupRefresher` rebuilds the `usage_daily` rollup every 10 minutes
   (`@Scheduled`), which feeds the admin dashboard.
+- `ReportGenerationServiceImpl` only enqueues, opens the run's usage/failure scopes and picks a workflow:
+  `DirectReportWorkflow` (from the request's grids) or `SlidesFromSheetWorkflow` (from a reviewed
+  workbook), both in `service.reports.helpers` with their collaborators (`BreakdownSectionWorkflow`,
+  `MpoDeckTokenWriter`, `ClaudeCallDispatcher`, `ReportTokenAssembler`, `ReportRunRecorder`).
 - Evidence: `backend/service/src/main/java/com/aidigital/reportconstructor/service/reports/services/impl/ReportGenerationServiceImpl.java`
+- Evidence: `backend/service/src/main/java/com/aidigital/reportconstructor/service/reports/helpers/SlidesFromSheetWorkflow.java`
 - Evidence: `backend/service/src/main/java/com/aidigital/reportconstructor/service/admin/UsageRollupRefresher.java`
 
 ## API and security boundaries
