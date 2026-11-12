@@ -13,6 +13,7 @@ import org.zalando.logbook.BodyFilter;
 import org.zalando.logbook.HeaderFilter;
 import org.zalando.logbook.HttpRequest;
 import org.zalando.logbook.Logbook;
+import org.zalando.logbook.LogbookCreator;
 import org.zalando.logbook.Strategy;
 import org.zalando.logbook.core.BodyFilters;
 import org.zalando.logbook.core.Conditions;
@@ -26,6 +27,7 @@ import org.zalando.logbook.json.JsonHttpLogFormatter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -70,24 +72,27 @@ public class LogbookConfig {
 						}))
 				.toList();
 
-		return Logbook.builder()
+		// Metadata-only is the default for every environment; bodies are an explicit local-debugging opt-in.
+		LogbookCreator.Builder builder = Logbook.builder()
 				.condition(Conditions.exclude(exclusions))
-				.strategy(strategy(props))
+				.strategy(new WithoutBodyStrategy())
 				.headerFilter(headerFilter)
 				.bodyFilter(combinedBodyFilter)
-				.sink(new DefaultSink(new JsonHttpLogFormatter(), new DefaultHttpLogWriter()))
-				.build();
+				.sink(new DefaultSink(new JsonHttpLogFormatter(), new DefaultHttpLogWriter()));
+		bodyLoggingOverride(props).ifPresent(builder::strategy);
+		return builder.build();
 	}
 
 	/**
-	 * Picks the logging strategy: metadata-only (no bodies) unless bodies are explicitly enabled. Applies to
-	 * the servlet filter and to every outbound client built by {@code PooledRestClientFactory}.
+	 * Returns the strategy that replaces the metadata-only default, if any. Bodies are logged only when a
+	 * local debugging session sets {@code app.logbook.include-bodies}; the choice applies to the servlet
+	 * filter and to every outbound client built by {@code PooledRestClientFactory}.
 	 *
 	 * @param props bound logging settings
-	 * @return {@link WithoutBodyStrategy} by default, {@link DefaultStrategy} when bodies are enabled
+	 * @return {@link DefaultStrategy} when bodies are enabled, empty to keep {@link WithoutBodyStrategy}
 	 */
-	Strategy strategy(LogbookProperties props) {
-		return props.isIncludeBodies() ? new DefaultStrategy() : new WithoutBodyStrategy();
+	Optional<Strategy> bodyLoggingOverride(LogbookProperties props) {
+		return props.isIncludeBodies() ? Optional.of(new DefaultStrategy()) : Optional.empty();
 	}
 
 }

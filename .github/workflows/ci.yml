@@ -14,13 +14,12 @@ concurrency:
 
 jobs:
   # AIAE gates (scripts/verify-gates.sh, structure-lint.sh and every checker in
-  # scripts/lib/). REPORT-ONLY during the AIAE convergence: gates-report.sh always
-  # exits 0 and the job is continue-on-error, so it publishes the counts without
-  # blocking a merge. See docs/aiae-migration-plan.md for when this becomes blocking.
+  # scripts/lib/), run by scripts/run-gates.sh. Blocking: any failing gate fails the job.
+  # The only exceptions are the carried decisions in scripts/gates-carried.sh, which
+  # never switch a gate off (see the header of run-gates.sh).
   static-checks:
-    name: AIAE static checks (report-only)
+    name: AIAE static checks
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -31,14 +30,17 @@ jobs:
 
       - name: Run AIAE gates
         run: |
-          bash scripts/gates-report.sh | tee gates-report.txt
+          status=0
+          bash scripts/run-gates.sh > gates.txt 2>&1 || status=$?
+          cat gates.txt
           {
-            echo "## AIAE gates (report-only)"
+            echo "## AIAE gates"
             echo
             echo '```'
-            sed -n '/==> AIAE gates/,$p' gates-report.txt
+            sed -n '/==> AIAE gates/,$p' gates.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
 
   backend:
     name: Backend build, test, coverage gate

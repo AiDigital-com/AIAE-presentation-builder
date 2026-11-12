@@ -16,7 +16,7 @@ data flow, integration, deployment model, or cross-cutting concern changes.
 - Owner: AIAE Presentation Builder engineering team
 - Lifecycle phase: MVP
 - Last verified against: branch `PDI_240`, 2026-11-12
-- Verification evidence: `bash scripts/local-verify.sh`, `bash scripts/gates-report.sh`
+- Verification evidence: `bash scripts/local-verify.sh`, `bash scripts/run-gates.sh`
 - Cache status: disabled
 - MVP usage telemetry: enabled during MVP
 
@@ -317,7 +317,7 @@ sequenceDiagram
   installed by the frontend `prepare` script (`scripts/prepare-husky.mjs`).
 - Full local verification: `scripts/local-verify.sh` (backend `mvn verify` in the committed coverage phase,
   frontend `npm ci`, `generate:api`, `typecheck`, `lint`, `build`), followed by
-  the report-only AIAE gate run `scripts/gates-report.sh`.
+  the blocking AIAE gate run `scripts/run-gates.sh`.
 
 ## Decisions, constraints, and known risks
 
@@ -326,7 +326,7 @@ sequenceDiagram
 | Contract-first OpenAPI | One backend/frontend API contract | Generated sources must not be edited |
 | BrowserRouter + top-header shell | Elevate layout, direct links | SPA fallback must stay; do not introduce a sidebar |
 | `CLAUDE.md` and `.claude/{rules,agent_docs,skills}` are AIAE-managed | Template upgrades refuse to overwrite locally edited fixtures | Project facts live in this file; upgrade by re-running the standard's `install-claude-fixtures.sh` |
-| AIAE gates are report-only (`scripts/gates-report.sh`) | Phase 1 of the AIAE convergence: measure first | Failing gates are a backlog, not a blocker, until a later phase makes them blocking |
+| AIAE gates are blocking (`scripts/run-gates.sh`, CI `static-checks`) | Keep the converged rules from regressing | The only exceptions are the carried decisions in `scripts/gates-carried.sh` (D2 `.replit` port 5173, D3 Vitest 4); `verify-gates.sh` still runs every other check, on a copy with just those neutralised, and a carry that is fixed fails until removed |
 | Liquibase `preConditions` on every changeSet | Shared rule | `0001-usage-events.xml` and `0002-report-jobs.xml` predate it; every **new** changeSet declares them; never rewrite applied changelogs |
 | BigQuery query rules (`13-bigquery.md`) | Shared rule | No BigQuery code; delivery data arrives through exported Google Sheets (Elevate). Applies only if BigQuery access is added |
 | GSD workflow (`skill-selection.md`) | Shared rule | GSD is not installed; use `task-workflow` and the focused skills |

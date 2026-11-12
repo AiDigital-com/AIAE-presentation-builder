@@ -3,7 +3,8 @@ package com.aidigital.reportconstructor.config;
 import org.junit.jupiter.api.Test;
 import org.zalando.logbook.Strategy;
 import org.zalando.logbook.core.DefaultStrategy;
-import org.zalando.logbook.core.WithoutBodyStrategy;
+
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -15,10 +16,10 @@ class LogbookConfigTest {
 		LogbookProperties props = new LogbookProperties();
 
 		// When:
-		Strategy strategy = new LogbookConfig().strategy(props);
+		Optional<Strategy> override = new LogbookConfig().bodyLoggingOverride(props);
 
-		// Then: bodies (prompts, sheet contents, OAuth tokens) are never written
-		assertThat(strategy).isInstanceOf(WithoutBodyStrategy.class);
+		// Then: the metadata-only default stays, so bodies (prompts, sheet contents, OAuth tokens) are never written
+		assertThat(override).isEmpty();
 	}
 
 	@Test
@@ -28,9 +29,9 @@ class LogbookConfigTest {
 		props.setIncludeBodies(true);
 
 		// When:
-		Strategy strategy = new LogbookConfig().strategy(props);
+		Optional<Strategy> override = new LogbookConfig().bodyLoggingOverride(props);
 
 		// Then:
-		assertThat(strategy).isInstanceOf(DefaultStrategy.class);
+		assertThat(override).containsInstanceOf(DefaultStrategy.class);
 	}
 }

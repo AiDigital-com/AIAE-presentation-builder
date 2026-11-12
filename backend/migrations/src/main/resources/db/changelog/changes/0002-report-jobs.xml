@@ -6,6 +6,15 @@
                             https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
 
 	<changeSet id="report-types-and-jobs" author="harvest">
+		<preConditions onFail="MARK_RAN">
+			<not>
+				<tableExists tableName="report_types"/>
+			</not>
+			<not>
+				<tableExists tableName="report_jobs"/>
+			</not>
+		</preConditions>
+
 		<createTable tableName="report_types">
 			<column name="code" type="TEXT">
 				<constraints primaryKey="true" nullable="false"/>
@@ -52,6 +61,12 @@
 	</changeSet>
 
 	<changeSet id="report-types-seed" author="harvest">
+		<preConditions onFail="MARK_RAN">
+			<sqlCheck expectedResult="0">
+				SELECT COUNT(*) FROM report_types WHERE code IN ('EOC', 'EOM')
+			</sqlCheck>
+		</preConditions>
+
 		<insert tableName="report_types">
 			<column name="code" value="EOC"/>
 			<column name="label" value="End of Campaign"/>

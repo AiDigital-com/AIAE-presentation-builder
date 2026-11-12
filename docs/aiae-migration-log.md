@@ -2,6 +2,40 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-12 — Gates made blocking (P15, branch `PDI_240`)
+
+- **Hidden checks.** `verify-gates.sh` stops at its first failure, and it had failed at the `.replit` check
+  (line ~61) since P2, so none of its later checks had been seen. I ran it on a copy with the four known items
+  patched; it passed. There were no hidden failures.
+- **D4 fixed.**
+  - Preconditions added to `0001` (`not tableExists usage_events`), `0002` changeSet 1
+    (`not tableExists report_types`, `report_jobs`) and `0002` seed (`sqlCheck` count of EOC/EOM = 0).
+    All use `MARK_RAN`, the style of `0003`+.
+  - Checked with a throwaway Testcontainers test, PostgreSQL 16, Liquibase 4.29.2:
+    - migrate with the HEAD files;
+    - `validate()` with the new files, no checksum error;
+    - `listUnrunChangeSets` is empty;
+    - `update` is a no-op.
+  - Checksums unchanged (v9).
+- **Logbook literal fixed.** `LogbookConfig` builds with `.strategy(new WithoutBodyStrategy())`, and
+  `bodyLoggingOverride(props)` returns `DefaultStrategy` only when `app.logbook.include-bodies` is set.
+  Behaviour is unchanged. `LogbookConfigTest` was updated.
+- **D2 and D3 carried, not fixed.**
+  - D2: the standard has no `[[ports]]` entry for 5173, but our Clerk dev pattern `https://*.replit.dev:5173`
+    (`270cb74`) relies on that URL. Removing the entry needs a check on Replit.
+  - D3: Vitest 4 was a deliberate upgrade (`7e7d33a`).
+- **The runner.** `scripts/run-gates.sh` replaces `gates-report.sh` and exits 1 on any failing gate. It runs from
+  `local-verify.sh` and from the CI `static-checks` job, which is no longer `continue-on-error`.
+  - Carried items live in `scripts/gates-carried.sh`, each with a `present` check and a `neutralise` rewrite.
+  - `verify-gates.sh` runs through its supported `VERIFY_ROOT` on a copy of the working tree with only those
+    items neutralised.
+  - Negative checks on throwaway copies:
+    - dropping `@Async("usageLoggingExecutor")` (a check after both carried items) fails the run;
+    - pinning Vitest back to `^3.2.6` fails with "stale carry D3";
+    - the real `.replit` and `package.json` are never touched.
+- **Test-field Checkstyle** has been blocking in `mvn verify` since P2; no change.
+- Result: `bash scripts/run-gates.sh` reports all 21 gates passing (carried: D2, D3), exit 0.
+
 ## 2026-11-12 — Coverage phase (P9, branch `PDI_240`)
 
 - Before: `service`, `external-services` and `application` overrode the parent's 0.80/0.70 in their

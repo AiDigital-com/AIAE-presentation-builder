@@ -18,6 +18,6 @@ npm run typecheck
 npm run lint
 npm run build
 
-# AIAE gates — report-only for now (always exits 0); see docs/aiae-migration-plan.md.
+# AIAE gates — blocking; carried exceptions live in scripts/gates-carried.sh.
 cd ..
-bash scripts/gates-report.sh
+bash scripts/run-gates.sh

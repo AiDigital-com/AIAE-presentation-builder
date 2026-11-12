@@ -17,10 +17,12 @@ records what was actually measured.
 - **Do not normalise line endings on those paths.** `.gitattributes` marks them
   `-text` because the standard itself is mixed LF/CRLF.
 - **Never rename `backend/migrations/src/main/resources/db/changelog/`** and never
-  rewrite an applied changeSet (Liquibase records the classpath path and checksums).
-- **Gates are report-only until P15.** `scripts/gates-report.sh` always exits 0;
-  the CI `static-checks` job is `continue-on-error`. Do not turn a gate green by
-  renaming or by weakening a checker; fix the code or record a decision below.
+  change what an applied changeSet does (Liquibase records the classpath path and checksums).
+  Preconditions are outside the checksum, so adding them is safe — see D4.
+- **Gates are blocking (P15).** `scripts/run-gates.sh` exits 1 on any failing gate, in
+  `local-verify.sh` and in the CI `static-checks` job. Do not turn a gate green by
+  renaming or by weakening a checker; fix the code, or record a decision below and carry
+  it in `scripts/gates-carried.sh`.
 - **One branch per phase or slice**, each reviewed and verified on its own.
 - **Python 3.9+ must be on `PATH` as `python3`.** On Windows the Store stub prints
   `Python` and exits 0, which makes every Python gate look green.
@@ -53,24 +55,31 @@ records what was actually measured.
 | **P10** API validation | OpenAPI: closed schemas, descriptions, `$ref` enums, input constraints; one 400 MVC test per constrained operation | Done 2026-11-12 |
 | **P11** Thin controllers and service shape | Controller logic → services/mappers; split `ReportGenerationServiceImpl`, `LineItemMatcherServiceImpl`, `AdminStatsServiceImpl`; `CurrentTime`; MapStruct for entity mapping; remove static factories | Done 2026-11-12 — `CurrentTime`, static factories, MapStruct entity mapping, thin controllers, mapper package layout and service splits (`ReportGenerationServiceImpl` 1,723 → 138 lines) |
 | **P12** Frontend tooling | ESLint, import order, Husky; remaining `check-frontend-ui-rules` findings | Done 2026-11-12 (tooling earlier; UI-rule findings fixed, visual check pending) |
-| **P15** Make it stick | Flip `gates-report.sh`, CI `static-checks` and the test-field Checkstyle profile to blocking | Not started |
+| **P15** Make it stick | Flip `gates-report.sh`, CI `static-checks` and the test-field Checkstyle profile to blocking | Done 2026-11-12 — `scripts/run-gates.sh` replaces `gates-report.sh` and blocks locally and in CI; D2/D3 carried via `scripts/gates-carried.sh` without hiding the rest of `verify-gates.sh`; D4 and the Logbook literal fixed; test-field Checkstyle already blocking since P2 |
 
 ## Open decisions (product/tech owner)
 
 | ID | Question | Recommendation |
 |---|---|---|
 | D1 | Adopt `backend/cache-management` (distributed cache with DB-outbox invalidation)? | **Decline** for now: the only cache is one admin-dashboard snapshot; record as a deliberate divergence. Revisit if more caches are added or PROD runs >1 replica with stricter freshness needs. |
-| D2 | Stop exposing Vite's port 5173 in `.replit` (gate: "Vite must not run on/expose 5000")? | Keep until someone verifies the Replit workspace preview still works without it; then remove. |
-| D3 | Pin Vitest to the firewall-approved `^3.2.6` (we use `^4.1.11`)? | Ask whether the Replit firewall allow-list still requires 3.x; otherwise request the standard to accept 4.x. |
-| D4 | Liquibase `0001`/`0002` have no `preConditions` | Accept permanently (applied changelogs are immutable); request an allow-list in `check-liquibase-preconditions.py` upstream. |
+| D2 | Stop exposing Vite's port 5173 in `.replit` (gate: "Vite must not run on/expose 5000")? | **Carried** (`scripts/gates-carried.sh`). The standard drops the mapping (the workspace pane auto-detects 5173; Reserved VM allows one external port), but our Clerk dev pattern `https://*.replit.dev:5173` relies on that URL. Remove once the workspace preview and sign-in are verified without it. |
+| D3 | Pin Vitest to the firewall-approved `^3.2.6` (we use `^4.1.11`)? | **Carried** (`scripts/gates-carried.sh`). Vitest 4 was a deliberate upgrade (`7e7d33a`, with Vite 7); 3.2.6 still supports Vite 7. Ask whether the Replit firewall allow-list still requires 3.x; otherwise request the standard to accept 4.x. |
+| D4 | Liquibase `0001`/`0002` have no `preConditions` | **Resolved 2026-11-12** — preconditions added (`not tableExists` / seed `sqlCheck`, `MARK_RAN`). Liquibase leaves preconditions out of the checksum: a database migrated with the old files validates against the new ones with no unrun changeSets (verified on Testcontainers PostgreSQL 16). |
 | D5 | Lifecycle phase `mvp` vs `engineering` (`.template-phase`) | Stay `mvp` while usage telemetry is on; switch via `finalize-coverage` before handoff. |
 | D6 | Module direction: ports in `service`, adapters in `external-services` (standard: leaf `external-services`, `service → external-services`, no `application → external-services`) | **Resolved 2026-11-12** — converged to the standard: `external-services` is a leaf of provider clients, `service` depends on it and implements its ports in `service.integration`, `application` no longer depends on `external-services`. |
 
-## Carried gate failures (accepted until their phase)
+## Carried gate failures
 
-- `verify-gates.sh`: `.replit` exposes 5173 (D2); Vitest pin (D3); Logbook literal
-  `.strategy(new WithoutBodyStrategy())` — our `LogbookConfig` builds
-  `WithoutBodyStrategy` by default via `strategy(props)`, so this is a literal-match
-  false negative (upstream change request).
-- `check-liquibase-preconditions`: `0001`, `0002` (D4).
-- Everything else in the baseline is real backlog owned by P7–P12.
+The only carried failures are the ones `scripts/gates-carried.sh` declares, each tied to an open decision:
+
+- D2: `.replit` maps 5173.
+- D3: Vitest 4.
+
+`scripts/run-gates.sh` still runs every other `verify-gates.sh` assertion against a copy with just these two
+neutralised. Once a carried condition is fixed, the run fails until its entry is removed.
+
+Earlier carries are now fixed:
+
+- The Logbook literal: `LogbookConfig` states `.strategy(new WithoutBodyStrategy())` as the builder default, and
+  the opt-in for body logging is a separate override.
+- Liquibase `0001`/`0002` (D4).

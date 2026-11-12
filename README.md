@@ -33,7 +33,7 @@ usage, token cost and failed jobs on the admin dashboard.
 2. `bash scripts/local-dev-backend.sh` (Spring Boot on 5000).
 3. `bash scripts/local-dev-frontend.sh` (Vite on 5173, proxies the API to 5000).
 4. Before pushing: `bash scripts/local-verify.sh` (build, tests, lint, then the
-   report-only AIAE gates).
+   blocking AIAE gates, `scripts/run-gates.sh`).
 
 DEV and PROD run on AWS through GitHub Actions and GitOps; see
 `.github/workflows/` and `docs/architecture-overview.md`.
