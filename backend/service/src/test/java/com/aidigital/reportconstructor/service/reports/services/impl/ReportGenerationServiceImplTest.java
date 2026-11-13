@@ -375,7 +375,7 @@ class ReportGenerationServiceImplTest {
 		when(deviceBreakdown.writeDeviceInsights(any(), any(), any(), any(), any())).thenReturn(List.of());
 		when(claudeDefaults.emptyResults())
 				.thenReturn(new ClaudeResults(Map.of(), List.of(), Map.of(), List.of(), null, null, null));
-		when(chartHelper.buildChartsFromSheet(eq("http://deck"), eq(grid), any(), eq(2), isNull()))
+		when(chartHelper.buildChartsFromSheet(eq("http://deck"), eq(grid), any(), eq(2), eq("standard"), eq(TemplateVariant.STANDARD), isNull()))
 				.thenReturn(List.of());
 		when(warnings.serializeWarnings(List.of())).thenReturn("[]");
 
@@ -390,7 +390,7 @@ class ReportGenerationServiceImplTest {
 				.containsEntry("{{client_name}}", "Acme")
 				.containsEntry("{{recommendation 1}}", "Do X");
 		verify(chartHelper).trimUnusedTactics("http://deck", 2, "standard", TemplateVariant.STANDARD, null);
-		verify(chartHelper).buildChartsFromSheet(eq("http://deck"), eq(grid), any(), eq(2), isNull());
+		verify(chartHelper).buildChartsFromSheet(eq("http://deck"), eq(grid), any(), eq(2), eq("standard"), eq(TemplateVariant.STANDARD), isNull());
 		verify(jobProgress).markJobDone(11L, "http://deck", "[]");
 		// And: the raw-grid collection and the offline Claude batches never run — no duplicate work
 		verify(placeholders, never()).collectData(any());
@@ -432,7 +432,7 @@ class ReportGenerationServiceImplTest {
 		when(deviceBreakdown.writeDeviceInsights(any(), any(), any(), any(), any())).thenReturn(List.of());
 		when(claudeDefaults.emptyResults())
 				.thenReturn(new ClaudeResults(Map.of(), List.of(), Map.of(), List.of(), null, null, null));
-		when(chartHelper.buildChartsFromSheet(eq("http://deck"), eq(grid), any(), eq(1), isNull()))
+		when(chartHelper.buildChartsFromSheet(eq("http://deck"), eq(grid), any(), eq(1), eq("EOC"), eq(TemplateVariant.MPO), isNull()))
 				.thenReturn(List.of());
 		when(warnings.serializeWarnings(List.of())).thenReturn("[]");
 

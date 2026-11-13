@@ -20,6 +20,24 @@ describe("SheetFormatHint", () => {
         expect(link.getAttribute("target")).toBe("_blank");
     });
 
+    it.each(["paidSearch", "paidSocial"] as const)(
+        "should require the FULL-FLIGHT PERFORMANCE tab in the %s export format",
+        (format) => {
+            // Given: a paid-media export format
+            const spec = SHEET_FORMATS[format];
+
+            // When
+            render(<SheetFormatHint format={format} />);
+
+            // Then: the required tab is named and the example export is linked
+            expect(screen.getByText(spec.summary)).toBeTruthy();
+            expect(screen.getAllByRole("listitem", { hidden: true })).toHaveLength(spec.rules.length);
+            expect(screen.getByText(/"FULL-FLIGHT PERFORMANCE" tab is required/)).toBeTruthy();
+            const link = screen.getByRole("link", { name: /Open example sheet/, hidden: true });
+            expect(link.getAttribute("href")).toBe(spec.exampleUrl);
+        }
+    );
+
     it("should start collapsed so the form stays short", () => {
         // Given / When
         const { container } = render(<SheetFormatHint format="mediaPlan" />);

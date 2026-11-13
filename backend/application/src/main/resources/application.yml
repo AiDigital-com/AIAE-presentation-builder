@@ -574,6 +574,39 @@ external:
         aud: ${MPO_EOC_BREAKDOWN_MASTER_SLIDE_AUD:g3f681c861be_0_143}  # Audience analysis
         dev: ${MPO_EOC_BREAKDOWN_MASTER_SLIDE_DEV:g3f681c861be_0_103}  # Device breakdown
       thoughts-master-slide-object-id: ${MPO_EOC_THOUGHTS_MASTER_SLIDE_OBJECT_ID:}
+    # Source workbooks of the daily pacing, monthly impressions and contribution charts on the MPO tactic master. Same role as
+    # external.google.charts.{daily,monthly}-template-sheet-id for the standard deck: each tactic's chart is a
+    # fresh copy of the workbook filled with that tactic's pacing rows, and the id is also how the chart is found
+    # on a duplicated tactic slide (the master's chart links to it). Used for every deck cloned from an MPO
+    # template. Blank = the standard workbooks, which the MPO master does not link to, so the chart is reported
+    # missing and the master's sample stays. Defaults are the copies made 2026-11-12 next to the WIP template
+    # ("MPO - daily pacing chart source", "MPO - monthly impressions chart source"); they keep chart 1087145314.
+    tactic-charts:
+      daily-template-sheet-id: ${MPO_DAILY_CHART_TEMPLATE_SHEET_ID:1wWGf1vCJJtE-NRRV3FkOe1Vah5KqGQWN0Bl0NJNAhVY}
+      daily-chart-id-in-sheet: ${MPO_DAILY_CHART_ID_IN_SHEET:1087145314}
+      monthly-template-sheet-id: ${MPO_MONTHLY_CHART_TEMPLATE_SHEET_ID:16nixWmBJhL_xvK5kI32WhY955YlbEQR08P4VGRX2mc8}
+      monthly-chart-id-in-sheet: ${MPO_MONTHLY_CHART_ID_IN_SHEET:1087145314}
+      # The "Weighted impression contribution" donut: tactic vs Other impressions. Its slice colours (tactic light
+      # #D3E3F7, Other #0009DC, matching the slide's legend squares) live in the workbook, since the Sheets API
+      # cannot set per-slice colours; the copy per tactic keeps them.
+      dist-template-sheet-id: ${MPO_DIST_CHART_TEMPLATE_SHEET_ID:1zQT9KQZqaDVFiqyMfzkbDFNS2mSwOV-nSSyCnrjhqkM}
+      dist-chart-id-in-sheet: ${MPO_DIST_CHART_ID_IN_SHEET:1087145314}
+    # Source workbooks of the breakdown charts on the MPO audience (age, top segments) and device masters. Same
+    # role as external.google.breakdown-charts for the standard deck: copied per tactic, filled, and the id is
+    # how the chart is found on the breakdown copy (the master's chart links to it). Used for every deck cloned
+    # from an MPO template; a series left blank keeps the standard workbook, which the MPO masters do not link
+    # to. Defaults are the horizontal-bar workbooks made 2026-11-13 next to the WIP template: age and device
+    # chart a "Share" formula column (written impressions / total), segments chart the affinity index. Bar
+    # colours and label styling live in the workbooks.
+    breakdown-charts:
+      source-sheet-ids:
+        aud: ${MPO_BREAKDOWN_AUD_SOURCE_SHEET_ID:1SN9VUlhQVtb4H3BohlQtOXoYw1LN91gofrg9QIy037Y}
+        aud-seg: ${MPO_BREAKDOWN_AUD_SEG_SOURCE_SHEET_ID:1DXFSFSvnVprJB3s-iS0x3qYaVMzqHicCD7A9OnzLHvY}
+        dev: ${MPO_BREAKDOWN_DEV_SOURCE_SHEET_ID:1J1cWMxRUHvnzKSGeDzR77pjROr_NATiusyQSz7Fu5jc}
+      chart-id-in-sheet:
+        aud: ${MPO_BREAKDOWN_AUD_CHART_ID:1013730603}
+        aud-seg: ${MPO_BREAKDOWN_AUD_SEG_CHART_ID:1480885443}
+        dev: ${MPO_BREAKDOWN_DEV_CHART_ID:553967940}
   # EOM deck. Its own top-level block, not a sub-key of external.google: an EOM deck is built from its own
   # template with its own slide model, and keeping its settings apart from the EOC ones is what stops an
   # EOM change from reaching the EOC deck. Bound by EomDeckProperties, read only through EomDeckPolicy.

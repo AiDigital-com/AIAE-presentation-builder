@@ -38,4 +38,16 @@ public class MpoDeckProperties {
 	 * switches the pass that reads it off, it never falls back to the standard template's id.
 	 */
 	private MpoDeckSlideIds eocSlides = new MpoDeckSlideIds();
+
+	/**
+	 * Source workbooks of the pacing charts on the MPO tactic slides, used instead of the standard
+	 * {@code external.google.charts} workbooks for every deck cloned from an MPO template.
+	 */
+	private MpoDeckChartSources tacticCharts = new MpoDeckChartSources();
+
+	/**
+	 * Source workbooks of the breakdown charts on the MPO audience and device slides, used instead of the
+	 * standard {@code external.google.breakdown-charts} workbooks for every deck cloned from an MPO template.
+	 */
+	private MpoDeckBreakdownCharts breakdownCharts = new MpoDeckBreakdownCharts();
 }

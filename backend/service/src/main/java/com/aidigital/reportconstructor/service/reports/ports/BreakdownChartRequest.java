@@ -1,5 +1,7 @@
 package com.aidigital.reportconstructor.service.reports.ports;
 
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
+
 import java.util.List;
 
 /**
@@ -14,10 +16,16 @@ import java.util.List;
  * @param jobs                  the breakdown charts to render, one per (tactic, breakdown section) pair
  * @param userGoogleAccessToken optional signed-in user token; when present the source-sheet copies are
  *                              made under that user's Drive, matching where the deck was created
+ * @param templateVariant       requested deck design; with {@code reportType} it tells whether the deck was
+ *                              cloned from an MPO template, whose breakdown charts link to their own source
+ *                              workbooks. {@code null} reads as the standard design
+ * @param reportType            report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
  */
 public record BreakdownChartRequest(
 		String presentationId,
 		String campaignTitle,
 		List<BreakdownChartJob> jobs,
-		String userGoogleAccessToken) {
+		String userGoogleAccessToken,
+		TemplateVariant templateVariant,
+		String reportType) {
 }

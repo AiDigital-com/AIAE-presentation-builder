@@ -2,6 +2,7 @@ package com.aidigital.reportconstructor.service.reports.ports;
 
 import com.aidigital.reportconstructor.service.reports.dto.FlightDates;
 import com.aidigital.reportconstructor.service.reports.dto.LineItemMapping;
+import com.aidigital.reportconstructor.service.reports.dto.TemplateVariant;
 import com.aidigital.reportconstructor.service.reports.engine.Pivot;
 
 import java.util.List;
@@ -30,6 +31,10 @@ import java.util.Map;
  * @param dailyPivots           pre-computed daily pacing pivots per tactic for the "Slides from Sheet" flow;
  *                              {@code null} means pivot the BigQuery rows instead (the default flow)
  * @param monthlyPivots         pre-computed monthly pacing pivots per tactic; {@code null} for the BigQuery flow
+ * @param templateVariant       requested deck design; with {@code reportType} it tells whether the deck was cloned
+ *                              from an MPO template, whose tactic charts link to their own source workbooks.
+ *                              {@code null} reads as the standard design
+ * @param reportType            report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}
  */
 public record ChartRequest(
 		String presentationId,
@@ -44,7 +49,9 @@ public record ChartRequest(
 		Map<Integer, String> tacticKpiTypes,
 		String userGoogleAccessToken,
 		Map<Integer, Pivot> dailyPivots,
-		Map<Integer, Pivot> monthlyPivots
+		Map<Integer, Pivot> monthlyPivots,
+		TemplateVariant templateVariant,
+		String reportType
 ) {
 
 }

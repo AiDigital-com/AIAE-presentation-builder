@@ -45,6 +45,7 @@ public class BreakdownChartBuilder {
 	private final SlideChartSwapper slideChartSwapper;
 	private final ChartErrorTranslator chartErrors;
 	private final BreakdownChartCatalog catalog;
+	private final BreakdownChartSources sources;
 	private final BreakdownSlideNaming naming;
 	private final ChartFileSharer chartFileSharer;
 
@@ -55,6 +56,7 @@ public class BreakdownChartBuilder {
 			SlideChartSwapper slideChartSwapper,
 			ChartErrorTranslator chartErrors,
 			BreakdownChartCatalog catalog,
+			BreakdownChartSources sources,
 			BreakdownSlideNaming naming,
 			ChartFileSharer chartFileSharer) {
 		this.driveCopier = driveCopier;
@@ -63,6 +65,7 @@ public class BreakdownChartBuilder {
 		this.slideChartSwapper = slideChartSwapper;
 		this.chartErrors = chartErrors;
 		this.catalog = catalog;
+		this.sources = sources;
 		this.naming = naming;
 		this.chartFileSharer = chartFileSharer;
 	}
@@ -127,8 +130,8 @@ public class BreakdownChartBuilder {
 		}
 		BreakdownType type = series.section();
 		String tag = "Breakdown " + series.code() + " tactic " + job.tacticNum();
-		String sourceSheetId = catalog.getSourceSheetIds().get(series.code());
-		Integer chartIdInSheet = parseChartId(catalog.getChartIdInSheet().get(series.code()));
+		String sourceSheetId = sources.sourceSheetIdFor(req, series.code());
+		Integer chartIdInSheet = parseChartId(sources.chartIdInSheetFor(req, series.code()));
 		if (sourceSheetId == null || sourceSheetId.isBlank() || chartIdInSheet == null) {
 			errors.add(tag + ": no chart-source spreadsheet id / chart id configured");
 			return;

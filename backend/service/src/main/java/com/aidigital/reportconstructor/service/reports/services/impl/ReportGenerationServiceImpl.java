@@ -914,7 +914,8 @@ public class ReportGenerationServiceImpl implements ReportGenerationService {
 
 		jobProgress.markJobRunningAtStep(jobId, 7, "Building charts");
 		List<String> chartWarnings = chartHelper.buildChartsFromSheet(
-				slideUrl, grid, flatReplacements, tacticCount, userGoogleToken);
+				slideUrl, grid, flatReplacements, tacticCount, payload.reportType(), payload.templateVariant(),
+				userGoogleToken);
 
 		jobWarnings.addAll(breakdownChartWarnings);
 		jobWarnings.addAll(chartWarnings);
