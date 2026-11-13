@@ -374,15 +374,15 @@
 		</plugins>
 	</build>
 
-	<!-- Coverage phase `mvp` (.template-phase): ratchet at today's 0.4667 line / 0.3958 branch (2026-11-12): thin controllers
-		 over covered services, plus Spring configuration.
+	<!-- Coverage phase `mvp` (.template-phase): this module meets the strict gate (0.9772 line / 0.9417 branch,
+		 2026-11-13, generated OpenAPI types excluded as in the check), so it stays strict in the MVP phase too.
 		 A bare `mvn verify` holds this module to the parent's strict 0.80 / 0.70. -->
 	<profiles>
 		<profile>
 			<id>mvp</id>
 			<properties>
-				<jacoco.line.coverage>0.46</jacoco.line.coverage>
-				<jacoco.branch.coverage>0.39</jacoco.branch.coverage>
+				<jacoco.line.coverage>0.80</jacoco.line.coverage>
+				<jacoco.branch.coverage>0.70</jacoco.branch.coverage>
 			</properties>
 		</profile>
 	</profiles>

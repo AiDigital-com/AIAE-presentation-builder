@@ -4,9 +4,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -85,5 +88,61 @@ class CompanyEmailDomainAuthorizationManagerTest {
 		AuthorizationDecision decision = manager.check(() -> null, null);
 
 		assertThat(decision.isGranted()).isFalse();
+	}
+
+	@Test
+	void shouldDenyJwtWithoutEmailClaimTest() {
+		// Given: a valid token that carries no email
+		Jwt jwt = Jwt.withTokenValue("token")
+				.header("alg", "none")
+				.subject("user_1")
+				.build();
+
+		// When:
+		AuthorizationDecision decision = manager.check(() -> new JwtAuthenticationToken(jwt), null);
+
+		// Then:
+		assertThat(decision.isGranted()).isFalse();
+	}
+
+	@Test
+	void shouldDenyNonJwtPrincipalTest() {
+		// Given: an authenticated caller that did not come from a Clerk JWT
+		UsernamePasswordAuthenticationToken auth = UsernamePasswordAuthenticationToken.authenticated(
+				"alice@aidigital.com", "n/a", List.of());
+
+		// When:
+		AuthorizationDecision decision = manager.check(() -> auth, null);
+
+		// Then:
+		assertThat(decision.isGranted()).isFalse();
+	}
+
+	@ParameterizedTest
+	@NullAndEmptySource
+	@ValueSource(strings = {"   ", "@"})
+	void shouldRejectEveryEmailWhenNoDomainIsConfiguredTest(String configuredDomain) {
+		// Given: the allow-list domain is missing or effectively empty
+		AuthProperties props = new AuthProperties();
+		props.setAllowedEmailDomain(configuredDomain);
+		CompanyEmailDomainAuthorizationManager unconfigured = new CompanyEmailDomainAuthorizationManager(props);
+
+		// When:
+		boolean allowed = unconfigured.isAllowedEmail("user@aidigital.com");
+
+		// Then: fail closed
+		assertThat(allowed).isFalse();
+	}
+
+	@Test
+	void shouldNormalizeConfiguredDomainTest() {
+		// Given:
+		CompanyEmailDomainAuthorizationManager subject =
+				new CompanyEmailDomainAuthorizationManager(new AuthProperties());
+
+		// When-Then:
+		assertThat(subject.normalizeDomain(null)).isEmpty();
+		assertThat(subject.normalizeDomain(" @AIDigital.COM ")).isEqualTo("aidigital.com");
+		assertThat(subject.normalizeDomain("example.org")).isEqualTo("example.org");
 	}
 }

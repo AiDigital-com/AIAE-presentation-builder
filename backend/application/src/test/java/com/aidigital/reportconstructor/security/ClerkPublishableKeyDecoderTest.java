@@ -56,6 +56,82 @@ class ClerkPublishableKeyDecoderTest {
 				.isInstanceOf(IllegalStateException.class);
 	}
 
+	@Test
+	void shouldDecodeLiveKeyWithSurroundingWhitespaceTest() {
+		// Given: a production key pasted with padding
+		String pk = "  pk_live_" + Base64.getUrlEncoder().withoutPadding()
+				.encodeToString("clerk.aidigital.tech".getBytes(StandardCharsets.UTF_8)) + "  ";
+
+		// When:
+		String issuer = decoder.issuerFromPublishableKey(pk);
+
+		// Then:
+		assertThat(issuer).isEqualTo("https://clerk.aidigital.tech");
+	}
+
+	@Test
+	void shouldRejectKeyWhosePayloadHasAnImpossibleBase64LengthTest() {
+		// Given: the payload uses only base64url characters but a single character cannot encode a byte
+		String pk = "pk_test_A";
+
+		// When-Then:
+		assertThatThrownBy(() -> decoder.decodeFrontendApiHost(pk))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("payload is not valid base64")
+				.hasCauseInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void shouldRejectKeyWhosePayloadIsOnlyTheDelimiterTest() {
+		// Given: the payload decodes to "$", leaving an empty host once the delimiter is stripped
+		String pk = makeKey("$");
+
+		// When-Then:
+		assertThatThrownBy(() -> decoder.decodeFrontendApiHost(pk))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("decoded host is blank");
+	}
+
+	@Test
+	void shouldRejectBlankHostDirectlyTest() {
+		// Given / When-Then: validateHost fails closed on a missing or blank host
+		assertThatThrownBy(() -> decoder.validateHost(null))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("decoded host is blank");
+		assertThatThrownBy(() -> decoder.validateHost("  "))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("decoded host is blank");
+	}
+
+	@Test
+	void shouldAcceptSingleLabelAndMaximumLengthLabelHostTest() {
+		// Given: a one-label host and a host with a 63-character label
+		String longLabel = "a" + "b".repeat(61) + "c";
+
+		// When-Then: both are valid bare DNS hostnames
+		assertThat(decoder.decodeFrontendApiHost(makeKey("localhost"))).isEqualTo("localhost");
+		assertThat(decoder.decodeFrontendApiHost(makeKey(longLabel + ".example.com")))
+				.isEqualTo(longLabel + ".example.com");
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {
+			"clerk.example.com#frag",     // fragment present
+			"clerk\t.example.com",        // tab
+			"clerk-.example.com",         // trailing hyphen
+			"clerk.example.com.",         // trailing empty label
+			"clerk_x.example.com"         // underscore
+	})
+	void shouldRejectHostWithForbiddenCharactersOrLabelsTest(String malformedHost) {
+		// Given:
+		String pk = makeKey(malformedHost);
+
+		// When-Then:
+		assertThatThrownBy(() -> decoder.decodeFrontendApiHost(pk))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("Malformed CLERK_PUBLISHABLE_KEY");
+	}
+
 	@ParameterizedTest
 	@ValueSource(strings = {
 			"https://clerk.example.com",  // scheme present

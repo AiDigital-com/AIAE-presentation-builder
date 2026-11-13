@@ -6,10 +6,13 @@ import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
 import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -64,6 +67,56 @@ class GlobalExceptionHandlerTest {
 				.isEqualTo(HttpStatus.UNAUTHORIZED);
 		assertThat(handler.handleAccessDenied(new AccessDeniedException("no")).getStatusCode())
 				.isEqualTo(HttpStatus.FORBIDDEN);
+	}
+
+	@Test
+	void shouldTreatAMissingCodeAsInternalErrorAndUnknownCodesAsBadRequestTest() {
+		// Given:
+		GlobalExceptionHandler subject = new GlobalExceptionHandler(new CurrentTimeImpl());
+
+		// When-Then:
+		assertThat(subject.statusForCode(null)).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+		assertThat(subject.statusForCode("D042")).isEqualTo(HttpStatus.BAD_REQUEST);
+	}
+
+	@Test
+	void shouldMapMissingStaticResourceToNotFoundTest() {
+		// Given:
+		GlobalExceptionHandler subject = new GlobalExceptionHandler(new CurrentTimeImpl());
+		NoResourceFoundException ex = new NoResourceFoundException(HttpMethod.GET, "vite.svg");
+
+		// When:
+		ResponseEntity<ApiErrorV1> resp = subject.handleNoResource(ex);
+
+		// Then:
+		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+		assertThat(resp.getBody().getCode()).isEqualTo("C001");
+		assertThat(resp.getBody().getParameters()).singleElement()
+				.satisfies(p -> {
+					assertThat(p.getCode()).isEqualTo("detail");
+					assertThat(p.getValue()).isEqualTo(ex.getMessage());
+				});
+	}
+
+	@Test
+	void shouldCarryTheRequestCorrelationIdOnTheErrorBodyTest() {
+		// Given: a correlation id put on the MDC by the request filter
+		GlobalExceptionHandler subject = new GlobalExceptionHandler(new CurrentTimeImpl());
+		MDC.put("correlationId", "corr-123");
+
+		// When:
+		ResponseEntity<ApiErrorV1> resp;
+		try {
+			resp = subject.handleAccessDenied(new AccessDeniedException("admins only"));
+		} finally {
+			MDC.remove("correlationId");
+		}
+
+		// Then:
+		assertThat(resp.getBody().getCorrelationId()).isEqualTo("corr-123");
+		assertThat(resp.getBody().getCode()).isEqualTo("C004");
+		assertThat(resp.getBody().getParameters()).singleElement()
+				.satisfies(p -> assertThat(p.getValue()).isEqualTo("admins only"));
 	}
 
 	@Test

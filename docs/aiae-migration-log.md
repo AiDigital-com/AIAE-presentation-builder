@@ -2,6 +2,44 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-13 — `application` reaches the strict coverage gate; admin report sorting fixed (branch `PDI_240`)
+
+- **Coverage.** As the check counts it (generated OpenAPI types excluded), `application` went from 46.90 % line /
+  41.04 % branch to **97.72 % / 94.17 %** (lines 574 → 1,200 of 1,228; branches 197 → 452 of 480). The module
+  now has 272 tests (was 94), and its `mvp` floor is raised from 0.46 / 0.39 to the strict 0.80 / 0.70. **Every
+  backend module now meets the strict gate.**
+  - **Mappers:** tested through the MapStruct implementations, in both directions where present, with null and
+    enum edge cases. Admin stats, management, reports, placeholders, data source, line-item match, reports,
+    report jobs, version and user are now fully covered, apart from MapStruct's unreachable `default: throw`
+    switch arms.
+  - **Controllers:** each has its own `@WebMvcTest` asserting path, status, JSON payload and the exact
+    arguments forwarded to the service. The controllers are `AdminController`, `PlaceholdersController`,
+    `ReportsController`, `ReportJobsController`, `DataSourceController`, `LineItemMatchingController`,
+    `VersionController` and `SpaFallbackController` (standalone MockMvc).
+  - **Security:** `SecurityConfig`, the publishable-key decoder, the email-domain authorisation manager and
+    `GlobalExceptionHandler`. The issuer-discovery path runs against a local JDK `HttpServer`, so no network
+    is used.
+- **Bug fixed: admin "All reports" sorting returned 400.** P10 (`6c0ae10`) typed the `sort` and `dir` query
+  parameters as the generated enums. Spring binds enums by constant name (`TOKENS`), but the contract and the
+  frontend send wire values (`tokens`, `asc`). Since P10, every sorted request to `GET /api/v1/admin/reports`
+  has failed.
+  - Reproduced: the controller test without the fix gets 400.
+  - Fix: the new `config.ApiEnumParameterConfig` registers `String → AdminReportSortV1 / SortDirectionV1`
+    converters using the generated `fromValue`. These are the only two enum-typed parameters in the contract.
+    Spring's request binding still falls back to `Enum.valueOf`, so constant names keep working, and an
+    undocumented value is a 400.
+  - Regression tests: `AdminControllerTest` sends `sort=tokens&dir=asc`, and `sort=revenue` gets 400 without
+    calling the service.
+- **Production observations, not changed:**
+  - These mapper methods throw an NPE on a null input or nested value, through `expression` mappings outside
+    MapStruct's null guard. Today's callers never pass null.
+    - `PlaceholdersApiMapper.toPayload` and `toPreviewResponse(null)`
+    - `toPlaceholder` on a null element
+    - `ReportsApiMapper.toResume` with a null `state`
+    - `ReportJobsApiMapper.toJob(id, null)`
+  - `ReportsApiMapper.toStatus` and `ReportJobsApiMapper.toStatus` throw on an unknown stored status, which
+    would make the history endpoint return 500, whereas `toReportType` degrades to null.
+
 ## 2026-11-13 — `external-services` reaches the strict coverage gate (D5 groundwork, branch `PDI_240`)
 
 - Coverage rose from 62.90 % line / 54.20 % branch to **95.87 % / 89.51 %** (lines 2,848 → 4,341 of 4,528;
