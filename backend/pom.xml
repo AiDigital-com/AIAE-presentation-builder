@@ -360,6 +360,11 @@
 							<goals>
 								<goal>prepare-agent</goal>
 							</goals>
+							<!-- Overwrite, never append: an appended jacoco.exec keeps hits from earlier builds (even
+								 from tests since moved to another module), so a local run reads higher than CI. -->
+							<configuration>
+								<append>false</append>
+							</configuration>
 						</execution>
 						<execution>
 							<id>jacoco-report</id>

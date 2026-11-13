@@ -81,6 +81,42 @@ class AdminActiveUsersBuilderTest {
 	}
 
 	@Test
+	void shouldCountDistinctUsersActiveFromTheWindowStartTest() {
+		// Given: u1 only before the window, u2 on its first day and again later, u3 inside it.
+		AdminActiveUsersBuilder builder = new AdminActiveUsersBuilder(new AdminPeriodBucketer(), null);
+		LocalDate from = LocalDate.of(2026, 3, 1);
+		List<UsageActiveDay> days = List.of(
+				new UsageActiveDay(LocalDate.of(2026, 2, 28), "u1"),
+				new UsageActiveDay(from, "u2"),
+				new UsageActiveDay(LocalDate.of(2026, 3, 9), "u2"),
+				new UsageActiveDay(LocalDate.of(2026, 3, 10), "u3"));
+
+		// When:
+		int active = builder.activeInWindow(days, from);
+
+		// Then: the window is inclusive of its first day and each user counts once.
+		assertThat(active).isEqualTo(2);
+	}
+
+	@Test
+	void shouldCountOnlyUsersNeverSeenBeforeTheWindowAsNewTest() {
+		// Given: u1 active before and during the window, u2 only during it, u3 only before it.
+		AdminActiveUsersBuilder builder = new AdminActiveUsersBuilder(new AdminPeriodBucketer(), null);
+		LocalDate from = LocalDate.of(2026, 3, 1);
+		List<UsageActiveDay> days = List.of(
+				new UsageActiveDay(LocalDate.of(2025, 11, 4), "u1"),
+				new UsageActiveDay(LocalDate.of(2026, 3, 2), "u1"),
+				new UsageActiveDay(LocalDate.of(2026, 3, 3), "u2"),
+				new UsageActiveDay(LocalDate.of(2026, 1, 15), "u3"));
+
+		// When:
+		int newUsers = builder.newInWindow(days, from);
+
+		// Then: a returning user is active but not new.
+		assertThat(newUsers).isEqualTo(1);
+	}
+
+	@Test
 	void shouldCountTheSameUserInEveryWeekTheyAppearInTest() {
 		// Given: one user active in two consecutive weeks.
 		List<UsageActiveDay> days = List.of(

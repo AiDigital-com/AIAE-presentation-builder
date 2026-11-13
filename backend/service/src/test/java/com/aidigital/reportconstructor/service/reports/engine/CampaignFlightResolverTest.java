@@ -107,4 +107,94 @@ class CampaignFlightResolverTest {
 		assertThat(resolver.flightMonthsTotal(null)).isNull();
 		assertThat(resolver.flightMonthNumber(null, null)).isNull();
 	}
+
+	@Test
+	void shouldReturnNoPlanWindowWhenThePlanIsMissingTest() {
+		// Given:
+		CampaignFlightResolver resolver = ReportsEngineTestSupport.campaignFlightResolver();
+
+		// When:
+		FlightDates flight = resolver.mediaPlanWindow(null);
+
+		// Then:
+		assertThat(flight).isNull();
+	}
+
+	@Test
+	void shouldUseTheOnlyEndDateForBothBoundsWhenThePlanStatesNoStartTest() {
+		// Given: a plan with an End Date column only, one of whose cells is not a date
+		CampaignFlightResolver resolver = ReportsEngineTestSupport.campaignFlightResolver();
+		List<List<String>> plan = List.of(
+				List.of("Media", "End Date"),
+				List.of("CTV", "TBD"),
+				List.of("Display", "12/31/2025"));
+
+		// When:
+		FlightDates flight = resolver.mediaPlanWindow(plan);
+
+		// Then:
+		assertThat(flight).isEqualTo(new FlightDates(LocalDate.of(2025, 12, 31), LocalDate.of(2025, 12, 31)));
+	}
+
+	@Test
+	void shouldUseTheOnlyStartDateForBothBoundsWhenThePlanStatesNoEndTest() {
+		// Given: a plan with a Start Date column only
+		CampaignFlightResolver resolver = ReportsEngineTestSupport.campaignFlightResolver();
+		List<List<String>> plan = List.of(
+				List.of("Media", "Start Date"),
+				List.of("CTV", "10/15/2025"),
+				List.of("Display", "10/01/2025"));
+
+		// When:
+		FlightDates flight = resolver.mediaPlanWindow(plan);
+
+		// Then:
+		assertThat(flight).isEqualTo(new FlightDates(LocalDate.of(2025, 10, 1), LocalDate.of(2025, 10, 1)));
+	}
+
+	@Test
+	void shouldCountNoMonthsForAFlightMissingABoundTest() {
+		// Given:
+		CampaignFlightResolver resolver = ReportsEngineTestSupport.campaignFlightResolver();
+		FlightDates noStart = new FlightDates(null, LocalDate.of(2025, 12, 31));
+		FlightDates noEnd = new FlightDates(LocalDate.of(2025, 10, 1), null);
+
+		// When:
+		Integer withoutStart = resolver.flightMonthsTotal(noStart);
+		Integer withoutEnd = resolver.flightMonthsTotal(noEnd);
+
+		// Then:
+		assertThat(withoutStart).isNull();
+		assertThat(withoutEnd).isNull();
+	}
+
+	@Test
+	void shouldNumberNoMonthWithoutAReportingWindowEndTest() {
+		// Given:
+		CampaignFlightResolver resolver = ReportsEngineTestSupport.campaignFlightResolver();
+		FlightDates flight = new FlightDates(LocalDate.of(2025, 10, 1), LocalDate.of(2025, 12, 31));
+		FlightDates openEnded = new FlightDates(LocalDate.of(2025, 11, 1), null);
+
+		// When:
+		Integer withoutWindow = resolver.flightMonthNumber(flight, null);
+		Integer withoutEnd = resolver.flightMonthNumber(flight, openEnded);
+
+		// Then:
+		assertThat(withoutWindow).isNull();
+		assertThat(withoutEnd).isNull();
+	}
+
+	@Test
+	void shouldClampTheMonthNumberToTheFlightLengthTest() {
+		// Given: a reporting window ending after the flight does
+		CampaignFlightResolver resolver = ReportsEngineTestSupport.campaignFlightResolver();
+		FlightDates flight = new FlightDates(LocalDate.of(2025, 10, 1), LocalDate.of(2025, 12, 31));
+		FlightDates reporting = new FlightDates(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+		// When:
+		Integer monthNumber = resolver.flightMonthNumber(flight, reporting);
+
+		// Then:
+		assertThat(monthNumber).isEqualTo(3);
+	}
 }

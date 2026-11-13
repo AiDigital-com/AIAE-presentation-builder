@@ -1,12 +1,18 @@
 package com.aidigital.reportconstructor.service.reports.helpers.impl;
 
+import com.aidigital.reportconstructor.service.common.time.CurrentTime;
 import com.aidigital.reportconstructor.service.common.time.CurrentTimeImpl;
+import com.aidigital.reportconstructor.service.reports.dto.FlightDates;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class SheetRowHelperImplTest {
 
@@ -75,5 +81,217 @@ class SheetRowHelperImplTest {
 		assertThat(helper.referencesGeoTab("see locations sheet")).isTrue();
 		assertThat(helper.referencesGeoTab("Texas, Oklahoma")).isFalse();
 		assertThat(helper.referencesGeoTab(null)).isFalse();
+	}
+
+	@Test
+	void shouldDetectGeoSheetPointerAndRejectSeeWithoutTabOrSheetTest() {
+		// Given:
+		SheetRowHelperImpl target = new SheetRowHelperImpl(new CurrentTimeImpl());
+
+		// When-Then:
+		assertThat(target.referencesGeoTab("Geo-Sheet")).isTrue();
+		assertThat(target.referencesGeoTab("See targeting tab")).isTrue();
+		assertThat(target.referencesGeoTab("see the plan")).isFalse();
+	}
+
+	@Test
+	void shouldFindValueRightOfLabelSkippingNullRowsTest() {
+		// Given: a null row, a row with a null cell, and the label row
+		SheetRowHelperImpl target = new SheetRowHelperImpl(new CurrentTimeImpl());
+		List<List<String>> rows = Arrays.asList(
+				null,
+				Arrays.asList(null, "x"),
+				List.of(" Client: ", " Acme "));
+
+		// When:
+		String value = target.findLabelValue(rows, "client:");
+
+		// Then:
+		assertThat(value).isEqualTo("Acme");
+	}
+
+	@Test
+	void shouldReturnNullLabelValueWhenRowsMissingOrLabelIsLastCellTest() {
+		// Given:
+		SheetRowHelperImpl target = new SheetRowHelperImpl(new CurrentTimeImpl());
+		List<List<String>> rows = List.of(List.of("a", "Client:"));
+
+		// When-Then:
+		assertThat(target.findLabelValue(null, "Client:")).isNull();
+		assertThat(target.findLabelValue(rows, "Client:")).isNull();
+		assertThat(target.findLabelValue(rows, "Budget:")).isNull();
+	}
+
+	@Test
+	void shouldFindValueBelowLabelSkippingNullRowsTest() {
+		// Given:
+		SheetRowHelperImpl target = new SheetRowHelperImpl(new CurrentTimeImpl());
+		List<List<String>> rows = Arrays.asList(
+				null,
+				List.of("x", "Budget"),
+				List.of("y", " $500 "));
+
+		// When:
+		String value = target.findLabelValueBelow(rows, "budget");
+
+		// Then:
+		assertThat(value).isEqualTo("$500");
+	}
+
+	@Test
+	void shouldReturnNullBelowLabelWhenNoUsableNextRowTest() {
+		// Given: the label on the last row, a label above a null row, and a label above a too-short row
+		SheetRowHelperImpl target = new SheetRowHelperImpl(new CurrentTimeImpl());
+		List<List<String>> lastRow = List.of(List.of("Budget"));
+		List<List<String>> nullBelow = Arrays.asList(List.of("Budget"), null);
+		List<List<String>> shortBelow = List.of(List.of("x", "Budget"), List.of("y"));
+
+		// When-Then:
+		assertThat(target.findLabelValueBelow(null, "Budget")).isNull();
+		assertThat(target.findLabelValueBelow(lastRow, "Budget")).isNull();
+		assertThat(target.findLabelValueBelow(nullBelow, "Budget")).isNull();
+		assertThat(target.findLabelValueBelow(shortBelow, "Budget")).isNull();
+		assertThat(target.findLabelValueBelow(shortBelow, "Goal")).isNull();
+	}
+
+	@Test
+	void shouldReturnNoColumnValuesForMissingRowsOrSynonymsTest() {
+		// Given:
+		SheetRowHelperImpl target = new SheetRowHelperImpl(new CurrentTimeImpl());
+		List<List<String>> rows = List.of(List.of("Geo"), List.of("Texas"));
+
+		// When-Then:
+		assertThat(target.collectColumnValuesBelow(null, Set.of("geo"))).isEmpty();
+		assertThat(target.collectColumnValuesBelow(rows, null)).isEmpty();
+		assertThat(target.collectColumnValuesBelow(rows, Set.of())).isEmpty();
+	}
+
+	@Test
+	void shouldSkipNullRowsAroundHeaderAndDedupeCaseInsensitivelyTest() {
+		// Given: null rows before and after the header, and the same value in two casings
+		SheetRowHelperImpl target = new SheetRowHelperImpl(new CurrentTimeImpl());
+		List<List<String>> rows = Arrays.asList(
+				null,
+				List.of("Geo"),
+				null,
+				List.of("Texas"),
+				List.of("TEXAS"),
+				List.of("Ohio"));
+
+		// When:
+		List<String> values = target.collectColumnValuesBelow(rows, Set.of("geo"));
+
+		// Then:
+		assertThat(values).containsExactly("Texas", "Ohio");
+	}
+
+	@Test
+	void shouldFindHeaderColumnOrMinusOneTest() {
+		// Given:
+		SheetRowHelperImpl target = new SheetRowHelperImpl(new CurrentTimeImpl());
+		List<String> header = List.of("Name", "Line #");
+
+		// When-Then:
+		assertThat(target.findHeaderColumn(header, Set.of("line"))).isEqualTo(1);
+		assertThat(target.findHeaderColumn(header, Set.of("geo"))).isEqualTo(-1);
+		assertThat(target.findHeaderColumn(null, Set.of("line"))).isEqualTo(-1);
+		assertThat(target.findHeaderColumn(header, null)).isEqualTo(-1);
+	}
+
+	@Test
+	void shouldDetectDataDateRangeAcrossFormatsSkippingUnusableRowsTest() {
+		// Given: partial header candidates, then the full header, then null/empty/unparseable/valid date rows
+		SheetRowHelperImpl target = new SheetRowHelperImpl(new CurrentTimeImpl());
+		List<List<String>> rows = Arrays.asList(
+				null,
+				List.of("Date", "Other"),
+				List.of("Date", "Channel"),
+				List.of("Date", "Channel", "Cost"),
+				List.of("Channel", "Cost", "Impressions"),
+				List.of("Date", "Channel", "Cost", "Impressions"),
+				null,
+				List.of("", "Display"),
+				List.of("not a date", "Display"),
+				List.of("Mar 5, 2026", "Display"),
+				List.of("2026-01-15", "Display"),
+				List.of("03/20/2026", "Display"),
+				List.of("02/01/2026", "Display"));
+
+		// When:
+		FlightDates range = target.detectDataDateRange(rows);
+
+		// Then:
+		assertThat(range).isEqualTo(new FlightDates(LocalDate.of(2026, 1, 15), LocalDate.of(2026, 3, 20)));
+	}
+
+	@Test
+	void shouldReturnNoDataDateRangeWithoutHeaderOrDatesTest() {
+		// Given:
+		SheetRowHelperImpl target = new SheetRowHelperImpl(new CurrentTimeImpl());
+		List<List<String>> noHeader = List.of(List.of("Date", "Cost"), List.of("2026-01-01", "1"));
+		List<List<String>> noDates = List.of(List.of("Date", "Channel", "Cost", "Impressions"), List.of("", "x"));
+
+		// When-Then:
+		assertThat(target.detectDataDateRange(null)).isNull();
+		assertThat(target.detectDataDateRange(noHeader)).isNull();
+		assertThat(target.detectDataDateRange(noDates)).isNull();
+	}
+
+	@Test
+	void shouldFormatFlightDatesForSingleDaySameYearAndCrossYearTest() {
+		// Given:
+		SheetRowHelperImpl target = new SheetRowHelperImpl(new CurrentTimeImpl());
+		LocalDate start = LocalDate.of(2025, 12, 1);
+
+		// When-Then:
+		assertThat(target.formatFlightDates(start, null)).isEqualTo("Dec 1, 2025");
+		assertThat(target.formatFlightDates(start, start)).isEqualTo("Dec 1, 2025");
+		assertThat(target.formatFlightDates(start, LocalDate.of(2025, 12, 31))).isEqualTo("Dec 1 – Dec 31, 2025");
+		assertThat(target.formatFlightDates(start, LocalDate.of(2026, 1, 5)))
+				.isEqualTo("Dec 1, 2025 – Jan 5, 2026");
+	}
+
+	@Test
+	void shouldParseDatesInSheetFormatsAndAssumeCurrentYearWhenMissingTest() {
+		// Given: a clock in 2031
+		CurrentTime currentTime = mock(CurrentTime.class);
+		when(currentTime.nowLocalDate()).thenReturn(LocalDate.of(2031, 6, 1));
+		SheetRowHelperImpl target = new SheetRowHelperImpl(currentTime);
+
+		// When-Then:
+		assertThat(target.parseDate(null)).isNull();
+		assertThat(target.parseDate("   ")).isNull();
+		assertThat(target.parseDate("march 5, 2026")).isEqualTo(LocalDate.of(2026, 3, 5));
+		assertThat(target.parseDate("5 Mar 2026")).isEqualTo(LocalDate.of(2026, 3, 5));
+		assertThat(target.parseDate("3/5/26")).isEqualTo(LocalDate.of(2026, 3, 5));
+		assertThat(target.parseDate("Mar 5")).isEqualTo(LocalDate.of(2031, 3, 5));
+		assertThat(target.parseDate("5 March")).isEqualTo(LocalDate.of(2031, 3, 5));
+		assertThat(target.parseDate("someday")).isNull();
+	}
+
+	@Test
+	void shouldReadCellsSafelyForNullRowsCellsAndOutOfRangeIndexesTest() {
+		// Given:
+		SheetRowHelperImpl target = new SheetRowHelperImpl(new CurrentTimeImpl());
+		List<String> row = Arrays.asList(" a ", null);
+
+		// When-Then:
+		assertThat(target.cellAt(row, 0)).isEqualTo("a");
+		assertThat(target.cellAt(row, 1)).isEmpty();
+		assertThat(target.cellAt(null, 0)).isEmpty();
+		assertThat(target.cellAt(row, -1)).isEmpty();
+		assertThat(target.cellAt(row, 2)).isEmpty();
+	}
+
+	@Test
+	void shouldJoinLeadingCellsLowerCasedUpToRowLengthTest() {
+		// Given:
+		SheetRowHelperImpl target = new SheetRowHelperImpl(new CurrentTimeImpl());
+		List<String> row = Arrays.asList(" Total ", null, "SPEND");
+
+		// When-Then:
+		assertThat(target.joinLower(row, 5)).isEqualTo("total  spend");
+		assertThat(target.joinLower(row, 1)).isEqualTo("total");
+		assertThat(target.joinLower(row, 0)).isEmpty();
 	}
 }

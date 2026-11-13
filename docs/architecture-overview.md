@@ -301,10 +301,12 @@ sequenceDiagram
   today) selects the phase through `scripts/lib/coverage-phase.sh`, which
   `scripts/local-verify.sh` and CI both use: `mvp` adds `-Pmvp`, which sets the
   parent floor of 0.30 / 0.25, plus each module's own `mvp` ratchet at its
-  measured coverage, so coverage cannot slide. Today `service`,
+  measured coverage, so coverage cannot slide. Today only
   `external-services` and `application` are below strict;
   `finalize-coverage` closes that before handoff. Never lower the parent
   defaults or pass `-Djacoco.*`; `check-coverage-integrity.sh` rejects both.
+  The JaCoCo agent overwrites `jacoco.exec` (`append=false`), so a local run
+  measures the same as CI's clean checkout.
 - Frontend: Vitest + Testing Library (`npm test`), `npm run typecheck`,
   `npm run lint`, `npm run build`.
 - Lint: ESLint 9 flat config `frontend/eslint.config.js` (typescript-eslint,

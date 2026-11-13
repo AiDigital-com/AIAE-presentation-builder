@@ -3,6 +3,7 @@ package com.aidigital.reportconstructor.service.reports.claude;
 import com.aidigital.reportconstructor.service.reports.enums.NarrativeCopyLimits;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -395,5 +396,310 @@ class ClaudeResponseNormalizerTest {
 		assertThat(standard).isEqualTo(longOverview);
 		assertThat(compact.getCopyLimits()).isEqualTo(NarrativeCopyLimits.COMPACT);
 		assertThat(normalizer.getCopyLimits()).isEqualTo(NarrativeCopyLimits.STANDARD);
+	}
+
+	@Test
+	void shouldFindLastSentencePeriodSkippingDecimalPointsTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then: a closing period counts, a decimal point does not
+		assertThat(target.lastSentencePeriod("Done.")).isEqualTo(4);
+		assertThat(target.lastSentencePeriod("End. CTR 1.5")).isEqualTo(3);
+		assertThat(target.lastSentencePeriod("CTR rose 1.5 points")).isEqualTo(-1);
+	}
+
+	@Test
+	void shouldReturnNullOrEmptyInputUnchangedWhenFinishingSentenceTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then:
+		assertThat(target.finishSentence(null)).isNull();
+		assertThat(target.finishSentence("")).isEmpty();
+	}
+
+	@Test
+	void shouldKeepOriginalFragmentWhenEveryWordIsADanglingConnectorTest() {
+		// Given: a fragment made only of function words, which trimming would erase
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When:
+		String out = target.finishSentence("the and");
+
+		// Then: the trimmed original is returned rather than an empty string
+		assertThat(out).isEqualTo("the and");
+	}
+
+	@Test
+	void shouldNotTreatANumericTailAsADanglingWordTest() {
+		// Given: a fragment ending on a number, whose letter-only form is empty
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When:
+		String out = target.finishSentence("revenue grew 123");
+
+		// Then: the number stays and a period is appended
+		assertThat(out).isEqualTo("revenue grew 123.");
+	}
+
+	@Test
+	void shouldStopAtExistingPunctuationAfterDroppingDanglingWordTest() {
+		// Given: a dangling connector follows an exclamation
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When:
+		String out = target.finishSentence("Great result! and");
+
+		// Then: no extra period is appended after the exclamation mark
+		assertThat(out).isEqualTo("Great result!");
+	}
+
+	@Test
+	void shouldRecognizeEverySentenceEndingPunctuationMarkTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then:
+		assertThat(target.endsWithSentencePunctuation("Done.")).isTrue();
+		assertThat(target.endsWithSentencePunctuation("Wow!")).isTrue();
+		assertThat(target.endsWithSentencePunctuation("Why?")).isTrue();
+		assertThat(target.endsWithSentencePunctuation("Hmm")).isFalse();
+	}
+
+	@Test
+	void shouldReturnNullProposalForNullOrBlankTextTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then:
+		assertThat(target.normalizeProposal(null, 100)).isNull();
+		assertThat(target.normalizeProposal("   ", 100)).isNull();
+	}
+
+	@Test
+	void shouldCutProposalAtWordBoundaryWhenNoPeriodPastHalfLimitTest() {
+		// Given: a long reply without any period
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+		String reply = "word ".repeat(100);
+
+		// When:
+		String out = target.normalizeProposal(reply, 100);
+
+		// Then: it is cut at the last space inside the budget and closed with a period
+		assertThat(out).isEqualTo("word ".repeat(20).trim() + ".");
+	}
+
+	@Test
+	void shouldCutProposalAtSentenceEndPastHalfLimitTest() {
+		// Given: a period at position 300 of a reply longer than the 400-character budget
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+		String reply = "a".repeat(300) + ". " + "b".repeat(200);
+
+		// When:
+		String out = target.normalizeProposal(reply, 400);
+
+		// Then: the reply ends on that sentence
+		assertThat(out).isEqualTo("a".repeat(300) + ".");
+	}
+
+	@Test
+	void shouldHardCutProposalWithoutSpacesTest() {
+		// Given: an unbroken blob longer than the budget
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When:
+		String out = target.normalizeProposal("x".repeat(500), 400);
+
+		// Then: the blob is cut at the budget and gets no period
+		assertThat(out).isEqualTo("x".repeat(400));
+	}
+
+	@Test
+	void shouldReturnNullWhenAZeroBudgetLeavesNothingTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then: nothing fits a zero budget, so both normalizers report no copy
+		assertThat(target.normalizeProposal("abc", 0)).isNull();
+		assertThat(target.normalizeC("abc", 0)).isNull();
+	}
+
+	@Test
+	void shouldFillOnlyAvailableSlotsFromShortArrayReplyTest() throws Exception {
+		// Given: an array reply with one paragraph and one blank entry
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+		JsonNode node = new ObjectMapper().readTree("[\"one\", \"  \"]");
+
+		// When:
+		List<String> slots = target.normalizeThoughts(node);
+
+		// Then:
+		assertThat(slots).containsExactly("one", null, null, null);
+	}
+
+	@Test
+	void shouldSplitShortAndGappedPipeStringsIntoFourSlotsTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When:
+		List<String> blank = target.normalizeThoughts("   ");
+		List<String> shortList = target.normalizeThoughts("a | b");
+		List<String> gapped = target.normalizeThoughts("a || c");
+
+		// Then:
+		assertThat(blank).containsExactly(null, null, null, null);
+		assertThat(shortList).containsExactly("a", "b", null, null);
+		assertThat(gapped).containsExactly("a", null, "c", null);
+	}
+
+	@Test
+	void shouldReadNodeTextOrSerializedFormTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+		JsonNodeFactory nodes = JsonNodeFactory.instance;
+
+		// When-Then:
+		assertThat(target.textOrNull(null)).isNull();
+		assertThat(target.textOrNull(nodes.nullNode())).isNull();
+		assertThat(target.textOrNull(nodes.textNode(""))).isNull();
+		assertThat(target.textOrNull(nodes.textNode("hi"))).isEqualTo("hi");
+		assertThat(target.textOrNull(nodes.numberNode(5))).isEqualTo("5");
+	}
+
+	@Test
+	void shouldReportNotBlankOnlyForTextWithContentTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then:
+		assertThat(target.notBlank(null)).isFalse();
+		assertThat(target.notBlank("  ")).isFalse();
+		assertThat(target.notBlank("x")).isTrue();
+	}
+
+	@Test
+	void shouldLimitAudienceSegmentsAtLastCommaOrHardCutTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+		String withComma = "Sports fans, " + "y".repeat(80);
+
+		// When-Then:
+		assertThat(target.limitAudienceSegments(null)).isNull();
+		assertThat(target.limitAudienceSegments(" Not Specified ")).isNull();
+		assertThat(target.limitAudienceSegments("   ")).isNull();
+		assertThat(target.limitAudienceSegments("x".repeat(100))).isEqualTo("x".repeat(80));
+		assertThat(target.limitAudienceSegments(withComma)).isEqualTo("Sports fans");
+		assertThat(target.limitAudienceSegments(withComma, 200)).isEqualTo(withComma);
+	}
+
+	@Test
+	void shouldLimitNorthStarAndReturnNullWhenNothingRemainsTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then:
+		assertThat(target.limitNorthStar(null)).isNull();
+		assertThat(target.limitNorthStar(" . ")).isNull();
+		assertThat(target.limitNorthStar("x".repeat(100))).isEqualTo("X".repeat(80));
+		assertThat(target.limitNorthStar("grow " + "reach ".repeat(20))).isEqualTo(
+				("GROW " + "REACH ".repeat(12)).trim());
+	}
+
+	@Test
+	void shouldLimitWhatWeDidHeadingAtWordBoundaryWithoutPeriodTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then:
+		assertThat(target.limitWhatWeDidHeading(null)).isNull();
+		assertThat(target.limitWhatWeDidHeading(" . ")).isNull();
+		assertThat(target.limitWhatWeDidHeading("Shifted budget.")).isEqualTo("Shifted budget");
+		assertThat(target.limitWhatWeDidHeading("word ".repeat(20))).isEqualTo("word ".repeat(12).trim());
+		assertThat(target.limitWhatWeDidHeading("y".repeat(70))).isEqualTo("y".repeat(60));
+	}
+
+	@Test
+	void shouldLimitFocusItemAtWordBoundaryWithoutPeriodTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then:
+		assertThat(target.limitFocusItem(null)).isNull();
+		assertThat(target.limitFocusItem(" . ")).isNull();
+		assertThat(target.limitFocusItem("Hold top markets.")).isEqualTo("Hold top markets");
+		assertThat(target.limitFocusItem("word ".repeat(20))).isEqualTo("word ".repeat(14).trim());
+		assertThat(target.limitFocusItem("z".repeat(80))).isEqualTo("z".repeat(70));
+	}
+
+	@Test
+	void shouldStripOnlyASingleTrailingPeriodTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then: an ellipsis is left alone
+		assertThat(target.stripTrailingPeriod("Done.")).isEqualTo("Done");
+		assertThat(target.stripTrailingPeriod("Wait...")).isEqualTo("Wait...");
+		assertThat(target.stripTrailingPeriod("Done")).isEqualTo("Done");
+	}
+
+	@Test
+	void shouldCutStrategicPointAtPeriodOrWordBoundaryTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then: a period past position 11 wins, otherwise the dangling comma is dropped at the last space
+		assertThat(target.limitStrategicPoint(null)).isEmpty();
+		assertThat(target.limitStrategicPoint("Grow reach now. Then scale up")).isEqualTo("Grow reach now.");
+		assertThat(target.limitStrategicPoint("Drive awareness, convert more")).isEqualTo("Drive awareness");
+	}
+
+	@Test
+	void shouldHardCutStrategicOverviewWithoutSpacesTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then: an unbroken blob is cut at the 240-character budget without a period
+		assertThat(target.limitStrategicOverview(null)).isEmpty();
+		assertThat(target.limitStrategicOverview("a".repeat(300))).isEqualTo("a".repeat(240));
+	}
+
+	@Test
+	void shouldCutRecommendationTitleAtPeriodOrHardCutTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then:
+		assertThat(target.limitRecommendationTitle("Scale CTV in prime time. Then add more"))
+				.isEqualTo("Scale CTV in prime time.");
+		assertThat(target.limitRecommendationTitle("x".repeat(40))).isEqualTo("x".repeat(30));
+	}
+
+	@Test
+	void shouldLimitGeoSummaryAtPeriodOrHardCutTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then:
+		assertThat(target.limitGeoSummary(null)).isNull();
+		assertThat(target.limitGeoSummary("   ")).isNull();
+		assertThat(target.limitGeoSummary("Texas led every market. Oklahoma lagged far behind"))
+				.isEqualTo("Texas led every market.");
+		assertThat(target.limitGeoSummary("g".repeat(50))).isEqualTo("g".repeat(40));
+		assertThat(target.limitGeoSummary(", " + "x".repeat(50))).isNull();
+		assertThat(target.limitGeoSummary("Texas, Oklahoma, Kansas, Missouri, Arkansas"))
+				.isEqualTo("Texas, Oklahoma, Kansas, Missouri");
+	}
+
+	@Test
+	void shouldCapPrimaryKpisAndReturnNullWhenOnlyPunctuationRemainsTest() {
+		// Given:
+		ClaudeResponseNormalizer target = new ClaudeResponseNormalizer();
+
+		// When-Then:
+		assertThat(target.limitPrimaryKpis(null)).isNull();
+		assertThat(target.limitPrimaryKpis("'..'")).isNull();
+		assertThat(target.limitPrimaryKpis("a".repeat(59) + ", more")).isEqualTo("a".repeat(59));
 	}
 }

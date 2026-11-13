@@ -135,15 +135,15 @@
 		</dependency>
 	</dependencies>
 
-	<!-- Coverage phase `mvp` (.template-phase): ratchet at today's 0.8236 line / 0.6650 branch (2026-11-12) — line already meets the
-		 strict gate; the branch gap is the report engine's wide fallback trees.
+	<!-- Coverage phase `mvp` (.template-phase): this module meets the strict gate (0.8737 line / 0.7409 branch,
+		 2026-11-13), so it stays strict in the MVP phase too.
 		 A bare `mvn verify` holds this module to the parent's strict 0.80 / 0.70. -->
 	<profiles>
 		<profile>
 			<id>mvp</id>
 			<properties>
 				<jacoco.line.coverage>0.80</jacoco.line.coverage>
-				<jacoco.branch.coverage>0.66</jacoco.branch.coverage>
+				<jacoco.branch.coverage>0.70</jacoco.branch.coverage>
 			</properties>
 		</profile>
 	</profiles>

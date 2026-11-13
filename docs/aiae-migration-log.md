@@ -2,6 +2,39 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-13 — `service` reaches the strict coverage gate (D5 groundwork, branch `PDI_240`)
+
+- **The P9 baseline was wrong for `external-services`.** JaCoCo's agent appends to `target/jacoco.exec` by
+  default. The local exec files still held hits from earlier builds, including tests that P8 moved out of
+  `external-services`, so the P9 measurement read 0.6338 line coverage. A clean measurement gives 0.6290
+  (2,848 of 4,528), below the 0.63 floor, so a clean CI build has failed since `24cd039`.
+  - Fixed: the `external-services` `mvp` floor is now 0.62 line (branch stays 0.54, measured 0.5420).
+  - Fixed: the parent pom sets `append=false` on `prepare-agent`, so local runs measure like CI.
+  - The other modules' clean numbers match P9 exactly.
+- **`service` branch coverage.** 66.49 % → 74.09 % (4,576 → 5,099 of 6,882), and lines 82.4 % → 87.4 %. That
+  is 523 more branches covered, with 1,032 tests (was 854). New and extended tests:
+
+  | Group | Classes | Missed branches |
+  |---|---|---|
+  | Admin | `AdminManagementServiceImpl`, `AdminAccessPolicy`, `AdminRollupTokenTotals`, `AdminRollupUserStats`, `AdminActiveUsersBuilder` | 90 → 0 |
+  | Job helpers | `ReportJobProgressHelperImpl`, `ReportSummaryAssemblerImpl`, `ClaudeCallDispatcher` | 44 → 0 |
+  | Engine | `ChartPivot`, `CampaignPacingResolvers`, `ChannelSlideResolvers`, `CampaignFlightResolver` | 181 → 0 |
+  | Report helpers | `ReportTokenAssembler`, `ClaudeResponseNormalizer`, `ReportGenerationChartHelperImpl`, `SheetRowHelperImpl` | 206 → 4 |
+
+  - The 4 uncovered branches are unreachable defensive checks: `String.split` never yields a null element, and
+    one `jobs.isEmpty()` guard is dead.
+  - New tests use no `any()` and build their fixtures inside each test. Instancio is not a project dependency,
+    so records are built with their constructors.
+- **`service` floor.** The module's `mvp` floor is now the strict 0.80 / 0.70, so it cannot slide back. Still
+  below strict: `external-services` (0.629 / 0.542) and `application` (0.467 / 0.396).
+- **Production observations from writing the tests, not changed:**
+  - `AdminManagementServiceImpl.currentAdmins` would throw an NPE on an `admin_users` row with a null email.
+  - `AdminRollupUserStats.build` sorts by report count, but its JavaDoc says "biggest spenders first".
+  - `CampaignPacingResolvers`: three resolvers lack the `data == null` guard that `resolveTotalImpsPace` has;
+    a short-circuit currently prevents an NPE.
+  - `ClaudeResponseNormalizer.limitGeoSummary` returns null for a reply that starts with a comma.
+  - `ReportGenerationChartHelperImpl.buildBreakdownCharts` has a dead `jobs.isEmpty()` guard.
+
 ## 2026-11-13 — Distributed cache (P6 / D1, branch `PDI_240`)
 
 - **Starting point.** `.claude/agent_docs/distributed_cache.md` allows either the full `cache-management`

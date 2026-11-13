@@ -187,7 +187,8 @@
 		</dependency>
 	</dependencies>
 
-	<!-- Coverage phase `mvp` (.template-phase): ratchet at today's 0.6338 line / 0.5424 branch (2026-11-12). Mostly request
+	<!-- Coverage phase `mvp` (.template-phase): ratchet at the clean-build 0.6290 line / 0.5420 branch (2026-11-13;
+		 the 0.6338 first recorded was inflated by an appended jacoco.exec from older builds). Mostly request
 		 assembly and response parsing against live Google/Anthropic/Clerk APIs, which the
 		 unit suite reaches through fakes only where it matters.
 		 A bare `mvn verify` holds this module to the parent's strict 0.80 / 0.70. -->
@@ -195,7 +196,7 @@
 		<profile>
 			<id>mvp</id>
 			<properties>
-				<jacoco.line.coverage>0.63</jacoco.line.coverage>
+				<jacoco.line.coverage>0.62</jacoco.line.coverage>
 				<jacoco.branch.coverage>0.54</jacoco.branch.coverage>
 			</properties>
 		</profile>
