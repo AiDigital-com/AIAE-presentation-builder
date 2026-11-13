@@ -8,12 +8,16 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doReturn;
@@ -29,6 +33,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class AnthropicMessagesClientTest {
 
@@ -538,5 +543,571 @@ class AnthropicMessagesClientTest {
 		assertThat(first).isSameAs(sixty).isSameAs(again);
 		assertThat(shorter).isSameAs(thirty);
 		verify(factory, times(1)).createClient("anthropic", "https://api.anthropic.com", Duration.ofSeconds(60));
+	}
+
+	@Test
+	void shouldReturnNothingFromEitherJsonCallWhenNoReplyArrivesTest() {
+		// Given: a call that got no usable response at all
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicCallListener listener = mock(AnthropicCallListener.class);
+		AnthropicMessagesClient client =
+				spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener));
+		doReturn(null).when(client).callRaw("prompt", 100, 30, "BatchA");
+
+		// When:
+		JsonNode object = client.callJsonObject("prompt", 100, 30, "BatchA", true);
+		JsonNode array = client.callJsonArray("prompt", 100, 30, "BatchA", true);
+
+		// Then: nothing is parsed and nothing is reported as a reply problem
+		assertThat(object).isNull();
+		assertThat(array).isNull();
+		verifyNoInteractions(listener);
+	}
+
+	@Test
+	void shouldDropATruncatedReplyWhenPartialsAreNotAllowedTest() throws Exception {
+		// Given: a reply the model stopped writing at its token budget
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicCallListener listener = mock(AnthropicCallListener.class);
+		AnthropicMessagesClient client =
+				spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener));
+		JsonNode truncated = new ObjectMapper().readTree("""
+				{"stop_reason": "max_tokens", "content": [{"type": "text", "text": "{\\"a\\": 1, \\"b"}]}""");
+		doReturn(truncated).when(client).callRaw("prompt", 100, 30, "BatchA");
+
+		// When:
+		JsonNode object = client.callJsonObject("prompt", 100, 30, "BatchA", false);
+		JsonNode array = client.callJsonArray("prompt", 100, 30, "BatchA", false);
+
+		// Then: a strict caller never receives a half reply, and no salvage is reported
+		assertThat(object).isNull();
+		assertThat(array).isNull();
+		verifyNoInteractions(listener);
+	}
+
+	@Test
+	void shouldSalvageATruncatedFencedObjectAndReportTheBudgetItRanOutOfTest() throws Exception {
+		// Given: a fenced object cut part-way through its second field, on a client doubling every budget
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		props.setOutputTokenHeadroom(2.0);
+		AnthropicCallListener listener = mock(AnthropicCallListener.class);
+		AnthropicMessagesClient client =
+				spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener));
+		JsonNode truncated = new ObjectMapper().readTree("""
+				{"stop_reason": "max_tokens",
+				"content": [{"type": "text", "text": "```json\\n{\\"a\\": 1, \\"b\\": \\"unfin"}]}""");
+		doReturn(truncated).when(client).callRaw("prompt", 100, 30, "BatchA");
+
+		// When:
+		JsonNode object = client.callJsonObject("prompt", 100, 30, "BatchA", true);
+
+		// Then: the finished field survives, and the result card names the budget actually sent
+		assertThat(object.get("a").asInt()).isEqualTo(1);
+		assertThat(object.has("b")).isFalse();
+		verify(listener).replyProblem("BatchA", "reply ran out of its 200-token output budget; the fields it "
+				+ "never reached kept their previous values");
+	}
+
+	@Test
+	void shouldReturnNothingForAReplyWithoutTextTest() throws Exception {
+		// Given: one reply with no content blocks and one whose only text is blank
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicCallListener listener = mock(AnthropicCallListener.class);
+		AnthropicMessagesClient client =
+				spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener));
+		ObjectMapper mapper = new ObjectMapper();
+		doReturn(mapper.readTree("{\"stop_reason\": \"end_turn\", \"content\": []}"))
+				.when(client).callRaw("empty", 100, 30, "BatchA");
+		doReturn(mapper.readTree("{\"content\": [{\"type\": \"text\", \"text\": \"   \"}]}"))
+				.when(client).callRaw("blank", 100, 30, "BatchA");
+
+		// When:
+		JsonNode emptyObject = client.callJsonObject("empty", 100, 30, "BatchA", true);
+		JsonNode blankObject = client.callJsonObject("blank", 100, 30, "BatchA", true);
+		JsonNode emptyArray = client.callJsonArray("empty", 100, 30, "BatchA", true);
+		JsonNode blankArray = client.callJsonArray("blank", 100, 30, "BatchA", true);
+
+		// Then: there is nothing to parse, and nothing worth flagging as a malformed reply
+		assertThat(emptyObject).isNull();
+		assertThat(blankObject).isNull();
+		assertThat(emptyArray).isNull();
+		assertThat(blankArray).isNull();
+		verifyNoInteractions(listener);
+	}
+
+	@Test
+	void shouldReportAnObjectReplyThatCarriesNoJsonTest() throws Exception {
+		// Given: a refusal in place of the requested object
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicCallListener listener = mock(AnthropicCallListener.class);
+		AnthropicMessagesClient client =
+				spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener));
+		doReturn(new ObjectMapper().readTree("{\"content\": [{\"type\": \"text\", \"text\": \"I cannot do that.\"}]}"))
+				.when(client).callRaw("prompt", 100, 30, "BatchA");
+
+		// When:
+		JsonNode object = client.callJsonObject("prompt", 100, 30, "BatchA", true);
+
+		// Then: the head of the reply reaches the result card
+		assertThat(object).isNull();
+		verify(listener).replyProblem("BatchA",
+				"reply was not valid JSON (object, 17 chars); it began: I cannot do that.");
+	}
+
+	@Test
+	void shouldParseAFencedArrayReplyTest() throws Exception {
+		// Given: a complete array wrapped in a plain code fence
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicCallListener listener = mock(AnthropicCallListener.class);
+		AnthropicMessagesClient client =
+				spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener));
+		doReturn(new ObjectMapper().readTree("""
+				{"stop_reason": "end_turn",
+				"content": [{"type": "text", "text": "```\\n[\\"a\\", \\"b\\"]\\n```"}]}"""))
+				.when(client).callRaw("prompt", 100, 30, "BatchA");
+
+		// When:
+		JsonNode array = client.callJsonArray("prompt", 100, 30, "BatchA", false);
+
+		// Then:
+		assertThat(array).hasSize(2);
+		assertThat(array.get(1).asText()).isEqualTo("b");
+		verifyNoInteractions(listener);
+	}
+
+	@Test
+	void shouldSalvageATruncatedArrayAndReportTheBudgetItRanOutOfTest() throws Exception {
+		// Given: an array cut part-way through its third item, on a client sending budgets unscaled
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		props.setOutputTokenHeadroom(1.0);
+		AnthropicCallListener listener = mock(AnthropicCallListener.class);
+		AnthropicMessagesClient client =
+				spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener));
+		doReturn(new ObjectMapper().readTree("""
+				{"stop_reason": "max_tokens", "content": [{"type": "text", "text": "[\\"a\\", \\"b\\", \\"c"}]}"""))
+				.when(client).callRaw("prompt", 300, 30, "BatchA");
+
+		// When:
+		JsonNode array = client.callJsonArray("prompt", 300, 30, "BatchA", true);
+
+		// Then:
+		assertThat(array).hasSize(2);
+		verify(listener).replyProblem("BatchA", "reply ran out of its 300-token output budget; the fields it "
+				+ "never reached kept their previous values");
+	}
+
+	@Test
+	void shouldReportAnArrayReplyThatCarriesNoJsonTest() throws Exception {
+		// Given: prose in place of the requested array
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicCallListener listener = mock(AnthropicCallListener.class);
+		AnthropicMessagesClient client =
+				spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener));
+		doReturn(new ObjectMapper().readTree("{\"content\": [{\"type\": \"text\", \"text\": \"no list here\"}]}"))
+				.when(client).callRaw("prompt", 100, 30, "BatchA");
+
+		// When:
+		JsonNode array = client.callJsonArray("prompt", 100, 30, "BatchA", true);
+
+		// Then:
+		assertThat(array).isNull();
+		verify(listener).replyProblem("BatchA", "reply was not valid JSON (array, 12 chars); it began: no list here");
+	}
+
+	@Test
+	void shouldNotSalvageAnArrayStrictlyWhenItsBracketsDoNotParseTest() {
+		// Given:
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+
+		// When-Then: a clean array parses directly; prose with no bracket, an unclosed bracket and a bracketed
+		// span that is not JSON all yield nothing on a strict caller
+		assertThat(client.parseJsonArray("[1, 2]", false)).hasSize(2);
+		assertThat(client.parseJsonArray("nothing to see", false)).isNull();
+		assertThat(client.parseJsonArray("list: [1, 2", false)).isNull();
+		assertThat(client.parseJsonArray("Note [x] then", false)).isNull();
+	}
+
+	@Test
+	void shouldRepairAProseWrappedArrayCutBeforeItsClosingBracketTest() {
+		// Given: a preamble, then an array cut part-way through its second item
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+
+		// When:
+		JsonNode array = client.parseJsonArray("Sure: [\"a\", \"b", true);
+
+		// Then: the repair runs from the first bracket, keeping the finished item
+		assertThat(array).hasSize(1);
+		assertThat(array.get(0).asText()).isEqualTo("a");
+	}
+
+	@Test
+	void shouldReadOnlyTheExpectedJsonShapeTest() {
+		// Given:
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+
+		// When-Then: null, blank, malformed and wrong-shaped text read as nothing instead of throwing
+		assertThat(client.readArray(null)).isNull();
+		assertThat(client.readArray("  ")).isNull();
+		assertThat(client.readArray("{\"a\": 1}")).isNull();
+		assertThat(client.readArray("[1,")).isNull();
+		assertThat(client.readObject(null)).isNull();
+		assertThat(client.readObject(" ")).isNull();
+		assertThat(client.readObject("[1]")).isNull();
+		assertThat(client.readObject("{\"a\":")).isNull();
+		assertThat(client.readObject("{\"a\": 1}").get("a").asInt()).isEqualTo(1);
+	}
+
+	@Test
+	void shouldRepairAnObjectCutAfterADanglingKeyOnlyWhenPartialsAreAllowedTest() {
+		// Given: an object truncated right after its second key
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+		String truncated = "{\"a\": 1, \"b\"";
+
+		// When:
+		JsonNode lenient = client.parseJsonObject(truncated, true);
+		JsonNode strict = client.parseJsonObject(truncated, false);
+
+		// Then:
+		assertThat(lenient.get("a").asInt()).isEqualTo(1);
+		assertThat(lenient.size()).isEqualTo(1);
+		assertThat(strict).isNull();
+	}
+
+	@Test
+	void shouldGiveUpOnAWrappedObjectThatStaysInvalidAfterQuoteEscapingTest() {
+		// Given: prose around an object whose values are missing a comma — no quote escaping can fix it
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+
+		// When-Then:
+		assertThat(client.parseJsonObject("Result: {\"a\": 1 2} end", false)).isNull();
+	}
+
+	@Test
+	void shouldKeepAlreadyEscapedQuotesWhileEscapingStrayOnesTest() {
+		// Given: a value mixing a properly escaped quotation with an unescaped one
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+		String text = "{\"a\": \"say \\\"hi\\\" and \"bye\" now\"}";
+
+		// When:
+		String escaped = client.escapeStrayQuotes(text);
+
+		// Then: the escaped pair is copied as it is, only the stray pair gains backslashes
+		assertThat(escaped).isEqualTo("{\"a\": \"say \\\"hi\\\" and \\\"bye\\\" now\"}");
+	}
+
+	@Test
+	void shouldDecideWhetherAQuoteClosesItsStringFromWhatFollowsTest() {
+		// Given:
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+
+		// When-Then: the end of the text, a colon after blanks and a comma ending the text close the string;
+		// a comma followed by prose, or any other character, does not
+		assertThat(client.closesString("\"abc\"", 4)).isTrue();
+		assertThat(client.closesString("\"a\"  : 1", 2)).isTrue();
+		assertThat(client.closesString("\"a\",", 2)).isTrue();
+		assertThat(client.closesString("\"a\",  \"b\"", 2)).isTrue();
+		assertThat(client.closesString("\"a\", the top", 2)).isFalse();
+		assertThat(client.closesString("\"a\" b", 2)).isFalse();
+	}
+
+	@Test
+	void shouldKeepAShortReplySnippetAsItIsTest() {
+		// Given:
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		props.setReplySnippetLimit(10);
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+
+		// When:
+		String snippet = client.snippet("  short\n reply ");
+
+		// Then: a limit below the floor is raised to it, so the short reply is only flattened, never cut
+		assertThat(snippet).isEqualTo("short reply");
+		assertThat(client.snippet("y".repeat(100))).hasSize(81);
+	}
+
+	@Test
+	void shouldHonourEscapesAndStrayClosersWhenRepairingTest() {
+		// Given:
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+
+		// When:
+		String escaped = client.repairTruncatedJson("[\"a\\\"b\", \"c");
+		String strayCloser = client.repairTruncatedJson("[1]]");
+		String trailingBlank = client.repairTruncatedJson("[1 ,  2");
+
+		// Then: an escaped quote does not end the string, a closer with nothing open is kept as the cut, and
+		// blanks before the dropped comma are trimmed
+		assertThat(escaped).isEqualTo("[\"a\\\"b\"]");
+		assertThat(strayCloser).isEqualTo("[1]]");
+		assertThat(trailingBlank).isEqualTo("[1]");
+	}
+
+	@Test
+	void shouldSplitAPromptAtItsCacheBreakpointTest() {
+		// Given:
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+		String marker = AnthropicMessagesClient.CACHE_BREAKPOINT;
+
+		// When:
+		Object split = client.buildUserContent("Rules." + marker + "Data." + marker + "More.");
+
+		// Then: the prefix is cached, the rest is one uncached block with any further marker stripped
+		assertThat(split).isEqualTo(List.of(
+				Map.of("type", "text", "text", "Rules.", "cache_control", Map.of("type", "ephemeral")),
+				Map.of("type", "text", "text", "Data.More.")));
+	}
+
+	@Test
+	void shouldSendOnlyTheCachedBlockWhenNothingFollowsTheBreakpointTest() {
+		// Given:
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+
+		// When:
+		Object content = client.buildUserContent("Rules." + AnthropicMessagesClient.CACHE_BREAKPOINT);
+
+		// Then:
+		assertThat(content).isEqualTo(List.of(
+				Map.of("type", "text", "text", "Rules.", "cache_control", Map.of("type", "ephemeral"))));
+	}
+
+	@Test
+	void shouldSendAPlainPromptWhenTheBreakpointHasNoUsablePrefixTest() {
+		// Given:
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+		String marker = AnthropicMessagesClient.CACHE_BREAKPOINT;
+
+		// When-Then: no marker, a marker at the start and a marker after blanks all send one plain string,
+		// never carrying the marker itself
+		assertThat(client.buildUserContent("Plain prompt.")).isEqualTo("Plain prompt.");
+		assertThat(client.buildUserContent(marker + "Body.")).isEqualTo("Body.");
+		assertThat(client.buildUserContent("  " + marker + "Body.")).isEqualTo("  Body.");
+	}
+
+	@Test
+	void shouldNeverShrinkTheCallersTokenBudgetTest() {
+		// Given: one client with a headroom below 1.0 and one with 1.5
+		AnthropicProperties low = new AnthropicProperties();
+		low.setApiKey("key");
+		low.setOutputTokenHeadroom(0.5);
+		AnthropicProperties high = new AnthropicProperties();
+		high.setApiKey("key");
+		high.setOutputTokenHeadroom(1.5);
+		AnthropicMessagesClient lowClient = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), low, mock(AnthropicCallListener.class));
+		AnthropicMessagesClient highClient = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), high, mock(AnthropicCallListener.class));
+
+		// When-Then:
+		assertThat(lowClient.effectiveMaxTokens(100)).isEqualTo(100);
+		assertThat(highClient.effectiveMaxTokens(101)).isEqualTo(152);
+	}
+
+	@Test
+	void shouldSendTheMessagesRequestWithItsCacheBlocksAndRecordTheUsageTest() throws Exception {
+		// Given: a pooled client bound to a mock server answering with a billed reply
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		props.setModel("claude-test");
+		props.setOutputTokenHeadroom(1.5);
+		AnthropicCallListener listener = mock(AnthropicCallListener.class);
+		RestClient.Builder builder = RestClient.builder().baseUrl("https://api.anthropic.com");
+		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+		AtomicReference<String> sent = new AtomicReference<>();
+		server.expect(requestTo("https://api.anthropic.com/v1/messages"))
+				.andExpect(method(HttpMethod.POST))
+				.andExpect(request -> sent.set(((MockClientHttpRequest) request).getBodyAsString()))
+				.andRespond(withSuccess("""
+						{"model": "claude-test", "content": [{"type": "text", "text": "hi"}],
+						"usage": {"input_tokens": 10, "output_tokens": 2}}""", MediaType.APPLICATION_JSON));
+		PooledRestClientFactory factory = mock(PooledRestClientFactory.class);
+		when(factory.createClient("anthropic", "https://api.anthropic.com", Duration.ofSeconds(45)))
+				.thenReturn(builder.build());
+		AnthropicMessagesClient client = new AnthropicMessagesClient(factory, props, listener);
+
+		// When:
+		JsonNode reply = client.callRaw("Rules." + AnthropicMessagesClient.CACHE_BREAKPOINT + "Data.", 100, 45,
+				"BatchA");
+
+		// Then: the body carries the model, the headroom-scaled budget, disabled thinking and the split prompt
+		JsonNode body = new ObjectMapper().readTree(sent.get());
+		assertThat(body.get("model").asText()).isEqualTo("claude-test");
+		assertThat(body.get("max_tokens").asInt()).isEqualTo(150);
+		assertThat(body.get("thinking").get("type").asText()).isEqualTo("disabled");
+		assertThat(body.get("messages")).hasSize(1);
+		JsonNode content = body.get("messages").get(0).get("content");
+		assertThat(body.get("messages").get(0).get("role").asText()).isEqualTo("user");
+		assertThat(content.get(0).get("text").asText()).isEqualTo("Rules.");
+		assertThat(content.get(0).get("cache_control").get("type").asText()).isEqualTo("ephemeral");
+		assertThat(content.get(1).get("text").asText()).isEqualTo("Data.");
+		assertThat(content.get(1).has("cache_control")).isFalse();
+		assertThat(client.replyText(reply)).isEqualTo("hi");
+		verify(listener).usage("BatchA", 10, 2, 0, 0, "claude-test");
+		server.verify();
+	}
+
+	@Test
+	void shouldReturnNothingWhenTheRequestCannotBeBuiltTest() {
+		// Given: a pool that cannot hand out a client
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicCallListener listener = mock(AnthropicCallListener.class);
+		PooledRestClientFactory factory = mock(PooledRestClientFactory.class);
+		when(factory.createClient("anthropic", "https://api.anthropic.com", Duration.ofSeconds(30)))
+				.thenThrow(new IllegalStateException("pool closed"));
+		AnthropicMessagesClient client = new AnthropicMessagesClient(factory, props, listener);
+
+		// When:
+		JsonNode reply = client.callRaw("prompt", 100, 30, "BatchA");
+
+		// Then: nothing left the process, so nothing is booked
+		assertThat(reply).isNull();
+		verifyNoInteractions(listener);
+	}
+
+	@Test
+	void shouldGiveUpOnATransientStatusWhenNoRetryIsLeftTest() {
+		// Given: a negative retry count, clamped to a single attempt, meeting an overload
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		props.setMaxRetries(-3);
+		AnthropicCallListener listener = mock(AnthropicCallListener.class);
+		AnthropicMessagesClient client =
+				spy(new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener));
+		RestClient restClient = mock(RestClient.class);
+		byte[] body = "{}".getBytes(StandardCharsets.UTF_8);
+		doReturn(ResponseEntity.status(529).body("overloaded")).when(client).exchange(restClient, body);
+
+		// When:
+		JsonNode reply = client.sendWithRetry(restClient, body, "prompt", "BatchB");
+
+		// Then: the rejected request is neither retried nor booked
+		assertThat(reply).isNull();
+		verify(client, times(1)).exchange(restClient, body);
+		verifyNoInteractions(listener);
+	}
+
+	@Test
+	void shouldWaitTheBackoffScaledByTheFailedAttemptTest() {
+		// Given: a 5 ms base backoff
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		props.setRetryBackoffMillis(5);
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+
+		// When: the backoff after the second failed attempt is applied
+		long start = System.nanoTime();
+		client.backoffBeforeRetry(2, "BatchB");
+		long elapsedMillis = (System.nanoTime() - start) / 1_000_000;
+
+		// Then: it waits at least twice the base delay and leaves the thread uninterrupted
+		assertThat(elapsedMillis).isGreaterThanOrEqualTo(10);
+		assertThat(Thread.currentThread().isInterrupted()).isFalse();
+	}
+
+	@Test
+	void shouldCopyATrailingBackslashInsideAStringAsItIsTest() {
+		// Given: a reply cut right after a backslash inside a string value
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+		String text = "{\"a\": \"x\\";
+
+		// When-Then: there is no escaped character to copy, so the text is left unchanged rather than overrun
+		assertThat(client.escapeStrayQuotes(text)).isEqualTo(text);
+	}
+
+	@Test
+	void shouldRestoreTheInterruptFlagWhenTheBackoffIsInterruptedTest() {
+		// Given: a long backoff on a thread that is already being shut down
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		props.setRetryBackoffMillis(60_000);
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+		Thread.currentThread().interrupt();
+
+		// When:
+		long start = System.nanoTime();
+		client.backoffBeforeRetry(1, "BatchB");
+		long elapsedMillis = (System.nanoTime() - start) / 1_000_000;
+
+		// Then: the wait is abandoned at once and the interrupt still propagates (Thread.interrupted clears it)
+		assertThat(Thread.interrupted()).isTrue();
+		assertThat(elapsedMillis).isLessThan(5_000);
+	}
+
+	@Test
+	void shouldIgnoreAMissingResponseOrAUsageThatIsNotAnObjectTest() throws Exception {
+		// Given:
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicCallListener listener = mock(AnthropicCallListener.class);
+		AnthropicMessagesClient client =
+				new AnthropicMessagesClient(mock(PooledRestClientFactory.class), props, listener);
+
+		// When:
+		client.recordUsage(null, "BatchC");
+		client.recordUsage(new ObjectMapper().readTree("{\"usage\": 5}"), "BatchC");
+
+		// Then:
+		verifyNoInteractions(listener);
+	}
+
+	@Test
+	void shouldReadNoTextFromAReplyWithoutAContentArrayTest() throws Exception {
+		// Given:
+		AnthropicProperties props = new AnthropicProperties();
+		props.setApiKey("key");
+		AnthropicMessagesClient client = new AnthropicMessagesClient(
+				mock(PooledRestClientFactory.class), props, mock(AnthropicCallListener.class));
+
+		// When-Then:
+		assertThat(client.replyText(new ObjectMapper().readTree("{\"content\": \"text\"}"))).isNull();
+		assertThat(client.replyText(new ObjectMapper().readTree("{}"))).isNull();
 	}
 }

@@ -301,8 +301,8 @@ sequenceDiagram
   today) selects the phase through `scripts/lib/coverage-phase.sh`, which
   `scripts/local-verify.sh` and CI both use: `mvp` adds `-Pmvp`, which sets the
   parent floor of 0.30 / 0.25, plus each module's own `mvp` ratchet at its
-  measured coverage, so coverage cannot slide. Today only
-  `external-services` and `application` are below strict;
+  measured coverage, so coverage cannot slide. Today only `application` is
+  below strict;
   `finalize-coverage` closes that before handoff. Never lower the parent
   defaults or pass `-Djacoco.*`; `check-coverage-integrity.sh` rejects both.
   The JaCoCo agent overwrites `jacoco.exec` (`append=false`), so a local run

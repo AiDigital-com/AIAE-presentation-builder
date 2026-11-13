@@ -876,6 +876,189 @@ class RealSheetDeckProviderTest {
 				.containsExactly(new WorkbookCreativeRow("Hero 3", "1,200,003", "0.53%", "82.9%", "$4,800"));
 	}
 
+	@Test
+	void shouldReportItselfAsTheLiveWorkbookClientTest() {
+		// Given:
+		RealSheetDeckProvider provider = newProvider();
+
+		// When-Then: the real provider is what makes the "Generate Sheet" flow produce real workbooks
+		assertThat(provider.isLive()).isTrue();
+	}
+
+	@Test
+	void shouldFallBackToTheEocTemplateForEomWhenNoEomTemplateIsConfiguredTest() {
+		// Given: properties that carry no EOM template id at all
+		GoogleCredentialsFactory creds = Mockito.mock(GoogleCredentialsFactory.class);
+		when(creds.transport()).thenReturn(new NetHttpTransport());
+		when(creds.jsonFactory()).thenReturn(GsonFactory.getDefaultInstance());
+		when(creds.initializer()).thenReturn(request -> {
+		});
+		GoogleProperties props = Mockito.mock(GoogleProperties.class);
+		when(props.getSheetsTemplateId()).thenReturn("template");
+		when(props.getEomSheetsTemplateId()).thenReturn(null);
+		RealSheetDeckProvider provider = new RealSheetDeckProvider(creds, props,
+				Mockito.mock(SheetPacingTableWriter.class), Mockito.mock(GoogleRequestRetrier.class),
+				Mockito.mock(DriveSharer.class), Mockito.mock(DriveShareRecipients.class));
+
+		// When:
+		String templateId = provider.templateIdFor("EOM");
+
+		// Then:
+		assertThat(templateId).isEqualTo("template");
+	}
+
+	@Test
+	void shouldReturnNoBreakdownTablesWhenTheTabCarriesNoAnchorsTest() {
+		// Given: a "Breakdowns" tab with headers but no "<section> N" anchor anywhere
+		RealSheetDeckProvider provider = newProvider();
+		List<List<String>> grid = List.of(List.of("Publisher", "Impressions"), List.of("YouTube", "1"));
+
+		// When:
+		Map<Integer, List<WorkbookPublisherRow>> publishers = provider.publisherTables(grid, Set.of(1));
+		Map<Integer, WorkbookCreativeTable> creatives = provider.creativeTables(grid, Set.of(1));
+		Map<Integer, WorkbookGeoTable> geos = provider.geoTables(grid, Set.of(1));
+		Map<Integer, WorkbookAudienceTable> audiences = provider.audienceTables(grid, Set.of(1));
+		Map<Integer, WorkbookDeviceTable> devices = provider.deviceTables(grid, Set.of(1));
+
+		// Then: nothing is read — not even an empty entry for the requested tactic
+		assertThat(publishers).isEmpty();
+		assertThat(creatives).isEmpty();
+		assertThat(geos).isEmpty();
+		assertThat(audiences).isEmpty();
+		assertThat(devices).isEmpty();
+	}
+
+	@Test
+	void shouldStillReadStatTilesWhenABlockHasNoTableHeaderTest() {
+		// Given: one tactic's five sections side by side, each two columns wide, carrying only a stat tile
+		// and no table header row
+		RealSheetDeckProvider provider = newProvider();
+		List<List<String>> grid = new ArrayList<>();
+		grid.add(row(10, Map.of(0, "Top Publishers 1", 2, "Creative analysis 1", 4, "Geo analysis 1",
+				6, "Audience analysis 1", 8, "Device breakdown 1")));
+		grid.add(row(10, Map.of(2, "CREATIVES LIVE", 3, "4", 4, "MARKETS ACTIVATED", 5, "9",
+				6, "AGE DISTRIBUTION", 7, "25-34", 8, "DEVICES TRACKED", 9, "3")));
+		grid.add(row(10, Map.of(0, "YouTube", 2, "Hero", 4, "Miami", 6, "18-24", 8, "Mobile")));
+
+		// When:
+		Map<Integer, List<WorkbookPublisherRow>> publishers = provider.publisherTables(grid, Set.of(1));
+		WorkbookCreativeTable creative = provider.creativeTables(grid, Set.of(1)).get(1);
+		WorkbookGeoTable geo = provider.geoTables(grid, Set.of(1)).get(1);
+		WorkbookAudienceTable audience = provider.audienceTables(grid, Set.of(1)).get(1);
+		WorkbookDeviceTable device = provider.deviceTables(grid, Set.of(1)).get(1);
+
+		// Then: each section's own stat tile is read, but no headerless cell is mistaken for a table row
+		assertThat(publishers).containsEntry(1, List.of());
+		assertThat(creative).isEqualTo(new WorkbookCreativeTable("4", "", "", "", List.of()));
+		assertThat(geo).isEqualTo(new WorkbookGeoTable("9", "", "", List.of()));
+		assertThat(audience).isEqualTo(new WorkbookAudienceTable("25-34", "", List.of(), List.of()));
+		assertThat(device).isEqualTo(new WorkbookDeviceTable("", "", "3", "", "", List.of()));
+	}
+
+	@Test
+	void shouldLeaveTheGeoKpiColumnUnresolvedWhenImpsIsMissingOrNothingFollowsItTest() {
+		// Given: one header row without an IMPS column, and one whose IMPS column is the last populated cell
+		RealSheetDeckProvider provider = newProvider();
+		List<List<String>> noImps = List.of(List.of("Geo", "CTR"));
+		List<List<String>> impsLast = List.of(List.of("Geo", "IMPS", ""));
+
+		// When:
+		int[] noImpsHeader = provider.findGeoHeader(noImps, 0, 1, 0, 2);
+		int[] impsLastHeader = provider.findGeoHeader(impsLast, 0, 1, 0, 3);
+
+		// Then: the KPI column resolves to -1 rather than to a neighbouring cell
+		assertThat(noImpsHeader).containsExactly(0, 0, -1, -1);
+		assertThat(impsLastHeader).containsExactly(0, 0, 1, -1);
+	}
+
+	@Test
+	void shouldReadABlankMostEfficientTileAsBlankTest() {
+		// Given: the "MOST EFFICIENT" label is present but its value cells are blank
+		RealSheetDeckProvider provider = newProvider();
+		List<List<String>> grid = List.of(List.of("MOST EFFICIENT VCR", "", ""));
+
+		// When:
+		String value = provider.geoSummaryValueByPrefix(grid, 0, 1, 0, 3, "MOST EFFICIENT");
+
+		// Then:
+		assertThat(value).isEmpty();
+	}
+
+	@Test
+	void shouldNotFindAHeaderOnARowOutsideTheGridTest() {
+		// Given:
+		RealSheetDeckProvider provider = newProvider();
+		List<List<String>> grid = List.of(List.of("Geo", "MOST EFFICIENT CTR"));
+
+		// When-Then: rows before the first and past the last resolve to "not found" instead of failing
+		assertThat(provider.columnOfHeader(grid, -1, 0, 2, "Geo")).isEqualTo(-1);
+		assertThat(provider.columnOfHeader(grid, 1, 0, 2, "Geo")).isEqualTo(-1);
+		assertThat(provider.columnOfHeaderPrefix(grid, -1, 0, 2, "MOST EFFICIENT")).isEqualTo(-1);
+		assertThat(provider.columnOfHeaderPrefix(grid, 1, 0, 2, "MOST EFFICIENT")).isEqualTo(-1);
+		assertThat(provider.columnOfHeaderPrefix(grid, 0, 0, 2, "MOST EFFICIENT")).isEqualTo(1);
+	}
+
+	@Test
+	void shouldReadOutOfRangeCellsAsBlankTest() {
+		// Given: a short, ragged grid
+		RealSheetDeckProvider provider = newProvider();
+		List<List<String>> grid = List.of(List.of("a", "b"), List.of("c"));
+
+		// When-Then: a missing column, a row before or past the grid, and a cell past a short row are all blank
+		assertThat(provider.cellAt(grid, 0, -1)).isEmpty();
+		assertThat(provider.cellAt(grid, -1, 0)).isEmpty();
+		assertThat(provider.cellAt(grid, 2, 0)).isEmpty();
+		assertThat(provider.cellAt(grid, 1, 1)).isEmpty();
+		assertThat(provider.cellAt(grid, 0, 1)).isEqualTo("b");
+	}
+
+	@Test
+	void shouldAttributeNoTacticToAMetricBlockCutOffByTheEndOfTheTabTest() {
+		// Given: a METRIC anchor on the tab's last row, with no tokens beside it
+		RealSheetDeckProvider provider = newProvider();
+		List<List<String>> grid = List.of(List.of("intro"), List.of("METRIC", "GOAL"));
+
+		// When:
+		int tactic = provider.metricBlockTactic(grid, 1, 0);
+
+		// Then: the scan stops at the tab's end and the block is treated as filled (never cleared)
+		assertThat(tactic).isZero();
+		assertThat(provider.metricBlockClearRequests(grid, 7, 0)).isEmpty();
+	}
+
+	@Test
+	void shouldSkipWideRowsThatAreNotTheSummaryHeaderTest() {
+		// Given: a three-column row above the real header
+		RealSheetDeckProvider provider = newProvider();
+		List<List<String>> grid = List.of(
+				List.of("Campaign", "Benchmark", "KPI type"),
+				List.of("Tactic name", "Benchmark", "KPI type", "KPI (fact)"));
+
+		// When:
+		int headerRow = provider.findSummaryHeaderRow(grid);
+
+		// Then:
+		assertThat(headerRow).isEqualTo(1);
+	}
+
+	@Test
+	void shouldClearEverySectionOfATacticMissingFromTheEnabledMapTest() {
+		// Given: a tactic-3 block with two sections, and no entry for tactic 3 in the enabled map
+		RealSheetDeckProvider provider = newProvider();
+		List<List<String>> grid = List.of(row(4, Map.of(0, "Top Publishers 3", 2, "Geo analysis 3")));
+
+		// When:
+		List<Request> requests = provider.breakdownClearRequests(grid, 9, Map.of(1, EnumSet.of(DeckBreakdown.GEO)));
+
+		// Then: both sections are cleared, each up to the next anchor or the block's right edge
+		assertThat(requests).hasSize(2);
+		assertThat(requests.get(0).getRepeatCell().getRange().getStartColumnIndex()).isEqualTo(0);
+		assertThat(requests.get(0).getRepeatCell().getRange().getEndColumnIndex()).isEqualTo(2);
+		assertThat(requests.get(1).getRepeatCell().getRange().getStartColumnIndex()).isEqualTo(2);
+		assertThat(requests.get(1).getRepeatCell().getRange().getEndColumnIndex()).isEqualTo(4);
+		assertThat(requests.get(1).getRepeatCell().getRange().getEndRowIndex()).isEqualTo(18);
+	}
+
 	/**
 	 * Builds one grid row of the given width with the given cells populated.
 	 *

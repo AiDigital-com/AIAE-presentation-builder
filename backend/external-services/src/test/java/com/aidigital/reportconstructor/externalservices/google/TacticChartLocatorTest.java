@@ -2,18 +2,24 @@ package com.aidigital.reportconstructor.externalservices.google;
 
 import com.aidigital.reportconstructor.observability.external.ExternalCallTimer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import com.google.api.services.slides.v1.Slides;
 import com.google.api.services.slides.v1.model.AffineTransform;
 import com.google.api.services.slides.v1.model.Page;
 import com.google.api.services.slides.v1.model.PageElement;
+import com.google.api.services.slides.v1.model.Presentation;
 import com.google.api.services.slides.v1.model.SheetsChart;
 import com.google.api.services.slides.v1.model.Size;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class TacticChartLocatorTest {
 
@@ -110,6 +116,114 @@ class TacticChartLocatorTest {
 		assertThat(locator.tacticNumberOf("bd_dev_2", 3)).isNull();
 		assertThat(locator.tacticNumberOf("p7", 3)).isNull();
 		assertThat(locator.tacticNumberOf(null, 3)).isNull();
+	}
+
+	@Test
+	void load_shouldIndexTheChartsOfEveryActiveTacticCopyInTheDeckTest() throws Exception {
+		// Given: a deck holding a template slide, tactic 1's copy with a linked chart, tactic 2's copy read
+		// without elements, and a copy for a tactic above the active count
+		GoogleCallTimer googleCalls = mock(GoogleCallTimer.class);
+		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming(), googleCalls);
+		Slides slides = mock(Slides.class);
+		Slides.Presentations presentations = mock(Slides.Presentations.class);
+		Slides.Presentations.Get get = mock(Slides.Presentations.Get.class);
+		when(slides.presentations()).thenReturn(presentations);
+		when(presentations.get("deck-1")).thenReturn(get);
+		when(get.setFields("slides.objectId,slides.pageElements(objectId,size,transform,sheetsChart)"))
+				.thenReturn(get);
+		PageElement daily = new PageElement().setObjectId("el_daily").setSize(new Size())
+				.setTransform(new AffineTransform().setTranslateX(5.0))
+				.setSheetsChart(new SheetsChart().setSpreadsheetId("book_daily").setChartId(1));
+		Presentation deck = new Presentation().setSlides(List.of(
+				new Page().setObjectId("p1"),
+				new Page().setObjectId("tct_1").setPageElements(List.of(daily)),
+				new Page().setObjectId("tct_2"),
+				new Page().setObjectId("tct_3").setPageElements(List.of(daily))));
+		when(googleCalls.execute(get)).thenReturn(deck);
+		List<String> errors = new ArrayList<>();
+
+		// When:
+		Map<Integer, Map<String, ChartElementRef>> byTactic = locator.load(slides, "deck-1", 2, errors);
+
+		// Then: both active tactics are listed — tactic 2 empty — and the inactive copy is ignored
+		assertThat(errors).isEmpty();
+		assertThat(byTactic).containsOnlyKeys(1, 2);
+		assertThat(byTactic.get(1).get("book_daily").objectId()).isEqualTo("el_daily");
+		assertThat(byTactic.get(1).get("book_daily").transform().slideId()).isEqualTo("tct_1");
+		assertThat(byTactic.get(2)).isEmpty();
+	}
+
+	@Test
+	void load_shouldReturnNothingForADeckWithoutSlidesTest() throws Exception {
+		// Given: a deck read back with no slides at all
+		GoogleCallTimer googleCalls = mock(GoogleCallTimer.class);
+		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming(), googleCalls);
+		Slides slides = mock(Slides.class);
+		Slides.Presentations presentations = mock(Slides.Presentations.class);
+		Slides.Presentations.Get get = mock(Slides.Presentations.Get.class);
+		when(slides.presentations()).thenReturn(presentations);
+		when(presentations.get("deck-1")).thenReturn(get);
+		when(get.setFields("slides.objectId,slides.pageElements(objectId,size,transform,sheetsChart)"))
+				.thenReturn(get);
+		when(googleCalls.execute(get)).thenReturn(new Presentation());
+		List<String> errors = new ArrayList<>();
+
+		// When:
+		Map<Integer, Map<String, ChartElementRef>> byTactic = locator.load(slides, "deck-1", 2, errors);
+
+		// Then: the caller falls back to the configured slot ids, and nothing is reported
+		assertThat(byTactic).isEmpty();
+		assertThat(errors).isEmpty();
+	}
+
+	@Test
+	void load_shouldReportADeckThatCannotBeReadTest() throws Exception {
+		// Given: a Slides read that fails
+		GoogleCallTimer googleCalls = mock(GoogleCallTimer.class);
+		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming(), googleCalls);
+		Slides slides = mock(Slides.class);
+		Slides.Presentations presentations = mock(Slides.Presentations.class);
+		Slides.Presentations.Get get = mock(Slides.Presentations.Get.class);
+		when(slides.presentations()).thenReturn(presentations);
+		when(presentations.get("deck-1")).thenReturn(get);
+		when(get.setFields("slides.objectId,slides.pageElements(objectId,size,transform,sheetsChart)"))
+				.thenReturn(get);
+		when(googleCalls.execute(get)).thenThrow(new IOException("quota exceeded"));
+		List<String> errors = new ArrayList<>();
+
+		// When:
+		Map<Integer, Map<String, ChartElementRef>> byTactic = locator.load(slides, "deck-1", 2, errors);
+
+		// Then:
+		assertThat(byTactic).isEmpty();
+		assertThat(errors).containsExactly("Tactic charts: could not read presentation layout — quota exceeded");
+	}
+
+	@Test
+	void chartsBySource_shouldSkipChartsWithoutASourceWorkbookOrObjectIdTest() {
+		// Given: a chart with no source workbook and a linked chart with no object id next to a valid one
+		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming(), mock(GoogleCallTimer.class));
+		Page slide = new Page().setObjectId("tct_1").setPageElements(List.of(
+				new PageElement().setObjectId("el_unlinked").setSheetsChart(new SheetsChart()),
+				new PageElement().setSheetsChart(new SheetsChart().setSpreadsheetId("book_orphan")),
+				new PageElement().setObjectId("el_dist").setSize(new Size()).setTransform(new AffineTransform())
+						.setSheetsChart(new SheetsChart().setSpreadsheetId("book_dist"))));
+
+		// When:
+		Map<String, ChartElementRef> bySource = locator.chartsBySource(slide);
+
+		// Then:
+		assertThat(bySource).containsOnlyKeys("book_dist");
+		assertThat(bySource.get("book_dist").objectId()).isEqualTo("el_dist");
+	}
+
+	@Test
+	void tacticNumberOf_shouldRejectAnEomCopyNumberedBelowOneTest() {
+		// Given:
+		TacticChartLocator locator = new TacticChartLocator(new BreakdownSlideNaming(), mock(GoogleCallTimer.class));
+
+		// When-Then:
+		assertThat(locator.tacticNumberOf("eom_m0_t0", 3)).isNull();
 	}
 
 	private PageElement chartElement(String objectId, String spreadsheetId, double translateX) {

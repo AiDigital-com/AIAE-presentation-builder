@@ -2,6 +2,41 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-13 — `external-services` reaches the strict coverage gate (D5 groundwork, branch `PDI_240`)
+
+- Coverage rose from 62.90 % line / 54.20 % branch to **95.87 % / 89.51 %** (lines 2,848 → 4,341 of 4,528;
+  branches 1,560 → 2,576 of 2,878). The module now has 505 tests (was 256). Its `mvp` floor is raised from
+  0.62 / 0.54 to the strict 0.80 / 0.70.
+
+  | Classes | Missed lines | Missed branches |
+  |---|---|---|
+  | `RealSlidesProvider` | 355 → 0 | 288 → 28 |
+  | `RealSheetDeckProvider` | 269 → 0 | 199 → 2 |
+  | `ChartSheetWriter`, `ChartSpecBuilder`, `ChartTemplateCatalog`, `ChartErrorTranslator` | 302 → 0 | 214 → 2 |
+  | `TacticChartBuilder`, `BreakdownChartBuilder`, `PaidChartBuilder`, `SlideChartSwapper` | 285 → 0 | 123 → 0 |
+  | `AnthropicMessagesClient`, `SheetPacingTableWriter`, `GoogleProperties`, `TacticChartLocator`, `TacticSlideRelayout`, `PaidSlidesWriter` | 231 → 1 | 201 → 6 |
+
+- **How the Google classes are tested.** The tests mock the client boundary (`GoogleRequestRetrier` /
+  `GoogleCallTimer`), or use a recording `MockHttpTransport` (`RecordingGoogleTransport`). They capture every
+  batch and assert its content: request types, object ids, ranges, text, ordering, chunking and field masks.
+  They also check the exact translated error messages. No new `any()` was added.
+- **Uncovered branches.** Most of the remaining ones are unreachable defensive checks. In `RealSlidesProvider`,
+  27 are reachable but low-value: the `isBlank()` half of the token guards, and short-circuit combinations.
+- **Production observations from writing the tests, not changed:**
+  - `ChartSheetWriter.sheetIdForTab` returns `0` for a missing tab, but its JavaDoc says `-1`. Id 0 is usually
+    the first tab, so a missing tab would delete columns C and D on that tab.
+  - `ChartSheetWriter.writeDistribution`: a template with "Total/Other" on row 2 and no `{{tactic` placeholder
+    writes the tactic and "other" values to the same row.
+  - `RealSheetDeckProvider.readGrid`: a JSON `null` cell arrives as the SDK's `Data.nullOf` sentinel, so the
+    cell text becomes `java.lang.Object@…` instead of `""`. A fix would check `Data.isNull`.
+  - `RealSheetDeckProvider`: the five breakdown-table reads return an empty map when the tab has no anchors,
+    although their JavaDoc promises an EMPTY entry per tactic.
+  - `RealSlidesProvider.addBreakdownSlides` / `addEomBreakdownSlides`: a null `thoughtsTactics` throws an NPE
+    when a thoughts master is in use. `createDeck` has no null check for `placeholderMap`.
+  - `resolveBreakdownMasterIds` and `BreakdownChartBuilder` lowercase without `Locale.ROOT`.
+  - `AnthropicMessagesClient`: a truncated reply that cannot be salvaged still reports "salvaged the part that
+    arrived".
+
 ## 2026-11-13 — `service` reaches the strict coverage gate (D5 groundwork, branch `PDI_240`)
 
 - **The P9 baseline was wrong for `external-services`.** JaCoCo's agent appends to `target/jacoco.exec` by

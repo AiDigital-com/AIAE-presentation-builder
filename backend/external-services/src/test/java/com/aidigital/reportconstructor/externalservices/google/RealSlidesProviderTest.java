@@ -1212,6 +1212,363 @@ class RealSlidesProviderTest {
 		assertThat(duplicated).containsExactly("thoughts_1");
 	}
 
+	@Test
+	void shouldReportLiveAndCarryTheMpoNarrativeOnlyOnAnMpoDeckTest() {
+		// Given: an MPO template configured for EOC only
+		RealSlidesProvider provider = newProvider(Map.of());
+
+		// When-Then:
+		assertThat(provider.isLive()).isTrue();
+		assertThat(provider.carriesMpoNarrative("EOC", DeckTemplate.MPO)).isTrue();
+		assertThat(provider.carriesMpoNarrative("EOM", DeckTemplate.MPO)).isFalse();
+		assertThat(provider.carriesMpoNarrative("EOC", DeckTemplate.STANDARD)).isFalse();
+	}
+
+	@Test
+	void shouldNormalizeAnUnconfiguredSlideModelToEmptyValuesTest() {
+		// Given:
+		RealSlidesProvider provider = newProvider(Map.of());
+
+		// When:
+		SlideModel empty = provider.slideModel(null, null, null, null, null, null, null);
+		SlideModel pasted = provider.slideModel(null, null, null, null, null, " thoughts ", " id.m_tactic ");
+
+		// Then: nulls read as unset, and a pasted URL id loses its prefix
+		assertThat(empty.summaryTableObjectIds()).isEmpty();
+		assertThat(empty.summarySlideObjectIds()).isEmpty();
+		assertThat(empty.resultsSlideObjectIds()).isEmpty();
+		assertThat(empty.tacticSlideObjectIds()).isEmpty();
+		assertThat(empty.breakdownMasterIds()).isEmpty();
+		assertThat(empty.thoughtsMasterId()).isEmpty();
+		assertThat(empty.tacticMasterId()).isEmpty();
+		assertThat(empty.hasMasters()).isFalse();
+		assertThat(pasted.thoughtsMasterId()).isEqualTo("thoughts");
+		assertThat(pasted.tacticMasterId()).isEqualTo("m_tactic");
+	}
+
+	@Test
+	void shouldDropBlankOrUnsetIdsAndTitlesWhenNormalizingTest() {
+		// Given:
+		RealSlidesProvider provider = newProvider(Map.of());
+
+		// When-Then:
+		assertThat(provider.normalizeSlideIds(null)).isEmpty();
+		assertThat(provider.normalizeSlideIds(java.util.Arrays.asList("id.g1", " ", null, "g2")))
+				.containsExactly("g1", "g2");
+		assertThat(provider.normalizeTitles(null)).isEmpty();
+		assertThat(provider.normalizeTitles(java.util.Arrays.asList("The Play!", " - ", null)))
+				.containsExactly("THEPLAY");
+		assertThat(provider.normalizeTitle(null)).isEmpty();
+		assertThat(provider.normalizeSlideId(null)).isEmpty();
+	}
+
+	@Test
+	void shouldResolveBreakdownMastersCaseInsensitivelyAndSkipNullEntriesTest() {
+		// Given:
+		RealSlidesProvider provider = newProvider(Map.of());
+		Map<String, String> configured = new java.util.HashMap<>();
+		configured.put(" DEV ", " m_dev ");
+		configured.put(null, "m_null_code");
+		configured.put("geo", null);
+		configured.put(" ", "m_blank_code");
+
+		// When:
+		Map<DeckBreakdown, String> resolved = provider.resolveBreakdownMasterIds(configured);
+		Map<DeckBreakdown, String> unset = provider.resolveBreakdownMasterIds(null);
+
+		// Then:
+		assertThat(resolved).containsExactly(Map.entry(DeckBreakdown.DEVICE, "m_dev"));
+		assertThat(unset).isEmpty();
+	}
+
+	@Test
+	void shouldOnlyAddADeleteForAConfiguredObjectIdTest() {
+		// Given:
+		RealSlidesProvider provider = newProvider(Map.of());
+		List<Request> requests = new java.util.ArrayList<>();
+
+		// When:
+		provider.addDeleteObject(requests, null);
+		provider.addDeleteObject(requests, "  ");
+		provider.addDeleteObject(requests, "slide-9");
+
+		// Then:
+		assertThat(requests).hasSize(1);
+		assertThat(requests.getFirst().getDeleteObject().getObjectId()).isEqualTo("slide-9");
+	}
+
+	@Test
+	void shouldJoinOnlyTheTextRunsASlideActuallyCarriesTest() {
+		// Given: a slide mixing an empty shape, a table without rows, a row without cells, and runs without
+		// content next to real text
+		RealSlidesProvider provider = newProvider(Map.of());
+		TableRow noCells = new TableRow();
+		TableRow cells = new TableRow().setTableCells(List.of(
+				new TableCell(),
+				new TableCell().setText(new TextContent()),
+				new TableCell().setText(new TextContent().setTextElements(List.of(
+						new TextElement(), new TextElement().setTextRun(new TextRun()),
+						new TextElement().setTextRun(new TextRun().setContent("cell")))))));
+		Page page = new Page().setObjectId("p1").setPageElements(List.of(
+				new PageElement().setShape(new Shape()),
+				new PageElement().setShape(new Shape().setText(new TextContent().setTextElements(List.of(
+						new TextElement().setTextRun(new TextRun().setContent("Title ")))))),
+				new PageElement().setTable(new Table()),
+				new PageElement().setTable(new Table().setTableRows(List.of(noCells, cells)))));
+
+		// When:
+		String text = provider.slideText(page);
+		String none = provider.slideText(new Page().setObjectId("blank"));
+
+		// Then:
+		assertThat(text).isEqualTo("Title cell");
+		assertThat(none).isEmpty();
+	}
+
+	@Test
+	void shouldFindNoTokensWhereThereIsNoTextTest() {
+		// Given: a page with a table without rows, a row without cells and a cell whose runs carry no content
+		RealSlidesProvider provider = newProvider(Map.of());
+		TableCell cell = new TableCell().setText(new TextContent().setTextElements(List.of(
+				new TextElement(),
+				new TextElement().setTextRun(new TextRun()),
+				new TextElement().setTextRun(new TextRun().setContent("{{geo_n.1}}")))));
+		Page page = new Page().setObjectId("m").setPageElements(List.of(
+				new PageElement().setShape(new Shape()),
+				new PageElement().setTable(new Table()),
+				new PageElement().setTable(new Table().setTableRows(List.of(
+						new TableRow(), new TableRow().setTableCells(List.of(cell)))))));
+		Set<String> collected = new java.util.LinkedHashSet<>();
+
+		// When:
+		Set<String> tokens = provider.extractRenumberableTokens(page);
+		Set<String> absent = provider.extractRenumberableTokens(null);
+		Set<String> textless = provider.extractRenumberableTokens(new Page().setObjectId("empty"));
+		provider.collectTokens(null, collected);
+		provider.collectTokens(new TextContent(), collected);
+
+		// Then:
+		assertThat(tokens).containsExactly("{{geo_n.1}}");
+		assertThat(absent).isEmpty();
+		assertThat(textless).isEmpty();
+		assertThat(collected).isEmpty();
+	}
+
+	@Test
+	void shouldSkipGroupsWithoutChildrenAndChildrenWithoutShapesTest() {
+		// Given:
+		RealSlidesProvider provider = newProvider(Map.of());
+		List<PageElement> elements = List.of(
+				new PageElement().setShape(new Shape()),
+				new PageElement().setElementGroup(new Group()),
+				new PageElement().setElementGroup(new Group().setChildren(List.of(
+						new PageElement().setTable(new Table()),
+						new PageElement().setShape(new Shape().setText(new TextContent().setTextElements(List.of(
+								new TextElement().setTextRun(new TextRun().setContent("{{left}}"))))))))));
+		Set<String> tokens = new java.util.LinkedHashSet<>();
+
+		// When:
+		provider.collectGroupTokens(null, tokens);
+		provider.collectGroupTokens(elements, tokens);
+
+		// Then:
+		assertThat(tokens).containsExactly("{{left}}");
+		assertThat(provider.unresolvedTokens(null)).isEmpty();
+	}
+
+	@Test
+	void shouldSkipSlidesWithoutIdOrTextWhenMatchingDropTitlesTest() {
+		// Given:
+		RealSlidesProvider provider = newTitleProvider(List.of("Frequency Play"));
+		List<Page> deck = List.of(
+				shapeSlide(null, List.of(List.of("FREQUENCY PLAY"))),
+				slide("textless"),
+				shapeSlide("freq", List.of(List.of("frequency play"))));
+
+		// When-Then:
+		assertThat(provider.buildTitleDeleteRequests(null)).isEmpty();
+		assertThat(provider.buildTitleDeleteRequests(List.of())).isEmpty();
+		assertThat(provider.buildTitleDeleteRequests(deck).stream().map(r -> r.getDeleteObject().getObjectId()))
+				.containsExactly("freq");
+	}
+
+	@Test
+	void shouldCollectOnlyTheIdsOfWholeSlideDeletesTest() {
+		// Given: a delete next to a request of another kind
+		RealSlidesProvider provider = newProvider(Map.of());
+		List<Request> requests = new java.util.ArrayList<>();
+		provider.addDeleteObject(requests, "s1");
+		requests.add(new Request().setUpdateSlidesPosition(new UpdateSlidesPositionRequest()));
+
+		// When:
+		Set<String> ids = provider.deletedSlideIds(requests);
+
+		// Then:
+		assertThat(ids).containsExactly("s1");
+	}
+
+	@Test
+	void shouldNotLookForBlocksOrRelayoutWithoutSlidesOrOnSlidesWithoutIdTest() {
+		// Given: a provider dropping a block and relaying out, and one with neither configured
+		GoogleCredentialsFactory creds = Mockito.mock(GoogleCredentialsFactory.class);
+		when(creds.transport()).thenReturn(new NetHttpTransport());
+		when(creds.jsonFactory()).thenReturn(GsonFactory.getDefaultInstance());
+		EomDeckProperties eomDeckProps = new EomDeckProperties();
+		eomDeckProps.setDropElementLabels(List.of("Monthly Impressions Distribution"));
+		eomDeckProps.setRelayoutGrowLabel("Top Delivery Content");
+		eomDeckProps.setRelayoutAnchorLabel("Daily pacing Dynamic");
+		SlideBlockLocator locator = Mockito.mock(SlideBlockLocator.class);
+		TacticSlideRelayout relayout = Mockito.mock(TacticSlideRelayout.class);
+		RealSlidesProvider provider = new RealSlidesProvider(
+				creds, new GoogleProperties(), Mockito.mock(DriveSharer.class),
+				Mockito.mock(DriveShareRecipients.class), Mockito.mock(GoogleRequestRetrier.class),
+				new BreakdownSlideNaming(), new SummaryTableRowTrimmer(),
+				new EomDeckPolicy(eomDeckProps), mpoDeckPolicy(), new EomSlideFinder(),
+				Mockito.mock(DeckMarkupRequestBuilder.class), locator, relayout,
+				Mockito.mock(DeviceTableCompactor.class), new CreativeTableCompactor(), new PaidSlidesWriter());
+		RealSlidesProvider unconfigured = newProvider(Map.of());
+		List<Page> idless = List.of(new Page());
+
+		// When-Then:
+		assertThat(provider.buildBlockDeleteRequests(null, Set.of())).isEmpty();
+		assertThat(provider.buildBlockDeleteRequests(idless, Set.of())).isEmpty();
+		assertThat(provider.buildRelayoutRequests(null, Set.of())).isEmpty();
+		assertThat(provider.buildRelayoutRequests(idless, Set.of())).isEmpty();
+		assertThat(unconfigured.buildBlockDeleteRequests(List.of(slide("p1")), Set.of())).isEmpty();
+		Mockito.verifyNoInteractions(locator, relayout);
+	}
+
+	@Test
+	void shouldDeleteNoMasterFromAnEmptyDeckOrASlideWithoutIdTest() {
+		// Given:
+		RealSlidesProvider provider = newMasterTacticProvider("m_tactic", "m_thoughts");
+		SlideModel model = standard(provider);
+
+		// When-Then:
+		assertThat(provider.buildMasterDeleteRequests(model, null)).isEmpty();
+		assertThat(provider.buildMasterDeleteRequests(model, List.of())).isEmpty();
+		assertThat(provider.buildMasterDeleteRequests(model, List.of(new Page(), slide("m_tactic")))
+				.stream().map(r -> r.getDeleteObject().getObjectId()))
+				.containsExactly("m_tactic");
+	}
+
+	@Test
+	void shouldBuildNoBreakdownRequestsWithoutSlidesMastersOrEnabledTacticsTest() {
+		// Given:
+		RealSlidesProvider provider = newProvider(Map.of(1, "tactic1"));
+		SlideModel model = standard(provider);
+		List<Page> deck = List.of(slide("tactic1"), shapeSlide("m_dev", List.of(List.of("{{dev_n_ctr}}"))));
+		Map<DeckBreakdown, String> masters = Map.of(DeckBreakdown.DEVICE, "m_dev");
+		Map<Integer, Set<DeckBreakdown>> enabled = Map.of(1, EnumSet.of(DeckBreakdown.DEVICE));
+
+		// When-Then:
+		assertThat(provider.buildBreakdownRequests(model, null, masters, enabled, Map.of(), Set.of())).isEmpty();
+		assertThat(provider.buildBreakdownRequests(model, List.of(), masters, enabled, Map.of(), Set.of())).isEmpty();
+		assertThat(provider.buildBreakdownRequests(model, deck, Map.of(), enabled, Map.of(), Set.of())).isEmpty();
+		assertThat(provider.buildBreakdownRequests(model, deck, masters, Map.of(), Map.of(), Set.of())).isEmpty();
+	}
+
+	@Test
+	void shouldSkipTacticsWithoutBreakdownsMainSlideOrAnInDeckMasterTest() {
+		// Given: tactic 1 has an unset breakdown set, tactic 2 no configured main slide, tactic 3 enables only a
+		// breakdown whose master is not in the deck, a null tactic key, and a slide without id in the deck
+		RealSlidesProvider provider = newProvider(Map.of(1, "tactic1", 3, "tactic3"));
+		List<Page> deck = List.of(new Page(), slide("tactic1"), slide("tactic3"),
+				shapeSlide("m_dev", List.of(List.of("{{dev_n_ctr}}"))));
+		Map<DeckBreakdown, String> masters = Map.of(DeckBreakdown.DEVICE, "m_dev", DeckBreakdown.GEO, "m_geo");
+		Map<Integer, Set<DeckBreakdown>> enabled = new java.util.HashMap<>();
+		enabled.put(null, EnumSet.of(DeckBreakdown.DEVICE));
+		enabled.put(1, null);
+		enabled.put(2, EnumSet.of(DeckBreakdown.DEVICE));
+		enabled.put(3, EnumSet.of(DeckBreakdown.GEO));
+
+		// When:
+		List<Request> requests = provider.buildBreakdownRequests(
+				standard(provider), deck, masters, enabled, Map.of(), Set.of());
+
+		// Then:
+		assertThat(requests).isEmpty();
+	}
+
+	@Test
+	void shouldBuildNoTacticCopiesForAnEmptyDeckAndNameTheMainSlidePerModelTest() {
+		// Given:
+		RealSlidesProvider master = newMasterTacticProvider("m_tactic", "");
+		RealSlidesProvider legacy = newMasterTacticProvider("", "");
+
+		// When-Then:
+		assertThat(master.buildTacticRequests(standard(master), null, 2, Map.of())).isEmpty();
+		assertThat(master.buildTacticRequests(standard(master), List.of(), 2, Map.of())).isEmpty();
+		assertThat(master.mainTacticSlideId(standard(master), 2)).isEqualTo("tct_2");
+		assertThat(legacy.mainTacticSlideId(standard(legacy), 2)).isEqualTo("legacy2");
+		assertThat(legacy.mainTacticSlideId(standard(legacy), 3)).isNull();
+	}
+
+	@Test
+	void shouldPlaceEomTacticCopiesAtTheFirstMasterPastSlidesWithoutIdTest() {
+		// Given: an EOM deck opening with a slide the read returned without id
+		RealSlidesProvider provider = newEomProvider();
+		List<Page> deck = List.of(new Page(), eomSlide("master-a", "{{tactic n}}"));
+
+		// When:
+		List<Request> requests = provider.buildEomTacticRequests(deck, 1, Map.of());
+
+		// Then:
+		assertThat(provider.buildEomTacticRequests(null, 1, Map.of())).isEmpty();
+		assertThat(requests.getLast().getUpdateSlidesPosition().getSlideObjectIds()).containsExactly("eom_m0_t1");
+		assertThat(requests.getLast().getUpdateSlidesPosition().getInsertionIndex()).isEqualTo(1);
+	}
+
+	@Test
+	void shouldBuildNoEomBreakdownsWithoutAMasterAndIgnoreANullTacticTest() {
+		// Given:
+		RealSlidesProvider provider = newEomProvider();
+		List<Page> deck = List.of(
+				eomSlide("eom_m0_t1", "{{tactic 1}}"),
+				eomSlide("master-a", "{{tactic n}}"),
+				eomSlide("publishers-master", "{{publisher_n.1}}"));
+		Map<Integer, Set<DeckBreakdown>> enabled = new java.util.HashMap<>();
+		enabled.put(null, Set.of(DeckBreakdown.TOP_PUBLISHERS));
+		enabled.put(1, Set.of(DeckBreakdown.TOP_PUBLISHERS));
+
+		// When:
+		List<Request> requests = provider.buildEomBreakdownRequests(deck, enabled, Map.of(), Set.of());
+
+		// Then: only tactic 1 gets its copy
+		assertThat(provider.buildEomBreakdownRequests(List.of(eomSlide("master-a", "{{tactic n}}")), enabled,
+				Map.of(), Set.of())).isEmpty();
+		assertThat(requests.stream().filter(r -> r.getDuplicateObject() != null)
+				.map(r -> r.getDuplicateObject().getObjectIds()))
+				.containsExactly(Map.of("publishers-master", "bd_tp_1"));
+	}
+
+	@Test
+	void shouldTrimNoDashboardRowsWhenTheLastBlockIsFullTest() {
+		// Given:
+		RealSlidesProvider provider = newEomProvider();
+
+		// When-Then:
+		assertThat(provider.eomDashboardRowRequests(List.of(eomSlide("dash", "{{tactic 8}}")), 14)).isEmpty();
+	}
+
+	@Test
+	void shouldKeepTheMastersPercentSignForAPlainValueAndSkipATokenWithoutTheVariableTest() {
+		// Given:
+		RealSlidesProvider provider = newProvider(Map.of());
+		List<Request> requests = new java.util.ArrayList<>();
+		Set<String> tokens = new java.util.LinkedHashSet<>(List.of("{{client_name}}", "{{dev_n_ctr}}"));
+
+		// When:
+		provider.emitPercentSuffixReplacements(requests, "copy-1", "{{dev_n_ctr}}", null);
+		provider.emitPercentSuffixReplacements(requests, "copy-1", "{{dev_n_ctr}}", "12");
+		provider.emitRenumberedTokens(requests, "copy-1", 1, tokens, Map.of());
+
+		// Then: no suffix is absorbed, and the token without n is not touched
+		assertThat(requests).hasSize(1);
+		assertThat(requests.getFirst().getReplaceAllText().getContainsText().getText()).isEqualTo("{{dev_n_ctr}}");
+		assertThat(requests.getFirst().getReplaceAllText().getReplaceText()).isEqualTo("{{dev_1_ctr}}");
+	}
+
 	private RealSlidesProvider newEomProvider() {
 		GoogleCredentialsFactory creds = Mockito.mock(GoogleCredentialsFactory.class);
 		when(creds.transport()).thenReturn(new NetHttpTransport());
