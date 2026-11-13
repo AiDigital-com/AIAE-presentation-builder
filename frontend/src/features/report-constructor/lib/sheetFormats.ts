@@ -15,7 +15,7 @@ export interface SheetFormat {
     exampleUrl: string;
 }
 
-export type SheetFormatKey = "mediaPlan" | "elevate" | "reportSheet";
+export type SheetFormatKey = "mediaPlan" | "elevate" | "reportSheet" | "paidSearch" | "paidSocial";
 
 export const SHEET_FORMATS: Record<SheetFormatKey, SheetFormat> = {
     mediaPlan: {
@@ -51,5 +51,29 @@ export const SHEET_FORMATS: Record<SheetFormatKey, SheetFormat> = {
         ],
         exampleUrl:
             "https://docs.google.com/spreadsheets/d/1V929E18woJxP_UJs7TEWZOI2NTJTBbIVCSz5wAqEh-g/edit?gid=65111710#gid=65111710",
+    },
+    paidSearch: {
+        summary: "Expected Paid Search export format",
+        rules: [
+            'The Google Ads "EOC report | raw data for automation | Search" export. Connect the whole workbook, not a single tab.',
+            'A "FULL-FLIGHT PERFORMANCE" tab is required. One of its top 5 rows holds the headers Date, Impressions, Clicks, Cost and Conversions, in any order, with one row per day below it.',
+            "Breakdown tabs: GROUP BREAKDOWN, KEYWORD BREAKDOWN, PMAX PLACEMENT BREAKDOWN, AGE DISTRIBUTION, GENDER SPLIT and AD BREAKDOWN. Each is optional. If one is missing, only the slide built from it stays empty.",
+            "Tab names must match the export's spelling. Case and extra spaces don't matter. Device, geo and conversion-action tabs are not used yet.",
+            "Shared with your Google account (Viewer access is enough).",
+        ],
+        exampleUrl:
+            "https://docs.google.com/spreadsheets/d/131JK0wkvZX2SKSOzNkYFuZEpo2Lr691v8wLEgQfSlTw/edit?gid=2018742232#gid=2018742232",
+    },
+    paidSocial: {
+        summary: "Expected Paid Social export format",
+        rules: [
+            'The Meta "EOC report | raw data for automation | Social" export. Connect the whole workbook, not a single tab.',
+            'A "FULL-FLIGHT PERFORMANCE" tab is required. One of its top 5 rows holds the headers Date, Impressions, Clicks, Cost and Conversions, in any order, with one row per day below it.',
+            "Keep the Creative column in FULL-FLIGHT PERFORMANCE. The creative slide is built from it, so a hidden CREATIVE BREAKDOWN tab doesn't matter.",
+            "Breakdown tabs: PLACEMENT BREAKDOWN, AUDIENCE TARGETING BREAKDOWN, AGE DISTRIBUTION and GENDER SPLIT. Each is optional. If one is missing, only the slide built from it stays empty.",
+            "Shared with your Google account (Viewer access is enough).",
+        ],
+        exampleUrl:
+            "https://docs.google.com/spreadsheets/d/10i_KCC2ZgT-lVGxzddIzLb9e9bMGaHUup9ggpQKHRoQ/edit?gid=1001034757#gid=1001034757",
     },
 };

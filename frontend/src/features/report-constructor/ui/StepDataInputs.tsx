@@ -3,6 +3,7 @@ import { isGoogleSheetUrl, PAID_SEARCH_EXPORT_TABS, PAID_SOCIAL_EXPORT_TABS } fr
 import { useWizard, type PaidChannel } from "@/shared/wizard/WizardContext";
 import { pacingReadyCount } from "../lib/pacing";
 import { readPaidExport } from "../lib/paidExport";
+import type { SheetFormatKey } from "../lib/sheetFormats";
 import { IconArrowLeft, IconArrowRight, IconCheck, IconSpinner } from "./icons";
 import { SheetFormatHint } from "./SheetFormatHint";
 import { useToast } from "./ToastContext";
@@ -154,11 +155,25 @@ interface PaidChannelSpec {
     name: string;
     label: string;
     tabs: readonly string[];
+    /** The expected-format note shown under the link field. */
+    format: SheetFormatKey;
 }
 
 const PAID_CHANNELS: PaidChannelSpec[] = [
-    { id: "search", name: "Paid Search", label: "Paid Search (Google Ads) export — Google Sheet link", tabs: PAID_SEARCH_EXPORT_TABS },
-    { id: "social", name: "Paid Social", label: "Paid Social (Meta) export — Google Sheet link", tabs: PAID_SOCIAL_EXPORT_TABS },
+    {
+        id: "search",
+        name: "Paid Search",
+        label: "Paid Search (Google Ads) export — Google Sheet link",
+        tabs: PAID_SEARCH_EXPORT_TABS,
+        format: "paidSearch",
+    },
+    {
+        id: "social",
+        name: "Paid Social",
+        label: "Paid Social (Meta) export — Google Sheet link",
+        tabs: PAID_SOCIAL_EXPORT_TABS,
+        format: "paidSocial",
+    },
 ];
 
 /** "Acme Search · 70 daily rows · 7 tabs" — what a connected export row shows. */
@@ -211,6 +226,7 @@ function PaidChannelInputs() {
                             pulling={pulling === spec.id}
                             onConnect={(url) => void read(spec, url)}
                             onDisconnect={() => w.disconnectPaidChannel(spec.id)}
+                            hint={<SheetFormatHint format={spec.format} />}
                         />
                         {connected && connected.missingTabs.length > 0 && (
                             <p className="rc-paid__missing" role="note">
