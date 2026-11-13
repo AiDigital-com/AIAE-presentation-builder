@@ -23,7 +23,7 @@ class BreakdownChartBuilderTest {
 		// The pure methods under test use only the ChartSheetWriter (for label normalisation); the Google
 		// collaborators are not touched, so nulls are safe here.
 		return new BreakdownChartBuilder(
-				null, new ChartSheetWriter(), null, null, null, new BreakdownChartCatalog(),
+				null, new ChartSheetWriter(), null, null, null, new BreakdownChartCatalog(), null,
 				new BreakdownSlideNaming(), null);
 	}
 

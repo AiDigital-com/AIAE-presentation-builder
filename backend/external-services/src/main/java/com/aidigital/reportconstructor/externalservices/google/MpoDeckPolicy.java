@@ -82,6 +82,15 @@ public class MpoDeckPolicy {
 	}
 
 	/**
+	 * Returns the configured breakdown-chart source workbooks of the MPO audience and device slides.
+	 *
+	 * @return the MPO breakdown chart sources, never {@code null}
+	 */
+	public MpoDeckBreakdownCharts breakdownChartSources() {
+		return props.getBreakdownCharts() == null ? new MpoDeckBreakdownCharts() : props.getBreakdownCharts();
+	}
+
+	/**
 	 * Returns the configured MPO template id for a report type.
 	 *
 	 * @param reportType report template code ({@code "EOC"}/{@code "EOM"}), may be {@code null}

@@ -44,4 +44,10 @@ public class MpoDeckProperties {
 	 * {@code external.google.charts} workbooks for every deck cloned from an MPO template.
 	 */
 	private MpoDeckChartSources tacticCharts = new MpoDeckChartSources();
+
+	/**
+	 * Source workbooks of the breakdown charts on the MPO audience and device slides, used instead of the
+	 * standard {@code external.google.breakdown-charts} workbooks for every deck cloned from an MPO template.
+	 */
+	private MpoDeckBreakdownCharts breakdownCharts = new MpoDeckBreakdownCharts();
 }

@@ -412,7 +412,8 @@ public class ReportGenerationChartHelperImpl implements ReportGenerationChartHel
 
 		try {
 			return charts.buildBreakdownCharts(new BreakdownChartRequest(
-					presentationId, campaignTitle(flatReplacements), jobs, userGoogleToken));
+					presentationId, campaignTitle(flatReplacements), jobs, userGoogleToken, payload.templateVariant(),
+					payload.reportType()));
 		} catch (RuntimeException ex) {
 			log.warn("[charts] breakdown chart step failed for {} (non-fatal): {}",
 					presentationId, ex.getMessage());
