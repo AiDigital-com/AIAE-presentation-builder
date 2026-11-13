@@ -50,16 +50,14 @@ public class UsageRollupRefresher {
 
 	private final UsageDailyService rollup;
 	private final UsageRollupProperties props;
-	private final AdminStatsCache statsCache;
 	private final CurrentTime currentTime;
 
 	/**
-	 * Rebuilds the trailing window on a timer, dropping anything derived from the old rows.
+	 * Rebuilds the trailing window on a timer.
 	 */
 	@Scheduled(fixedDelay = REFRESH_INTERVAL_MS, initialDelay = REFRESH_INTERVAL_MS)
 	public void refreshOnSchedule() {
 		refreshTrailingWindow();
-		statsCache.invalidate();
 	}
 
 	/**
@@ -67,24 +65,18 @@ public class UsageRollupRefresher {
 	 * rebuilds it in full when the rollup has never been built at all.
 	 *
 	 * <p>Called before a dashboard read, so the figures a viewer sees are at most
-	 * {@link UsageRollupProperties#getStalenessSeconds()} old. The return value is what lets the
-	 * caller drop its cached snapshot only when the numbers underneath it actually moved.
-	 *
-	 * @return true when the rollup was rebuilt, so anything derived from it is now stale
+	 * {@link UsageRollupProperties#getStalenessSeconds()} old.
 	 */
-	public boolean ensureFresh() {
+	public void ensureFresh() {
 		OffsetDateTime last = lastRefreshedAt();
 		if (last == null) {
 			// Empty rollup: either the first run after this feature shipped, or a wiped table. Either
 			// way the trailing window alone would leave every earlier day missing from the totals.
 			rebuildEverything();
-			return true;
-		}
-		if (Duration.between(last, currentTime.nowOffsetDateTime()).getSeconds() >= props.getStalenessSeconds()) {
+		} else if (Duration.between(last, currentTime.nowOffsetDateTime()).getSeconds()
+				>= props.getStalenessSeconds()) {
 			refreshTrailingWindow();
-			return true;
 		}
-		return false;
 	}
 
 	/**
@@ -132,12 +124,11 @@ public class UsageRollupRefresher {
 	}
 
 	/**
-	 * Reads the rollup's last refresh timestamp, treating a read failure as "never refreshed". It doubles as the
-	 * rollup's version: any rebuild, on any node, moves it.
+	 * Reads the rollup's last refresh timestamp, treating a read failure as "never refreshed".
 	 *
 	 * @return the timestamp, or {@code null} when the rollup is empty or unreadable
 	 */
-	public OffsetDateTime lastRefreshedAt() {
+	OffsetDateTime lastRefreshedAt() {
 		try {
 			return rollup.lastRefreshedAt();
 		} catch (Exception ex) {

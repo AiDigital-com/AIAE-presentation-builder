@@ -3,11 +3,9 @@ package com.aidigital.reportconstructor.service.admin.services.impl;
 import com.aidigital.reportconstructor.service.admin.AdminAccessPolicy;
 import com.aidigital.reportconstructor.service.admin.AdminDateRangeResolver;
 import com.aidigital.reportconstructor.service.admin.AdminStatsAssembler;
-import com.aidigital.reportconstructor.service.admin.AdminStatsCache;
 import com.aidigital.reportconstructor.service.admin.UsageRollupRefresher;
 import com.aidigital.reportconstructor.service.admin.dto.AdminDateRange;
 import com.aidigital.reportconstructor.service.admin.dto.AdminStats;
-import com.aidigital.reportconstructor.service.admin.dto.AdminStatsKey;
 import com.aidigital.reportconstructor.service.admin.enums.AdminPeriodUnit;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
@@ -19,14 +17,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -40,8 +35,6 @@ class AdminStatsServiceImplTest {
 	private UsageRollupRefresher rollupRefresher;
 	@Mock
 	private AdminDateRangeResolver rangeResolver;
-	@Mock
-	private AdminStatsCache statsCache;
 	@Mock
 	private AdminStatsAssembler assembler;
 	@Mock
@@ -61,53 +54,44 @@ class AdminStatsServiceImplTest {
 		// Then:
 		assertThat(thrown).isInstanceOf(AppException.class);
 		assertThat(((AppException) thrown).getCode()).isEqualTo(ErrorReason.C004.getCode());
-		verifyNoInteractions(rollupRefresher, statsCache, assembler);
+		verifyNoInteractions(rollupRefresher, assembler);
 	}
 
 	@Test
-	void shouldDropTheCachedSnapshotWhenTheRollupWasRebuiltAndAssembleOnMissTest() {
-		// Given: the rollup moved, and the cache has nothing for the window
-		LocalDate today = LocalDate.of(2026, 11, 12);
+	void shouldRefreshTheRollupThenAssembleTheResolvedWindowTest() {
+		// Given:
+		LocalDate today = LocalDate.of(2026, 11, 13);
 		AdminDateRange range = new AdminDateRange(today.minusDays(29), today, AdminPeriodUnit.WEEK);
 		AdminStats assembled = mock(AdminStats.class);
 		when(adminAccessPolicy.isAdmin("admin@aidigital.com")).thenReturn(true);
-		when(rollupRefresher.ensureFresh()).thenReturn(true);
 		when(currentTime.nowLocalDate()).thenReturn(today);
 		when(rangeResolver.resolve(null, null, today)).thenReturn(range);
 		when(assembler.assemble(range)).thenReturn(assembled);
-		OffsetDateTime version = OffsetDateTime.parse("2026-11-12T10:15:00Z");
-		when(rollupRefresher.lastRefreshedAt()).thenReturn(version);
-		when(statsCache.snapshot(eq(new AdminStatsKey(range, version)),
-				org.mockito.ArgumentMatchers.<Supplier<AdminStats>>any()))
-				.thenAnswer(invocation -> invocation.<Supplier<AdminStats>>getArgument(1).get());
 
 		// When:
 		AdminStats stats = service.statsFor("admin@aidigital.com", null, null);
 
-		// Then: the snapshot is keyed by the rollup version, so a rebuild on another node moves it too
+		// Then: the figures are read after the rollup is brought up to date
 		assertThat(stats).isSameAs(assembled);
-		verify(statsCache).invalidate();
+		verify(rollupRefresher).ensureFresh();
 	}
 
 	@Test
-	void shouldServeStaleFiguresWhenTheRollupRefreshFailsTest() {
-		// Given: refreshing throws, which must not reach the caller; the version is unknown
-		LocalDate today = LocalDate.of(2026, 11, 12);
+	void shouldServeTheFiguresAsTheyStandWhenTheRollupRefreshFailsTest() {
+		// Given: refreshing throws, which must not reach the caller
+		LocalDate today = LocalDate.of(2026, 11, 13);
 		AdminDateRange range = new AdminDateRange(today.minusDays(6), today, AdminPeriodUnit.DAY);
-		AdminStats cached = mock(AdminStats.class);
+		AdminStats assembled = mock(AdminStats.class);
 		when(adminAccessPolicy.isAdmin("admin@aidigital.com")).thenReturn(true);
-		when(rollupRefresher.ensureFresh()).thenThrow(new IllegalStateException("db down"));
+		doThrow(new IllegalStateException("db down")).when(rollupRefresher).ensureFresh();
 		when(currentTime.nowLocalDate()).thenReturn(today);
 		when(rangeResolver.resolve(null, null, today)).thenReturn(range);
-		when(statsCache.snapshot(eq(new AdminStatsKey(range, null)),
-				org.mockito.ArgumentMatchers.<Supplier<AdminStats>>any()))
-				.thenReturn(cached);
+		when(assembler.assemble(range)).thenReturn(assembled);
 
 		// When:
 		AdminStats stats = service.statsFor("admin@aidigital.com", null, null);
 
 		// Then:
-		assertThat(stats).isSameAs(cached);
-		verify(statsCache, never()).invalidate();
+		assertThat(stats).isSameAs(assembled);
 	}
 }

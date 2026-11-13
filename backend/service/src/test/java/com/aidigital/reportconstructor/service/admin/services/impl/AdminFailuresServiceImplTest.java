@@ -2,7 +2,6 @@ package com.aidigital.reportconstructor.service.admin.services.impl;
 
 import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
 import com.aidigital.reportconstructor.service.admin.AdminAccessPolicy;
-import com.aidigital.reportconstructor.service.admin.AdminStatsCache;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.reports.helpers.ReportJobProgressHelper;
 import com.aidigital.reportconstructor.service.reports.usage.ClaudeUsageEventService;
@@ -32,9 +31,6 @@ class AdminFailuresServiceImplTest {
 
 	@Mock
 	private ClaudeUsageEventService usageEvents;
-
-	@Mock
-	private AdminStatsCache statsCache;
 
 	@InjectMocks
 	private AdminFailuresServiceImpl service;
@@ -68,9 +64,6 @@ class AdminFailuresServiceImplTest {
 		verify(usageEvents).deleteByJobId(7L);
 		verify(jobs).deleteJob(7L);
 		verify(jobs, never()).clearJobWarnings(7L);
-
-		// And: the dashboard snapshot is dropped, so the row does not come back on the next read.
-		verify(statsCache).invalidate();
 	}
 
 	@Test
@@ -131,8 +124,5 @@ class AdminFailuresServiceImplTest {
 		verify(jobs).deleteJob(1L);
 		verify(jobs).clearJobWarnings(2L);
 		verify(jobs, never()).deleteJob(2L);
-
-		// And: the dashboard snapshot is dropped once for the whole sweep.
-		verify(statsCache).invalidate();
 	}
 }

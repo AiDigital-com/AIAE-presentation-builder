@@ -2,7 +2,6 @@ package com.aidigital.reportconstructor.service.admin.services.impl;
 
 import com.aidigital.reportconstructor.domain.reports.entities.ReportJobEntity;
 import com.aidigital.reportconstructor.service.admin.AdminAccessPolicy;
-import com.aidigital.reportconstructor.service.admin.AdminStatsCache;
 import com.aidigital.reportconstructor.service.admin.services.AdminFailuresService;
 import com.aidigital.reportconstructor.service.common.error.AppException;
 import com.aidigital.reportconstructor.service.common.error.ErrorReason;
@@ -15,10 +14,8 @@ import org.springframework.stereotype.Service;
 /**
  * Default {@link AdminFailuresService}. Validates admin access, then clears failures severity-aware:
  * a hard failure ({@code status = error}) is deleted with its usage events, while a report that
- * completed with warnings keeps its report and only loses its warning flag.
- *
- * <p>The failures list is part of the cached dashboard snapshot, so every clear drops that cache:
- * otherwise the row keeps coming back on the next read even though it is gone from the database.
+ * completed with warnings keeps its report and only loses its warning flag. The dashboard reads failures
+ * straight from the database, so a cleared row disappears on every instance at the next read.
  */
 @Service
 @RequiredArgsConstructor
@@ -30,7 +27,6 @@ public class AdminFailuresServiceImpl implements AdminFailuresService {
 	private final AdminAccessPolicy adminAccessPolicy;
 	private final ReportJobProgressHelper jobs;
 	private final ClaudeUsageEventService usageEvents;
-	private final AdminStatsCache statsCache;
 
 	@Override
 	public void resolveFailure(String callerEmail, Long jobId) {
@@ -38,7 +34,6 @@ public class AdminFailuresServiceImpl implements AdminFailuresService {
 		ReportJobEntity job = jobs.findJob(jobId)
 				.orElseThrow(() -> new AppException(ErrorReason.C001, "Unknown job " + jobId));
 		clearIssue(job);
-		statsCache.invalidate();
 	}
 
 	@Override
@@ -49,7 +44,6 @@ public class AdminFailuresServiceImpl implements AdminFailuresService {
 				clearIssue(job);
 			}
 		}
-		statsCache.invalidate();
 	}
 
 	/**

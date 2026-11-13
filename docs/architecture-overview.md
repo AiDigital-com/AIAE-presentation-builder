@@ -15,14 +15,14 @@ data flow, integration, deployment model, or cross-cutting concern changes.
 
 - Owner: AIAE Presentation Builder engineering team
 - Lifecycle phase: MVP
-- Last verified against: branch `PDI_240`, 2026-11-12
+- Last verified against: branch `PDI_240`, 2026-11-13
 - Verification evidence: `bash scripts/local-verify.sh`, `bash scripts/run-gates.sh`
 - Cache status: disabled
 - MVP usage telemetry: enabled during MVP
 
-"Cache status: disabled" refers to the optional distributed
-`backend/cache-management` module, which this project does not have. A single
-in-process Spring cache exists; see [Caching and consistency](#caching-and-consistency).
+"Cache status: disabled" — no application cache of any kind: no
+`backend/cache-management` module, no Spring cache, no Hibernate L2. See
+[Caching and consistency](#caching-and-consistency).
 
 ## Product and system context
 
@@ -229,16 +229,15 @@ sequenceDiagram
 
 ## Caching and consistency
 
-- One in-process Spring cache, `adminStats` (`AdminStatsCache`), enabled by
-  `CacheConfig` with Spring Boot's default simple in-memory manager — no
-  provider dependency. It holds one admin-dashboard snapshot per date window and
-  is evicted when `usage_daily` is rebuilt, not by TTL.
-- The cache is per instance, so it is keyed by the date window **and the rollup's version**
-  (`AdminStatsKey`: `usage_daily`'s latest `refreshed_at`). A rebuild on any instance moves the version, so
-  every instance's next read misses and reassembles: the dashboard is never older than
-  `app.usage-rollup.staleness-seconds` (120 s) on any instance. Local `invalidate()` stays for immediacy on
-  the instance that did the work and to bound memory. There is no `backend/cache-management` module (D1).
-- Evidence: `backend/application/src/main/java/com/aidigital/reportconstructor/config/CacheConfig.java`
+- No cache. The admin dashboard was the only cached read (an in-process `adminStats` snapshot); it was
+  removed on 2026-11-13 (P6, D1) because the standard allows either the full `cache-management` mechanism
+  or none, and the read does not need one. Measured on PostgreSQL 16 at 30,000 jobs and 300,000 Claude
+  usage events, every read in one dashboard request takes about 0.11 s (median) for a 30-day window and
+  about 0.20 s for a year.
+- Every dashboard read is therefore correct on every instance, with no cross-node invalidation. Freshness is
+  bounded by the `usage_daily` rollup alone: `app.usage-rollup.staleness-seconds` (120 s).
+- Reintroduce caching only for a measured need, and only through the standard's `cache-management` module
+  (Ehcache/JCache plus the database-outbox invalidation in `.claude/agent_docs/distributed_cache.md`).
 
 ## Multi-node operation
 

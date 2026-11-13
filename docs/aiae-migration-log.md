@@ -2,6 +2,39 @@
 
 Measured facts only, newest first. Plan and scope: [`aiae-migration-plan.md`](./aiae-migration-plan.md).
 
+## 2026-11-13 — Distributed cache (P6 / D1, branch `PDI_240`)
+
+- **Starting point.** `.claude/agent_docs/distributed_cache.md` allows either the full `cache-management`
+  mechanism or no cache, and calls partial states invalid. We had one in-process Spring cache, `adminStats`,
+  and no outbox:
+  - its P7 timestamp version broke rule 14's ban on timestamp polling;
+  - clearing failures evicted only the local instance's cache.
+- **Measurement.** A throwaway Testcontainers probe (deleted afterwards) on PostgreSQL 16, seeded with 30,000
+  `report_jobs` (300 users, two years) and 300,000 `claude_usage_events`. All eleven reads of one dashboard
+  request, uncached:
+
+  | Window | Median | p90 | First read |
+  |---|---|---|---|
+  | 30 days | 108 ms | 141 ms | 393 ms |
+  | 365 days | 204 ms | 234 ms | 213 ms |
+
+  Slowest single reads:
+  - 30 days: `activeDays` 24 ms, `listOwners` 12 ms.
+  - 365 days: `aggregateByLabel` 74 ms, `activeDays` 39 ms.
+
+  For comparison, a full rollup rebuild takes 645 ms, and a stale request already pays for a rebuild without
+  any cache.
+- **Decision.** The cache is removed and the module is not adopted:
+  - deleted `CacheConfig` (`@EnableCaching`), `AdminStatsCache`, `AdminStatsKey`;
+  - `AdminStatsServiceImpl` refreshes the rollup, then assembles;
+  - `AdminFailuresServiceImpl` no longer evicts;
+  - `UsageRollupRefresher.ensureFresh()` returns `void` and `lastRefreshedAt()` is package-private again.
+
+  The dashboard is now correct on every instance, and freshness depends only on the rollup's 120 s staleness
+  budget.
+- Tests: `AdminStatsServiceImplTest` rewritten (3 tests: non-admin, refresh then assemble, refresh failure);
+  `AdminFailuresServiceImplTest` no longer verifies eviction.
+
 ## 2026-11-12 — Gates made blocking (P15, branch `PDI_240`)
 
 - **Hidden checks.** `verify-gates.sh` stops at its first failure, and it had failed at the `.replit` check
